@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Network Scanning — Corey Clay</title>
+<meta name="description" content="Host discovery, port scanning, and network reconnaissance — Nmap scan types and states, NSE, timing and firewall/IDS evasion, masscan and toolless sca">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14161b;--ink-2:#181b21;--panel:#1c2027;--panel-2:#20242c;
+    --line:#2c313b;--line-soft:#242932;
+    --fg:#e6e2d8;--fg-dim:#b7b6ae;--muted:#868c98;--muted-2:#5f6672;
+    --signal:#e8a33d;--signal-soft:rgba(232,163,61,.14);--signal-line:rgba(232,163,61,.34);
+    --green:#7fae7a;--red:#d17a6e;--blue:#7fa6c9;
+    --f-display:"Space Grotesk",system-ui,sans-serif;
+    --f-body:"Newsreader",Georgia,serif;
+    --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(126px + env(safe-area-inset-top,0px))}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:17px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    background-image:
+      radial-gradient(1100px 520px at 82% -8%, rgba(232,163,61,.05), transparent 60%),
+      linear-gradient(var(--line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+    background-size:auto,64px 64px,64px 64px;background-position:0 0,-1px -1px,-1px -1px;}
+  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background:linear-gradient(180deg,transparent 0%,var(--ink) 42%)}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--signal-soft);color:var(--fg)}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  header.site{position:sticky;top:0;z-index:50;background:rgba(20,22,27,.86);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line-soft);padding-top:env(safe-area-inset-top,0px)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:900px;margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--f-mono);font-size:14px;letter-spacing:.02em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
+  .brand b{color:var(--fg);font-weight:700}
+  .brand span{color:var(--muted)}
+  nav.top{display:flex;gap:24px;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  nav.top a{transition:color .18s ease}
+  nav.top a:hover,nav.top a.here{color:var(--signal)}
+  nav.top a:focus-visible,.brand:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:2px}
+  @media (max-width:680px){nav.top a:not(.here):not(.home){display:none}}
+
+  .cs-hero{padding:56px 0 22px}
+  .cs-hero .kicker{font-family:var(--f-mono);font-size:12.5px;color:var(--signal);margin:0 0 10px}
+  .cs-hero .kicker a{color:var(--muted)}
+  .cs-hero .kicker a:hover{color:var(--signal)}
+  .cs-hero h1{font-family:var(--f-display);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;
+    line-height:1.05;margin:0 0 14px;color:var(--fg)}
+  .cs-hero p{max-width:64ch;color:var(--fg-dim);font-size:18px;margin:0}
+
+  .sec-nav{position:sticky;top:64px;z-index:40;background:rgba(20,22,27,.92);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line-soft);padding:11px 0}
+  .sec-nav .inner{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;max-width:900px;margin:0 auto;padding:0 24px}
+  .sec-nav .inner::-webkit-scrollbar{display:none}
+  .sec-nav a{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);white-space:nowrap;
+    padding:5px 11px;border:1px solid var(--line);border-radius:20px;transition:.16s;flex:none}
+  .sec-nav a:hover,.sec-nav a:focus-visible{color:var(--signal);border-color:var(--signal-line)}
+  .sec-nav a.here{color:var(--signal);border-color:var(--signal-line);background:var(--signal-soft)}
+  .sec-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  main{padding:12px 0 40px}
+  main h2{font-family:var(--f-display);font-weight:600;font-size:clamp(23px,3.2vw,30px);letter-spacing:-.01em;
+    color:var(--fg);margin:56px 0 8px;padding-top:20px;border-top:1px solid var(--line-soft);scroll-margin-top:130px}
+  main h2:first-of-type{border-top:0;margin-top:20px}
+  main h3{font-family:var(--f-display);font-weight:500;font-size:19px;color:var(--fg);margin:30px 0 10px}
+  main h4{font-family:var(--f-mono);font-size:14px;color:var(--signal);margin:22px 0 8px;letter-spacing:.01em}
+  main p{color:var(--fg-dim);margin:0 0 16px;max-width:74ch}
+  main strong{color:var(--fg);font-weight:600}
+  main a{color:var(--signal)}
+  main a:hover{text-decoration:underline}
+  main ul,main ol{color:var(--fg-dim);margin:0 0 18px;padding-left:22px;max-width:74ch}
+  main li{margin-bottom:6px}
+  main ul li::marker{color:var(--signal)}
+  main hr{border:0;border-top:1px solid var(--line-soft);margin:8px 0}
+
+  .code-wrap{position:relative;margin:0 0 18px}
+  main pre{background:var(--ink-2);border:1px solid var(--line);border-radius:8px;overflow-x:auto;
+    margin:0;padding:15px 17px;font-family:var(--f-mono);font-size:13px;line-height:1.7;color:var(--fg-dim)}
+  main pre code{font-family:var(--f-mono);background:none;padding:0;color:inherit;white-space:pre}
+  main :not(pre) > code{font-family:var(--f-mono);font-size:.86em;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--signal)}
+  .copy{position:absolute;top:8px;right:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;transition:.15s;opacity:.85}
+  .copy:hover,.copy:focus-visible{color:var(--signal);border-color:var(--signal-line);opacity:1}
+  .copy:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .copy.done{color:var(--green);border-color:rgba(127,174,122,.4)}
+
+  .table-scroll{overflow-x:auto;margin:0 0 20px;border:1px solid var(--line-soft);border-radius:8px}
+  main table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  main th{font-family:var(--f-mono);font-size:12px;text-align:left;color:var(--signal);
+    background:var(--panel-2);padding:10px 14px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap}
+  main td{padding:10px 14px;border-bottom:1px solid var(--line-soft);color:var(--fg-dim);vertical-align:top}
+  main tr:last-child td{border-bottom:0}
+  main td code{white-space:nowrap}
+
+  footer.site{border-top:1px solid var(--line-soft);padding:44px 0 60px;margin-top:40px}
+  .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;align-items:center}
+  .foot .f-brand{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  .foot .f-brand b{color:var(--fg)}
+  .foot-links{display:flex;gap:22px;font-family:var(--f-mono);font-size:13px}
+  .foot-links a{color:var(--muted);transition:color .16s}
+  .foot-links a:hover,.foot-links a:focus-visible{color:var(--signal)}
+  .disclaimer{font-family:var(--f-mono);font-size:11.5px;color:var(--muted-2);margin:30px 0 0;max-width:74ch;line-height:1.7;
+    border-left:2px solid var(--line);padding-left:16px}
+</style>
+</head>
+<body>
+<div class="grid-fade" aria-hidden="true"></div>
+
+<header class="site" id="top">
+  <div class="bar">
+    <a class="brand" href="index.html" aria-label="Home">
+      <span class="dot" aria-hidden="true"></span><b>corey.clay</b><span>/ network-scanning</span>
+    </a>
+    <nav class="top" aria-label="Primary">
+      <a class="home" href="index.html">home</a>
+      <a href="index.html#log">log</a>
+      <a class="" href="methodology.html">methodology</a>
+      <a class="here" href="enumeration.html" aria-current="page">enumeration</a>
+      <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
+    </nav>
+  </div>
+</header>
+
+<div class="cs-hero wrap">
+  <p class="kicker"><a href="enumeration.html">&larr; enumeration</a> &nbsp;/&nbsp; host discovery &amp; port scanning</p>
+  <h1>Network scanning</h1>
+  <p>Host discovery, port scanning, and network reconnaissance — Nmap scan types and states, NSE, timing and firewall/IDS evasion, masscan and toolless scanning, plus SMB/SNMP network-layer background.</p>
+</div>
+
+<nav class="sec-nav" aria-label="Jump to section">
+  <div class="inner">
+      <a href="#networking-fundamentals-reference">Networking Fundamentals (Reference)</a>
+      <a href="#nmap-port-states">Nmap Port States</a>
+      <a href="#nmap-tcp-syn-scan-stealth">Nmap: TCP SYN Scan (Stealth)</a>
+      <a href="#nmap-tcp-connect-scan">Nmap: TCP Connect Scan</a>
+      <a href="#nmap-udp-scan">Nmap: UDP Scan</a>
+      <a href="#nmap-version-os-detection">Nmap: Version &amp; OS Detection</a>
+      <a href="#nmap-nse-scripts">Nmap: NSE Scripts</a>
+      <a href="#nmap-vulnerability-scanning">Nmap: Vulnerability Scanning</a>
+      <a href="#nmap-output-formats">Nmap: Output Formats</a>
+      <a href="#importing-nmap-results-into-metasploit">Importing Nmap Results into Metasploit</a>
+      <a href="#nmap-performance-tuning">Nmap: Performance Tuning</a>
+      <a href="#nmap-firewall-ids-evasion">Nmap: Firewall &amp; IDS Evasion</a>
+      <a href="#host-discovery-methods">Host Discovery Methods</a>
+      <a href="#port-scanning-without-tools">Port Scanning without Tools</a>
+      <a href="#powershell-network-scanning">PowerShell Network Scanning</a>
+      <a href="#nmap-services-frequency-database">nmap-services Frequency Database</a>
+      <a href="#nmap-traffic-accounting-stealth-vs-aggressive-comparison">Nmap Traffic Accounting (Stealth vs Aggressive Comparison)</a>
+      <a href="#fscan-fast-internal-network-scanner">fscan - Fast Internal Network Scanner</a>
+      <a href="#masscan">Masscan</a>
+      <a href="#netdiscover">Netdiscover</a>
+      <a href="#arp-table-inspection-hidden-host-discovery">ARP Table Inspection - Hidden Host Discovery</a>
+      <a href="#port-scanning-from-compromised-hosts-no-nmap">Port Scanning from Compromised Hosts (No Nmap)</a>
+      <a href="#reconnoitre">Reconnoitre</a>
+      <a href="#dhcp-discovery">DHCP Discovery</a>
+      <a href="#responder-passive-network-analysis">Responder (Passive Network Analysis)</a>
+      <a href="#bettercap-mitm-network-analysis">Bettercap (MITM &amp; Network Analysis)</a>
+      <a href="#tcp-vs-udp-scanning-comparison">TCP vs UDP Scanning Comparison</a>
+      <a href="#os-detection-via-ttl">OS Detection via TTL</a>
+      <a href="#checklists-for-network-scanning">Checklists for Network Scanning</a>
+      <a href="#autorecon-orchestrated-multi-tool-enumeration">AutoRecon — Orchestrated Multi-Tool Enumeration</a>
+      <a href="#smb-netbios-network-layer-background">SMB / NetBIOS — Network Layer Background</a>
+      <a href="#snmp-enumeration-background">SNMP — Enumeration Background</a>
+  </div>
+</nav>
+<main class="wrap">
+<p>This section covers host discovery, port scanning, and network reconnaissance techniques.</p>
+<hr />
+<h2 id="networking-fundamentals-reference">Networking Fundamentals (Reference)</h2>
+<p><strong>When to use:</strong> Quick refresher on OSI/TCP fields when crafting scan flags or explaining evasion behavior.</p>
+<p><strong>OSI model:</strong></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Layer</th>
+<th>Function</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>7</td>
+<td>Application</td>
+<td>Services directly to end-users / apps</td>
+<td>HTTP, FTP, IRC, SSH, DNS</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Presentation</td>
+<td>Data format translation, encryption, compression</td>
+<td>SSL/TLS, JPEG, GIF, SSH, IMAP</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Session</td>
+<td>Manages sessions/connections between apps</td>
+<td>APIs, NetBIOS, RPC</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Transport</td>
+<td>End-to-end communication, flow control</td>
+<td>TCP, UDP</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Network</td>
+<td>Logical addressing and routing</td>
+<td>IP, ICMP, IPSec</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Data Link</td>
+<td>Access to physical medium, error detection, framing</td>
+<td>Ethernet, PPP, Switches</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Physical</td>
+<td>Physical connection between devices</td>
+<td>USB, Ethernet cable, Coax, Fiber, Hubs</td>
+</tr>
+</tbody>
+</table>
+<p><strong>IPv4 header fields:</strong> Version(4b), IHL(4b), DSCP(6b), ECN(2b), Total Length(16b), Identification(16b), Flags(3b: Reserved/DF/MF), Fragment Offset(13b), TTL(8b), Protocol(8b — 6=TCP, 17=UDP, 1=ICMP), Header Checksum(16b), Source IP(32b), Destination IP(32b), Options (if IHL&gt;5).</p>
+<p><strong>TCP header fields:</strong> Source port(16b), Destination port(16b), Sequence number(32b), Acknowledgment number(32b), Data offset(4b), Flags (CWR ECE URG ACK PSH RST SYN FIN), Window Size(16b), Checksum(16b), Urgent pointer(16b), Options.</p>
+<p><strong>TCP 3-way handshake:</strong> Client <code>SYN</code> -&gt; Server <code>SYN-ACK</code> -&gt; Client <code>ACK</code>. Termination flips <code>FIN</code>/<code>ACK</code>.</p>
+<p><strong>TCP port ranges:</strong></p>
+<ul>
+<li>Well-Known: 0-1023 (80 HTTP, 443 HTTPS, 21 FTP, 22 SSH, 25 SMTP, 110 POP3)</li>
+<li>Registered: 1024-49151 (3389 RDP, 3306 MySQL, 8080 HTTP-alt, 27017 MongoDB)</li>
+</ul>
+<p><strong>TCP vs UDP:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>UDP</th>
+<th>TCP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Connection</td>
+<td>Connectionless</td>
+<td>3-way handshake</td>
+</tr>
+<tr>
+<td>Reliability</td>
+<td>Unreliable, no delivery guarantee</td>
+<td>Reliable, ordered, retransmits</td>
+</tr>
+<tr>
+<td>Header size</td>
+<td>Smaller</td>
+<td>Larger</td>
+</tr>
+<tr>
+<td>Examples</td>
+<td>DNS, DHCP, SNMP, VoIP, gaming</td>
+<td>HTTP, FTP, Telnet, SMTP, HTTPS</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Reserved IPv4 ranges (RFC 5735):</strong> <code>0.0.0.0/8</code> this network; <code>127.0.0.0/8</code> loopback; <code>10.0.0.0/8</code>, <code>172.16.0.0/12</code>, <code>192.168.0.0/16</code> private.</p>
+<p><strong>ICMP echo:</strong> Echo Request = Type 8/Code 0; Echo Reply = Type 0/Code 0. <strong>No reply != definitively offline</strong> — could be filtering, congestion, or a firewall dropping ICMP.</p>
+<hr />
+<h2 id="nmap-port-states">Nmap Port States</h2>
+<p>Nmap reports six possible port states, each with distinct packet-level indicators:</p>
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th>Meaning</th>
+<th>Packet Indicator</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>open</code></td>
+<td>Service listening, connection possible</td>
+<td>SYN-ACK received (TCP), response received (UDP)</td>
+</tr>
+<tr>
+<td><code>closed</code></td>
+<td>Port accessible but no service listening</td>
+<td>RST flag received</td>
+</tr>
+<tr>
+<td><code>filtered</code></td>
+<td>Nmap cannot determine open/closed (firewalled)</td>
+<td>No response, or ICMP error received</td>
+</tr>
+<tr>
+<td><code>unfiltered</code></td>
+<td>Port accessible but open/closed unknown</td>
+<td>Only occurs during ACK scan (<code>-sA</code>)</td>
+</tr>
+<tr>
+<td><code>open\|filtered</code></td>
+<td>No response; could be open or filtered</td>
+<td>seen on UDP / FIN / NULL / Xmas scans</td>
+</tr>
+<tr>
+<td><code>closed\|filtered</code></td>
+<td>Cannot determine if closed or filtered</td>
+<td>seen on idle scan</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="nmap-tcp-syn-scan-stealth">Nmap: TCP SYN Scan (Stealth)</h2>
+<p>The most common scanning technique. Uses SYN packets to determine open ports without completing connections.</p>
+<pre><code class="language-bash"># Fast SYN scan on all ports
+sudo nmap -sS -p- -T4 --min-rate 5000 &lt;IP&gt; -oA full_tcp
+
+# Specific ports only
+sudo nmap -sS -p22,80,445 &lt;IP&gt;
+
+# Top 10 ports only
+sudo nmap --top-ports=10 &lt;IP&gt;
+</code></pre>
+<p><strong>SYN scan packet exchange (open port):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Packet</th>
+<th>Flags</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>SENT</td>
+<td><code>S</code> (SYN)</td>
+<td>Nmap initiates connection</td>
+</tr>
+<tr>
+<td>2</td>
+<td>RCVD</td>
+<td><code>SA</code> (SYN-ACK)</td>
+<td>Target confirms port is open</td>
+</tr>
+<tr>
+<td>3</td>
+<td>SENT</td>
+<td><code>R</code> (RST)</td>
+<td>Nmap tears down without completing handshake</td>
+</tr>
+</tbody>
+</table>
+<p><strong>SYN scan (closed port):</strong> Target immediately sends <code>RA</code> (RST-ACK) — no service listening.</p>
+<hr />
+<h2 id="nmap-tcp-connect-scan">Nmap: TCP Connect Scan</h2>
+<p>Full 3-way handshake (SYN -&gt; SYN-ACK -&gt; ACK). Does NOT require root/sudo. Useful through proxychains or when non-privileged.</p>
+<pre><code class="language-bash"># TCP Connect scan
+nmap -sT -Pn -p22,80,445 &lt;IP&gt;
+
+# Single port with detailed trace
+sudo nmap -p 21 --packet-trace -Pn -n --disable-arp-ping &lt;IP&gt;
+</code></pre>
+<p><strong>When to use <code>-sT</code>:</strong> When you don't have root privileges, or when the target firewall drops half-open (SYN) connections but allows completed TCP handshakes.</p>
+<hr />
+<h2 id="nmap-udp-scan">Nmap: UDP Scan</h2>
+<p>Identify UDP services. Much slower than TCP because UDP is connectionless — no handshake to confirm receipt.</p>
+<pre><code class="language-bash"># Fast UDP scan (top 100 ports)
+sudo nmap -sU -F &lt;IP&gt;
+
+# Top 50 UDP ports
+sudo nmap -sU --top-ports 50 &lt;IP&gt;
+
+# Targeted UDP with trace
+sudo nmap -sU -Pn -n --disable-arp-ping --packet-trace -p 137 --reason &lt;IP&gt;
+</code></pre>
+<p><strong>UDP scan response interpretation:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Response Received</th>
+<th>Port State</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UDP response</td>
+<td><code>open</code></td>
+<td>Service responded with data</td>
+</tr>
+<tr>
+<td>ICMP Type 3, Code 3 (port unreachable)</td>
+<td><code>closed</code></td>
+<td>No service listening</td>
+</tr>
+<tr>
+<td>ICMP Type 3, other codes</td>
+<td><code>filtered</code></td>
+<td>Firewall blocking</td>
+</tr>
+<tr>
+<td>No response after retransmissions</td>
+<td><code>open\|filtered</code></td>
+<td>undetermined</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key:</strong> Always use <code>-F</code> or specific ports for UDP scans — never <code>-p-</code> (scanning all 65535 UDP ports takes hours).</p>
+<hr />
+<h2 id="nmap-version-os-detection">Nmap: Version &amp; OS Detection</h2>
+<p>Identify running services, versions, and operating systems.</p>
+<pre><code class="language-bash"># Service/version detection on open ports
+sudo nmap -sV -p- &lt;IP&gt;
+
+# Version detection with progress updates
+sudo nmap -p- -sV --stats-every=5s -v &lt;IP&gt;
+# --stats-every=5s  — print progress every 5 seconds
+# -v                — verbose; prints open ports as discovered in real time
+# Tip: press [Space Bar] during ANY scan to see current progress
+
+# OS detection + scripts + version
+sudo nmap -sV -sC -O -A &lt;IP&gt;
+
+# Aggressive scan (all detection + traceroute)
+nmap -A -T4 &lt;IP&gt;
+</code></pre>
+<h3>Manual Banner Grabbing</h3>
+<p>Nmap's <code>-sV</code> sometimes misses detail that raw banners contain.</p>
+<pre><code class="language-bash"># Netcat banner grab
+nc -nv &lt;IP&gt; &lt;PORT&gt;
+
+# Capture raw banner exchange with tcpdump (run in separate terminal)
+sudo tcpdump -i eth0 host &lt;YOUR_IP&gt; and &lt;TARGET_IP&gt;
+# PSH-ACK packet contains the service banner data
+</code></pre>
+<p><strong>TCP handshake + banner exchange:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Flags</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>[S]</code> (SYN)</td>
+<td>Client initiates connection</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>[S.]</code> (SYN-ACK)</td>
+<td>Server accepts</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>[.]</code> (ACK)</td>
+<td>Handshake complete</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>[P.]</code> (PSH-ACK)</td>
+<td>Server pushes banner data</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>[.]</code> (ACK)</td>
+<td>Client acknowledges banner</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="nmap-nse-scripts">Nmap: NSE Scripts</h2>
+<p>Network Scripting Engine provides vulnerability detection, brute-forcing, and reconnaissance.</p>
+<h3>NSE Script Categories</h3>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Description</th>
+<th>Risk Level</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>auth</code></td>
+<td>Authentication credential detection</td>
+<td>Safe</td>
+</tr>
+<tr>
+<td><code>broadcast</code></td>
+<td>Host discovery via broadcast</td>
+<td>Safe</td>
+</tr>
+<tr>
+<td><code>brute</code></td>
+<td>Brute-force login attempts</td>
+<td><strong>Intrusive</strong></td>
+</tr>
+<tr>
+<td><code>default</code></td>
+<td>Scripts run with <code>-sC</code></td>
+<td>Safe</td>
+</tr>
+<tr>
+<td><code>discovery</code></td>
+<td>Service information gathering</td>
+<td>Safe</td>
+</tr>
+<tr>
+<td><code>dos</code></td>
+<td>Denial of service testing</td>
+<td><strong>Destructive</strong></td>
+</tr>
+<tr>
+<td><code>exploit</code></td>
+<td>Attempt known exploits</td>
+<td><strong>Intrusive</strong></td>
+</tr>
+<tr>
+<td><code>external</code></td>
+<td>Use external services (WHOIS, etc.)</td>
+<td>Safe</td>
+</tr>
+<tr>
+<td><code>fuzzer</code></td>
+<td>Send unexpected input to find bugs</td>
+<td><strong>Intrusive</strong></td>
+</tr>
+<tr>
+<td><code>intrusive</code></td>
+<td>May crash or disrupt target</td>
+<td><strong>Intrusive</strong></td>
+</tr>
+<tr>
+<td><code>malware</code></td>
+<td>Check for malware infections</td>
+<td>Safe</td>
+</tr>
+<tr>
+<td><code>safe</code></td>
+<td>Non-intrusive, non-destructive</td>
+<td>Safe</td>
+</tr>
+<tr>
+<td><code>version</code></td>
+<td>Extended service version detection</td>
+<td>Safe</td>
+</tr>
+<tr>
+<td><code>vuln</code></td>
+<td>Identify specific vulnerabilities</td>
+<td>Safe</td>
+</tr>
+</tbody>
+</table>
+<h3>Running Scripts</h3>
+<pre><code class="language-bash"># Default script category
+sudo nmap -sC &lt;IP&gt;
+# Equivalent to: sudo nmap --script=default &lt;IP&gt;
+
+# Specific category
+sudo nmap &lt;IP&gt; --script &lt;category&gt;
+
+# Specific scripts (comma-separated)
+sudo nmap &lt;IP&gt; --script banner,smtp-commands -p 25
+
+# Vulnerability scan
+sudo nmap -sV --script vuln &lt;IP&gt;
+
+# Banner grab
+nmap -sV --script=banner -p &lt;PORT&gt; &lt;IP&gt;
+</code></pre>
+<hr />
+<h2 id="nmap-vulnerability-scanning">Nmap: Vulnerability Scanning</h2>
+<pre><code class="language-bash"># Scan for known vulnerabilities
+nmap --script vuln &lt;IP&gt;
+
+# MSSQL-specific tests
+sudo nmap -p1433 -sV --script ms-sql-info,ms-sql-config,ms-sql-empty-password &lt;IP&gt;
+
+# HTTP enumeration
+nmap --script http-enum -v &lt;IP&gt; -p80
+</code></pre>
+<hr />
+<h2 id="nmap-output-formats">Nmap: Output Formats</h2>
+<pre><code class="language-bash"># Normal output
+nmap &lt;IP&gt; -oN output.nmap
+
+# Grepable format (machine-readable)
+nmap &lt;IP&gt; -oG output.gnmap
+
+# XML format (for parsing/reporting)
+nmap &lt;IP&gt; -oX output.xml
+
+# All three formats simultaneously
+nmap &lt;IP&gt; -oA output_basename
+
+# Convert XML to HTML
+xsltproc output.xml -o output.html
+
+# Save scan list from file
+sudo nmap -v -A -iL hosts.txt -oN host-enum
+</code></pre>
+<h3>Parsing .gnmap Output</h3>
+<pre><code class="language-bash"># Extract service versions quickly from greppable output
+grep -oP '\d+/open/tcp//[^/]+//\K[^/]+' scan.gnmap
+
+# Extract all open ports for a host
+grep -E &quot;^Host:&quot; scan.gnmap | awk '{print $2, $3, $4}' | grep -oE &quot;[0-9]+/open&quot;
+
+# Live hosts only (from ping-sweep gnmap)
+grep &quot;Status: Up&quot; scan.gnmap | awk '{print $2}'
+</code></pre>
+<hr />
+<h2 id="importing-nmap-results-into-metasploit">Importing Nmap Results into Metasploit</h2>
+<p><strong>When to use:</strong> You want to correlate service info across many hosts, or you're planning to run MSF modules against found services. <strong>EXAM-RESTRICTED</strong> — Metasploit workspace usage counts as your one target if you actually run modules from it.</p>
+<pre><code class="language-bash">sudo msfdb init
+sudo service postgresql start
+msfconsole
+
+# Inside msfconsole:
+db_status                                # confirm PostgreSQL connection
+workspace -a pentest_1                   # create + switch to a named workspace
+db_import nmap.xml                        # load prior nmap output
+hosts                                     # list imported hosts
+services                                  # list discovered services
+vulns                                     # list vulns detected by NSE
+
+# Run nmap directly from inside msfconsole (auto-imports)
+db_nmap -Pn -sS -sV -O -p445 &lt;IP&gt;
+</code></pre>
+<hr />
+<h2 id="nmap-performance-tuning">Nmap: Performance Tuning</h2>
+<h3>Timing Templates</h3>
+<table>
+<thead>
+<tr>
+<th>Template</th>
+<th>Flag</th>
+<th>Speed</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Paranoid</td>
+<td><code>-T0</code></td>
+<td>Slowest</td>
+<td>IDS evasion; 1 probe every 5 minutes</td>
+</tr>
+<tr>
+<td>Sneaky</td>
+<td><code>-T1</code></td>
+<td>Very slow</td>
+<td>IDS evasion; 1 probe every 15 seconds</td>
+</tr>
+<tr>
+<td>Polite</td>
+<td><code>-T2</code></td>
+<td>Slow</td>
+<td>Reduces network load</td>
+</tr>
+<tr>
+<td>Normal</td>
+<td><code>-T3</code></td>
+<td>Default</td>
+<td>Standard scanning</td>
+</tr>
+<tr>
+<td>Aggressive</td>
+<td><code>-T4</code></td>
+<td>Fast</td>
+<td>Recommended for CTF/lab</td>
+</tr>
+<tr>
+<td>Insane</td>
+<td><code>-T5</code></td>
+<td>Fastest</td>
+<td>May miss ports on slow networks</td>
+</tr>
+</tbody>
+</table>
+<h3>Tuning Commands</h3>
+<pre><code class="language-bash"># RTT timeout optimization (safe on fast LANs)
+sudo nmap &lt;IP&gt; --initial-rtt-timeout 50ms --max-rtt-timeout 100ms
+
+# No retries (fast but may miss ports on congested networks)
+sudo nmap &lt;IP&gt; --max-retries 0
+
+# Minimum packet rate
+sudo nmap &lt;IP&gt; --min-rate 300
+
+# Timing templates
+sudo nmap &lt;IP&gt; -T5
+
+# Verbose (see ports as discovered)
+sudo nmap &lt;IP&gt; -v
+
+# Scan from IP list (one-liner to extract live hosts for targeted scan)
+sudo nmap -sn -oA sweep -iL scope.txt | grep for | cut -d&quot; &quot; -f5 &gt; live_hosts.txt
+</code></pre>
+<p><strong>WARNING:</strong> Aggressive timing (<code>-T4</code>/<code>-T5</code>) combined with <code>--min-rate</code> can cause packet loss, resulting in fewer discovered ports. Always compare results between fast and default scans on critical targets.</p>
+<hr />
+<h2 id="nmap-firewall-ids-evasion">Nmap: Firewall &amp; IDS Evasion</h2>
+<h3>ACK Scan (Firewall Rule Detection)</h3>
+<pre><code class="language-bash"># ACK scan (detect firewall rules; RST=unfiltered, no response=filtered)
+sudo nmap -sA -Pn -n --disable-arp-ping --packet-trace -p 21,22,25 &lt;IP&gt;
+</code></pre>
+<p><strong>Key:</strong> <code>-sA</code> does NOT determine if a port is open — it only detects if a firewall is filtering it. Compare SYN scan (<code>-sS</code>) results with ACK scan (<code>-sA</code>) results to map firewall rules.</p>
+<h3>Decoy Scanning</h3>
+<pre><code class="language-bash"># Spoof 5 random source IPs alongside your real IP
+sudo nmap -sS -D RND:5 -Pn -n --disable-arp-ping --packet-trace -p 80 &lt;IP&gt;
+</code></pre>
+<p><strong>Critical:</strong> Decoy IPs must be alive on the network. Dead decoy IPs are trivially identified by IDS because they never respond to SYN-ACK retransmissions.</p>
+<h3>Source IP Spoofing</h3>
+<pre><code class="language-bash">sudo nmap -S &lt;SPOOF_IP&gt; -e tun0 -n -Pn -p 445 &lt;IP&gt;
+# -S         — spoof source IP (responses go to spoofed address, not you)
+# -e tun0    — required interface specification when using -S
+</code></pre>
+<h3>Source Port Manipulation</h3>
+<pre><code class="language-bash"># Abuse misconfigured firewall rules that trust source port 53 (DNS)
+sudo nmap -sS -p50000 --source-port 53 -Pn -n --disable-arp-ping --packet-trace &lt;IP&gt;
+
+# Connect through the filter using ncat (Nmap's netcat — supports --source-port)
+ncat -nv --source-port 53 &lt;IP&gt; &lt;PORT&gt;
+
+# Alternative with standard nc (requires sudo for ports &lt; 1024)
+sudo nc -nv -p 53 &lt;IP&gt; &lt;PORT&gt;
+</code></pre>
+<h3>Fragmentation</h3>
+<pre><code class="language-bash"># Fragment packets to evade IDS (MTU must be multiple of 8)
+nmap -Pn -n -sV -F -f --mtu 8 -sS -v -sU --disable-arp-ping &lt;IP&gt;
+</code></pre>
+<h3>Idle / Zombie Scan (Full Source Attribution to Another Host)</h3>
+<p><strong>When to use:</strong> You want the target to see the scan as coming from a different IP entirely. Requires a "zombie" host on the network with predictable IP-ID sequencing.</p>
+<pre><code class="language-bash"># Verify zombie has predictable IP-ID sequencing first:
+sudo nmap -O -v &lt;ZOMBIE_IP&gt; | grep &quot;IP ID&quot;
+# Look for: &quot;IP ID Sequence Generation: Incremental&quot;
+
+# Run the idle scan
+nmap -sI &lt;ZOMBIE_IP&gt; &lt;TARGET_IP&gt;
+# Your IP never appears in the target's logs; the zombie takes the &quot;credit&quot;
+</code></pre>
+<h3>IPv6 + Packet Crafting</h3>
+<pre><code class="language-bash"># IPv6 scan — often less monitored on legacy IDS
+nmap -6 &lt;IP&gt;
+
+# Invalid checksum — some firewalls respond, hosts drop -&gt; fingerprints the firewall itself
+nmap --badsum &lt;IP&gt;
+
+# Custom TTL (OS fingerprint evasion)
+nmap --ttl 64 &lt;IP&gt;
+
+# Append random payload bytes to defeat fixed-size signatures
+nmap --data-length 25 &lt;IP&gt;
+</code></pre>
+<h3>Firewall Detection Scripts</h3>
+<pre><code class="language-bash"># ACK scan — unfiltered vs filtered response reveals a stateful firewall
+nmap -sA &lt;IP&gt;
+sudo nmap -sS &lt;IP&gt; | grep filtered
+
+# NSE firewall bypass / firewalk (infer firewall ruleset via TTL-expiry probing — needs traceroute path)
+nmap --script firewall-bypass &lt;IP&gt;
+nmap --script firewalk &lt;IP&gt;
+</code></pre>
+<h3>Trusted-Source-Port Pivot — Worked Example</h3>
+<p><strong>When to use:</strong> A firewall drops most scans but trusts a specific port (commonly 53 DNS, 80 HTTP, 443 HTTPS). Discover ports via a spoofed source port, then <em>connect to the discovered service through the same trusted port</em>.</p>
+<pre><code class="language-bash"># Step 1 — find open ports using source-port 53 spoofing
+sudo nmap -g53 --max-retries=1 -Pn -p- --disable-arp-ping &lt;IP&gt;
+# -&gt; discovers e.g. 22/ssh, 80/http, 50000/ibm-db2
+
+# Step 2 — connect to the discovered service FROM local port 53 so the firewall permits it
+sudo nc -s &lt;LHOST&gt; -p53 &lt;IP&gt; 50000
+# 220 HTB{...}   &lt;- Db2 banner returns the flag
+
+# Windows/Linux equivalent with ncat
+ncat -nv --source-port 53 &lt;IP&gt; 50000
+</code></pre>
+<p><strong>The trick works at BOTH scan time (<code>nmap -g53</code>) and connection time (<code>nc -s &lt;LHOST&gt; -p53 ...</code>)</strong> — the firewall's allow-rule keys on your source port, so keep using 53 (or 80/443/25) end-to-end.</p>
+<h3>DNS Proxying</h3>
+<pre><code class="language-bash"># Use target's DNS server instead of system resolver
+sudo nmap --dns-server &lt;DNS_IP&gt;,8.8.8.8 &lt;IP&gt;
+</code></pre>
+<p><strong>Use case:</strong> In a DMZ, the system's default DNS may not resolve internal hostnames. Specifying the target's DNS server reveals internal naming. Also avoids leaking query data to monitored DNS servers.</p>
+<hr />
+<h2 id="host-discovery-methods">Host Discovery Methods</h2>
+<h3>Ping Sweep (ICMP)</h3>
+<p>Identify all live hosts on a network without port scanning.</p>
+<pre><code class="language-bash"># Linux fping
+fping -asgq &lt;SUBNET&gt;
+
+# Nmap ping sweep
+sudo nmap -sn &lt;SUBNET&gt;
+
+# Linux one-liner ping sweep
+for i in {1..254}; do (ping -c 1 &lt;NETWORK_PREFIX&gt;.$i | grep &quot;bytes from&quot; &amp;); done
+
+# Windows batch ping sweep
+for /L %i in (1 1 254) do ping 172.16.5.%i -n 1 -w 100 | find &quot;Reply&quot;
+
+# PowerShell ping sweep
+1..254 | % {&quot;172.16.5.$($_): $(Test-Connection -count 1 -comp 172.16.5.$($_) -quiet)&quot;}
+
+# Nmap with ICMP Echo Request and packet trace
+sudo nmap &lt;IP&gt; -sn -oA host -PE --packet-trace --disable-arp-ping
+
+# Nmap with reason (explain why host is up/down)
+sudo nmap &lt;IP&gt; -sn -PE --reason
+</code></pre>
+<h3>ARP Scan (Local Subnet Only)</h3>
+<p>Most reliable on local networks. Requires direct network access.</p>
+<pre><code class="language-bash"># arp-scan local subnet
+sudo arp-scan -l
+
+# nmap ARP scan
+sudo nmap -sn -n 192.168.122.0/24
+
+# Show ARP neighbors
+ip neigh
+
+# arpspoof to poison ARP cache
+arpspoof -i wlan0 -t 10.0.0.X 10.0.0.Y
+
+# Bettercap ARP spoofing
+sudo bettercap -iface wlan0
+net.probe on
+set arp.spoof.targets &lt;target_IP&gt;
+arp.spoof on
+net.sniff on
+</code></pre>
+<h3>DNS / Domain Controller Discovery</h3>
+<pre><code class="language-bash"># Query nameservers
+dig ns &lt;DOMAIN&gt; @&lt;DNS_IP&gt;
+
+# Find DNS servers (Nmap DHCP)
+sudo nmap --script broadcast-dhcp-discover
+
+# Active Directory DNS
+nslookup -type=srv _ldap._tcp.dc._msdcs.&lt;domain.name&gt;
+nslookup -type=srv _kerberos._tcp.&lt;domain.name&gt;
+nslookup -type=srv _ldap._tcp.&lt;domain.name&gt;
+</code></pre>
+<p><strong>DC port-signature tell</strong> — a host opening this cluster is a Domain Controller; pivot straight to AD enumeration:</p>
+<pre><code>53  88  135  139  389  445  464  636  3268  3269
+= DNS + Kerberos + RPC + NetBIOS + LDAP + kpasswd + Global Catalog  -&gt;  Active Directory
+</code></pre>
+<hr />
+<h2 id="port-scanning-without-tools">Port Scanning without Tools</h2>
+<h3>Netcat / nc</h3>
+<pre><code class="language-bash"># Check specific ports on a host
+for i in {21,22,80,139,443,445,3306,3389,8080,8443}; do
+  nc -z -w 1 192.168.1.18 $i &gt; /dev/null 2&gt;&amp;1
+  if [ $? -eq 0 ]; then echo &quot;192.168.1.18 has port $i open&quot;; fi
+done
+
+# Banner grab with nc
+nc -nv &lt;IP&gt; &lt;PORT&gt;
+
+# Source port manipulation
+nc -nv --source-port 53 &lt;IP&gt; &lt;PORT&gt;
+sudo nc -nv -p 53 &lt;IP&gt; &lt;PORT&gt;
+
+# UDP port sweep (single-host, small range) — no nmap needed
+# -u UDP, -z scan-only (no data), -w 1 one-second timeout, -n numeric only
+nc -nv -u -z -w 1 &lt;IP&gt; 120-123
+</code></pre>
+<h3>Ping + Netcat Combined</h3>
+<pre><code class="language-bash"># Check all hosts and their open ports in one loop
+for i in `seq 1 255`; do
+  ping -c 1 -w 1 192.168.1.$i &gt; /dev/null 2&gt;&amp;1
+  if [ $? -eq 0 ]; then
+    echo &quot;192.168.1.$i is UP:&quot;
+    for j in {21,22,80,139,443,445,3306,3389,8080,8443}; do
+      nc -z -w 1 192.168.1.$i $j &gt; /dev/null 2&gt;&amp;1
+      if [ $? -eq 0 ]; then
+        echo -e &quot;\t192.168.1.$i has port $j open&quot;
+      fi
+    done
+  fi
+done
+</code></pre>
+<hr />
+<h2 id="powershell-network-scanning">PowerShell Network Scanning</h2>
+<pre><code class="language-powershell"># Test connection (ping)
+tnc 8.8.8.8
+
+# Test port connectivity — tnc is the alias for Test-NetConnection
+tnc 8.8.8.8 -port 443
+
+# Explicit form (works when tnc alias stripped)
+Test-NetConnection -ComputerName &lt;IP&gt; -Port 445
+
+# PowerShell ping sweep
+1..254 | % {&quot;192.168.1.$($_): $(Test-Connection -count 1 -comp 192.168.1.$($_) -quiet)&quot;}
+
+# LOLBAS full 1-1024 TCP port scan (no external tools, no admin needed)
+# For each port, try a TCP connect; suppress connection-refused errors; print only opens.
+1..1024 | % { echo ((New-Object Net.Sockets.TcpClient).Connect(&quot;&lt;IP&gt;&quot;,$_)) &quot;TCP port $_ open&quot; } 2&gt;$null
+</code></pre>
+<p><strong>When to use PowerShell scans:</strong> on a Windows foothold where dropping nmap.exe would raise AV flags; every command above is signed/built-in and won't be quarantined.</p>
+<hr />
+<h2 id="nmap-services-frequency-database">nmap-services Frequency Database</h2>
+<p><code>--top-ports N</code> isn't magic — Nmap picks the N most-frequently-open ports according to a huge internet-scan-derived frequency table at <code>/usr/share/nmap/nmap-services</code>. Higher frequency = more likely open.</p>
+<pre><code class="language-bash"># Peek at the top of the file
+head -30 /usr/share/nmap/nmap-services
+# ftp     21/tcp   0.197667  # File Transfer [Control]
+# ssh     22/tcp   0.182286  # Secure Shell Login
+# http    80/tcp   0.484143  # World Wide Web HTTP
+
+# Show the actual top-20 TCP ports Nmap would scan
+grep '/tcp' /usr/share/nmap/nmap-services | sort -k3 -r | head -20
+</code></pre>
+<p>Column 3 is the frequency; <code>0.484143</code> means ~48% of scanned IPs in the study had that port open. <code>--top-ports 100</code> = the 100 rows with the highest frequencies.</p>
+<p><strong>When to use:</strong> justifying your scan choices in a report, or picking a custom port list for a stealth scan.</p>
+<hr />
+<h2 id="nmap-traffic-accounting-stealth-vs-aggressive-comparison">Nmap Traffic Accounting (Stealth vs Aggressive Comparison)</h2>
+<p>Measure the packet cost of a scan by watching iptables counters before and after.</p>
+<pre><code class="language-bash"># Insert dummy rules to count nmap traffic (INPUT + OUTPUT on tap0)
+sudo iptables -I INPUT  1 -s &lt;IP&gt; -i tap0 -j ACCEPT
+sudo iptables -I OUTPUT 1 -d &lt;IP&gt; -o tap0 -j ACCEPT
+
+# Zero the counters
+sudo iptables -Z
+
+# Run whatever scan you want to measure
+sudo nmap -sS -p- &lt;IP&gt;
+
+# Read packet + byte counts
+sudo iptables -vn -L
+</code></pre>
+<p><strong>When to use:</strong> compare <code>-T3</code> vs <code>-T4 --min-rate 5000</code>, or SYN vs Connect scan, or default script set vs <code>-A</code>, to know how loud each choice actually is.</p>
+<hr />
+<h2 id="fscan-fast-internal-network-scanner">fscan - Fast Internal Network Scanner</h2>
+<p>Rapidly discover services on internal networks after gaining initial compromise.</p>
+<pre><code class="language-bash">./fscan -h &lt;SUBNET&gt;/24
+# Discovers: open ports, NetBIOS info, web titles, SMB signing, OS info
+# Much faster than nmap for internal reconnaissance after gaining foothold
+</code></pre>
+<hr />
+<h2 id="masscan">Masscan</h2>
+<p>Ultra-fast port scanner. Best for large networks and ranges.</p>
+<pre><code class="language-bash"># Scan top 100 ports on all hosts in range
+sudo masscan --rate 500 --interface tap0 --router-ip $ROUTER_IP --top-ports 100 $NETWORK -oL masscan_machines.tmp
+cat masscan_machines.tmp | grep open | cut -d &quot; &quot; -f4 | sort -u &gt; masscan_machines.lst
+
+# Full port scan with UDP
+sudo masscan --rate 1000 --interface tap0 --router-ip $ROUTER_IP -p1-65535,U:1-65535 $MACHINE_IP --banners -oL masscan-ports.lst
+
+# Masscan from file
+masscan -iL ips-online.txt --rate 10000 -p1-65535 --only-open -oL masscan.out
+
+# Single machine both TCP and UDP
+masscan -e tun0 -p1-65535,U:1-65535 &lt;TARGET_IP&gt; --rate 1000
+
+# Follow up with Nmap on discovered TCP ports
+TCP_PORTS=$(cat masscan-ports.lst | grep open | grep tcp | cut -d &quot; &quot; -f3 | tr '\n' ',' | head -c -1)
+[ &quot;$TCP_PORTS&quot; ] &amp;&amp; sudo nmap -sT -sC -sV -v -Pn -n -T4 -p$TCP_PORTS --reason --version-intensity=5 -oA nmap_tcp &lt;IP&gt;
+
+# Follow up with Nmap on discovered UDP ports
+UDP_PORTS=$(cat masscan-ports.lst | grep open | grep udp | cut -d &quot; &quot; -f3 | tr '\n' ',' | head -c -1)
+[ &quot;$UDP_PORTS&quot; ] &amp;&amp; sudo nmap -sU -sC -sV -v -Pn -n -T4 -p$UDP_PORTS --reason --version-intensity=5 -oA nmap_udp &lt;IP&gt;
+</code></pre>
+<hr />
+<h2 id="netdiscover">Netdiscover</h2>
+<p>ARP-based network scanner. Useful for discovering hosts on local networks.</p>
+<pre><code class="language-bash"># Scan local subnet
+netdiscover -i eth0 -r 192.168.1.0/24
+
+# Output shows: IP, MAC Address, Count, MAC Vendor/Hostname
+</code></pre>
+<hr />
+<h2 id="arp-table-inspection-hidden-host-discovery">ARP Table Inspection - Hidden Host Discovery</h2>
+<p>After gaining shell on a compromised host in the target subnet, inspect the ARP table to reveal hosts not visible from external scans (not responding to VPN/external routing).</p>
+<pre><code class="language-bash"># Linux - show ARP table
+arp -a
+ip neigh show
+
+# Windows - show ARP table
+arp -a
+Get-NetNeighbor
+</code></pre>
+<p><strong>Critical insight:</strong> Hosts visible in local ARP tables may NOT be discoverable via standard nmap ping sweeps from external/VPN positions due to network segmentation or direct connectivity. Always inspect ARP after compromising internal hosts.</p>
+<hr />
+<h2 id="port-scanning-from-compromised-hosts-no-nmap">Port Scanning from Compromised Hosts (No Nmap)</h2>
+<p>When nmap is not available on a compromised host, use bash one-liners for port scanning internal targets.</p>
+<pre><code class="language-bash"># Bash TCP port scan (test common ports)
+for port in 22 80 135 139 443 445 1433 3306 3389 5985 5986 8080; do
+  (echo &gt;/dev/tcp/&lt;IP&gt;/$port) 2&gt;/dev/null &amp;&amp; echo &quot;Port $port OPEN&quot;
+done
+
+# Bash ping sweep (without ping, using /dev/tcp for connection testing)
+for i in $(seq 1 254); do
+  timeout 1 bash -c &quot;&lt;/dev/tcp/&lt;SUBNET&gt;.$i/445&quot; 2&gt;/dev/null &amp;&amp; echo &quot;&lt;SUBNET&gt;.$i:445 OPEN&quot; &amp;
+done; wait
+
+# Windows - from compromised host without nmap
+for ($port in 22,80,135,139,443,445,1433,3306,3389,5985) {
+  $tcp = new-object System.Net.Sockets.TcpClient
+  $result = $tcp.BeginConnect('&lt;IP&gt;', $port, $null, $null)
+  $result.AsyncWaitHandle.WaitOne(100) | Out-Null
+  if ($tcp.Connected) { &quot;Port $port OPEN&quot; }
+}
+</code></pre>
+<p><strong>Use case:</strong> In internal networks, some hosts are only discoverable via ARP from a compromised machine and won't respond to external nmap scans from the VPN.</p>
+<hr />
+<h2 id="reconnoitre">Reconnoitre</h2>
+<p>Automated reconnaissance tool combining multiple scanning techniques.</p>
+<pre><code class="language-bash">python2.7 ./reconnoitre.py -t 192.168.1.2-252 -o ./results/ --pingsweep --hostnames --services --quick
+
+# Note: nbtscan may segfault on gateway (.1) - use nbtscan 192.168.0.2-255 to avoid
+</code></pre>
+<hr />
+<h2 id="dhcp-discovery">DHCP Discovery</h2>
+<p>Discover DHCP servers and offered configuration on the network.</p>
+<pre><code class="language-bash"># Broadcast DHCP discovery
+sudo nmap --script broadcast-dhcp-discover
+</code></pre>
+<hr />
+<h2 id="responder-passive-network-analysis">Responder (Passive Network Analysis)</h2>
+<p>Monitor network traffic without actively poisoning. <strong>Poisoning is exam-banned — only analyse-only <code>-A</code> is exam-OK.</strong></p>
+<pre><code class="language-bash"># Passive analysis mode (listen only)
+responder -I eth0 -A
+</code></pre>
+<hr />
+<h2 id="bettercap-mitm-network-analysis">Bettercap (MITM &amp; Network Analysis)</h2>
+<pre><code class="language-bash"># Basic setup
+sudo bettercap -iface wlan0
+
+# Proxy HTTPS with interception
+bettercap -X --proxy --proxy-https -T &lt;target IP&gt;
+
+# In Bettercap console:
+net.probe on                           # Active probing
+set arp.spoof.targets &lt;target_IP&gt;      # Set targets
+arp.spoof on                           # Enable spoofing
+net.sniff on                           # Enable sniffing
+</code></pre>
+<hr />
+<h2 id="tcp-vs-udp-scanning-comparison">TCP vs UDP Scanning Comparison</h2>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Port</th>
+<th>Speed</th>
+<th>Pros</th>
+<th>Cons</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SYN (-sS)</td>
+<td>TCP</td>
+<td>Fast</td>
+<td>Stealthy, reliable</td>
+<td>Requires root</td>
+</tr>
+<tr>
+<td>Connect (-sT)</td>
+<td>TCP</td>
+<td>Slow</td>
+<td>Works without root</td>
+<td>Logged, obvious</td>
+</tr>
+<tr>
+<td>UDP (-sU)</td>
+<td>UDP</td>
+<td>Very slow</td>
+<td>Essential for services</td>
+<td>Rate-limited by ICMP</td>
+</tr>
+<tr>
+<td>FIN/NULL/Xmas</td>
+<td>TCP</td>
+<td>Medium</td>
+<td>Firewall evasion</td>
+<td>Unreliable</td>
+</tr>
+<tr>
+<td>Ping sweep (-sn)</td>
+<td>ICMP</td>
+<td>Fastest</td>
+<td>Host discovery only</td>
+<td>May be filtered</td>
+</tr>
+<tr>
+<td>ARP scan</td>
+<td>Layer 2</td>
+<td>Instant</td>
+<td>Most reliable locally</td>
+<td>Local subnet only</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="os-detection-via-ttl">OS Detection via TTL</h2>
+<p>Estimate operating system based on initial TTL value:</p>
+<pre><code>TTL 64  = Linux/Unix
+TTL 128 = Windows
+TTL 255 = Cisco/Network equipment
+</code></pre>
+<hr />
+<h2 id="checklists-for-network-scanning">Checklists for Network Scanning</h2>
+<h3>Initial Reconnaissance</h3>
+<ul>
+<li>[ ] Ping sweep to identify live hosts</li>
+<li>[ ] Fast SYN scan on common ports (top 1000)</li>
+<li>[ ] Full TCP port scan on discovered hosts</li>
+<li>[ ] UDP scan on top ports (DNS, SNMP, DHCP)</li>
+<li>[ ] Service version detection</li>
+<li>[ ] OS detection</li>
+<li>[ ] Run default NSE scripts for discovered services</li>
+</ul>
+<h3>Follow-up Based on Services</h3>
+<ul>
+<li>[ ] Web services -&gt; web fuzzing + technology detection</li>
+<li>[ ] DNS -&gt; zone transfer + subdomain enum</li>
+<li>[ ] SMB/RPC -&gt; enumeration scripts</li>
+<li>[ ] LDAP -&gt; anonymous binding</li>
+<li>[ ] SNMP -&gt; community string brute-force</li>
+<li>[ ] Database ports -&gt; connection tests</li>
+</ul>
+<hr />
+<h2 id="autorecon-orchestrated-multi-tool-enumeration">AutoRecon — Orchestrated Multi-Tool Enumeration</h2>
+<p><strong>When to use:</strong> Long single-target boxes (OSCP, HTB) where you want automated per-service surveying while you focus on the box. Wraps EXAM-OK primitives only (nmap NSE, gobuster/feroxbuster, enum4linux, smbmap, smbclient, nikto, snmpwalk, etc.) — does NOT run banned scanners like Nessus/OpenVAS.</p>
+<p><strong>Install:</strong></p>
+<pre><code class="language-bash"># Kali / Debian
+pipx install git+https://github.com/Tib3rius/AutoRecon.git
+
+# Or from source
+git clone https://github.com/Tib3rius/AutoRecon
+cd AutoRecon &amp;&amp; pipx install .
+</code></pre>
+<p><strong>Basic runs:</strong></p>
+<pre><code class="language-bash">sudo autorecon &lt;IP&gt;                                          # single target, all services
+sudo autorecon -t targets.txt                                # host list
+sudo autorecon 10.10.10.0/24                                 # CIDR
+sudo autorecon &lt;IP&gt; -o /tmp/results                          # custom output dir
+sudo autorecon &lt;IP&gt; --only-scans-dir                         # skip artifact folders
+sudo autorecon &lt;IP&gt; --heartbeat 30                           # progress ping every 30s
+sudo autorecon &lt;IP&gt; --nmap-append=&quot;--script=vuln&quot;            # extra nmap flags
+sudo autorecon &lt;IP&gt; -v                                       # verbose
+</code></pre>
+<p><strong>What it runs per service (out of the box):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Tools</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HTTP/S</td>
+<td>nmap http-* NSE + gobuster/feroxbuster + nikto + whatweb + curl -I / robots.txt</td>
+</tr>
+<tr>
+<td>SMB</td>
+<td>nmap smb-* NSE + enum4linux + smbclient -L + smbmap</td>
+</tr>
+<tr>
+<td>FTP</td>
+<td>nmap ftp-* NSE + hydra (with common wordlists) + curl anonymous</td>
+</tr>
+<tr>
+<td>SSH</td>
+<td>nmap ssh-* + ssh-audit</td>
+</tr>
+<tr>
+<td>SMTP</td>
+<td>nmap smtp-* + smtp-user-enum</td>
+</tr>
+<tr>
+<td>SNMP</td>
+<td>nmap snmp-* + snmpwalk (public + private) + onesixtyone</td>
+</tr>
+<tr>
+<td>DNS</td>
+<td>nmap dns-* + dnsrecon + dig axfr</td>
+</tr>
+<tr>
+<td>LDAP</td>
+<td>nmap ldap-* + ldapsearch anonymous bind</td>
+</tr>
+<tr>
+<td>Kerberos</td>
+<td>nmap krb5-enum-users</td>
+</tr>
+<tr>
+<td>NFS</td>
+<td>nmap nfs-* + showmount -e</td>
+</tr>
+<tr>
+<td>RDP</td>
+<td>nmap rdp-*</td>
+</tr>
+<tr>
+<td>WinRM</td>
+<td>nmap wsman-*</td>
+</tr>
+<tr>
+<td>MSSQL/MySQL/Oracle</td>
+<td>nmap ms-sql-<em> / mysql-</em> / oracle-*</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Tuning under time pressure:</strong></p>
+<pre><code class="language-bash">sudo autorecon &lt;IP&gt; --port-scan-profile top-100-ports         # faster first pass
+sudo autorecon &lt;IP&gt; --tags default,long,http                  # only run specific plugin tags
+sudo autorecon &lt;IP&gt; --exclude-tags brute                      # skip brute-force stages
+sudo autorecon &lt;IP&gt; --max-scans 20                            # concurrency knob (default 50)
+</code></pre>
+<p><strong>Alternatives:</strong></p>
+<ul>
+<li><strong>rustscan</strong> (Rust) — faster port sweep; pipes into nmap: <code>rustscan -a &lt;IP&gt; -- -A -sC</code></li>
+<li><strong>nmapAutomator</strong> (<code>21y4d/nmapAutomator</code>) — bash wrapper, lighter</li>
+<li><strong>Legion</strong> (GUI) — Sparta successor</li>
+<li><strong>reNgine / Sn1per</strong> — heavier framework style</li>
+</ul>
+<p>Always confirm findings manually before writing them into a report — AutoRecon is a survey tool, not a substitute for reading the raw <code>scans/</code> output.</p>
+<hr />
+<h2 id="smb-netbios-network-layer-background">SMB / NetBIOS — Network Layer Background</h2>
+<p><strong>NetBIOS</strong> = API + protocols for LAN communication services — Name Service (137/UDP+TCP), Datagram Service (138), Session Service (139).</p>
+<p><strong>SMB</strong> = the actual file/printer-sharing protocol, running direct on 445 (bypassing NetBIOS) or over NetBIOS on 139.</p>
+<p><strong>SMB versions:</strong></p>
+<ul>
+<li><strong>1.0</strong> — legacy, vulnerable (EternalBlue), XP-era</li>
+<li><strong>2.0 / 2.1</strong> — Vista / 2008+</li>
+<li><strong>3.0+</strong> — Win8 / 2012+, adds encryption + multichannel</li>
+</ul>
+<p>Modern Windows works fine on 445 alone but 139 is often kept for backward compatibility.</p>
+<p><strong>Network-layer enumeration commands:</strong></p>
+<pre><code class="language-bash">sudo nmap -Pn -sV -T4 -p139,445 &lt;IP&gt;
+sudo nmap -Pn -p445 --script=smb-protocols &lt;IP&gt;       # detect supported SMB versions
+sudo nmap -Pn -p445 --script=smb-security-mode &lt;IP&gt;   # signing, encryption
+sudo nmap -Pn -p445 --script=smb-enum-users &lt;IP&gt;      # user list (needs auth usually)
+smbclient -L \\\\&lt;IP&gt;\\
+</code></pre>
+<hr />
+<h2 id="snmp-enumeration-background">SNMP — Enumeration Background</h2>
+<p><strong>SNMP</strong> = application-layer protocol (usually UDP). Components:</p>
+<ul>
+<li><strong>SNMP Manager</strong> — queries agents</li>
+<li><strong>SNMP Agent</strong> — runs on device, responds to queries / sends traps</li>
+<li><strong>MIB</strong> — Management Information Base, hierarchical DB of OIDs</li>
+</ul>
+<p><strong>Versions:</strong></p>
+<ul>
+<li><strong>v1</strong> — community strings (cleartext)</li>
+<li><strong>v2c</strong> — adds bulk transfer, still community strings</li>
+<li><strong>v3</strong> — adds encryption, message integrity, user-based auth</li>
+</ul>
+<p><strong>Ports:</strong> 161/UDP queries, 162/UDP traps.</p>
+<pre><code class="language-bash">nmap -Pn -sU -p161 &lt;IP&gt;                                # confirm SNMP open
+ls -al /usr/share/nmap/scripts/ | grep snmp            # list available NSE scripts
+nmap -sU -p161 --script=snmp-brute &lt;IP&gt;                # try common community strings
+nmap -Pn -sU -sV -p161 &lt;IP&gt;                            # version info
+snmpwalk -v1 -c public &lt;IP&gt;                            # dump entire MIB with v1/public
+snmpwalk -v2c -c public &lt;IP&gt;                           # v2c variant
+nmap -sU -p161 --script=snmp-* &lt;IP&gt; &gt; snmp_info        # run every snmp NSE script
+</code></pre>
+<p><strong>Enumeration goals:</strong></p>
+<ul>
+<li>Identify SNMP-enabled devices</li>
+<li>Extract system info (names / OS / software versions / interfaces)</li>
+<li>Test default/weak community strings (<code>public</code>, <code>private</code>, <code>manager</code>)</li>
+<li>Retrieve network configs / routing tables</li>
+<li>Enumerate users / groups</li>
+<li>Identify running services (via process table OID)</li>
+</ul>
+  <p class="disclaimer">// For authorized engagements, lab environments, and exam prep only. Spoofing, poisoning, and idle/zombie scans are noisy and often exam-restricted — use only where in scope. Replace all placeholders with your own scoped values.</p>
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div class="f-brand"><b>corey.clay</b> — network-scanning · <span id="year"></span></div>
+    <div class="foot-links">
+      <a href="index.html">home</a>
+      <a href="https://github.com/Ac3xRaid3r" target="_blank" rel="noopener">github</a>
+      <a href="#top">top</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
+
+  document.querySelectorAll('main table').forEach(function(t){
+    if(t.parentElement.classList.contains('table-scroll')) return;
+    var w=document.createElement('div'); w.className='table-scroll';
+    t.parentNode.insertBefore(w,t); w.appendChild(t);
+  });
+
+  document.querySelectorAll('main pre').forEach(function(pre){
+    var wrap=document.createElement('div'); wrap.className='code-wrap';
+    pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(pre);
+    var btn=document.createElement('button');
+    btn.className='copy'; btn.type='button'; btn.textContent='copy';
+    btn.setAttribute('aria-label','Copy to clipboard');
+    btn.addEventListener('click',function(){
+      var text=pre.innerText;
+      var done=function(){btn.textContent='copied';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='copy';btn.classList.remove('done');},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){fb(text,done);});
+      } else {fb(text,done);}
+    });
+    wrap.appendChild(btn);
+  });
+  function fb(text,cb){var ta=document.createElement('textarea');ta.value=text;
+    ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+
+  var navLinks=Array.prototype.slice.call(document.querySelectorAll('.sec-nav a'));
+  if(navLinks.length){
+    var map={}; navLinks.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    var heads=Array.prototype.slice.call(document.querySelectorAll('main h2[id]'));
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          navLinks.forEach(function(a){a.classList.remove('here');});
+          var a=map[e.target.id];
+          if(a){a.classList.add('here');a.scrollIntoView({block:'nearest',inline:'center'});}
+        }
+      });
+    },{rootMargin:'-130px 0px -70% 0px',threshold:0});
+    heads.forEach(function(h){obs.observe(h);});
+  }
+})();
+</script>
+</body>
+</html>

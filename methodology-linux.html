@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Linux Privilege Escalation Methodology — Corey Clay</title>
+<meta name="description" content="The exam-day flow for Linux boxes — web-first footholds, the write-to-RCE bridges, and privilege escalation ranked by frequency: password reuse, sudo/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14161b;--ink-2:#181b21;--panel:#1c2027;--panel-2:#20242c;
+    --line:#2c313b;--line-soft:#242932;
+    --fg:#e6e2d8;--fg-dim:#b7b6ae;--muted:#868c98;--muted-2:#5f6672;
+    --signal:#e8a33d;--signal-soft:rgba(232,163,61,.14);--signal-line:rgba(232,163,61,.34);
+    --green:#7fae7a;--red:#d17a6e;--blue:#7fa6c9;
+    --f-display:"Space Grotesk",system-ui,sans-serif;
+    --f-body:"Newsreader",Georgia,serif;
+    --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(126px + env(safe-area-inset-top,0px))}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:17px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    background-image:
+      radial-gradient(1100px 520px at 82% -8%, rgba(232,163,61,.05), transparent 60%),
+      linear-gradient(var(--line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+    background-size:auto,64px 64px,64px 64px;background-position:0 0,-1px -1px,-1px -1px;}
+  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background:linear-gradient(180deg,transparent 0%,var(--ink) 42%)}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--signal-soft);color:var(--fg)}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  header.site{position:sticky;top:0;z-index:50;background:rgba(20,22,27,.86);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line-soft);padding-top:env(safe-area-inset-top,0px)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:900px;margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--f-mono);font-size:14px;letter-spacing:.02em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
+  .brand b{color:var(--fg);font-weight:700}
+  .brand span{color:var(--muted)}
+  nav.top{display:flex;gap:24px;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  nav.top a{transition:color .18s ease}
+  nav.top a:hover,nav.top a.here{color:var(--signal)}
+  nav.top a:focus-visible,.brand:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:2px}
+  @media (max-width:680px){nav.top a:not(.here):not(.home){display:none}}
+
+  .cs-hero{padding:56px 0 22px}
+  .cs-hero .kicker{font-family:var(--f-mono);font-size:12.5px;color:var(--signal);margin:0 0 10px}
+  .cs-hero .kicker a{color:var(--muted)}
+  .cs-hero .kicker a:hover{color:var(--signal)}
+  .cs-hero h1{font-family:var(--f-display);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;
+    line-height:1.05;margin:0 0 14px;color:var(--fg)}
+  .cs-hero p{max-width:64ch;color:var(--fg-dim);font-size:18px;margin:0}
+
+  .sec-nav{position:sticky;top:64px;z-index:40;background:rgba(20,22,27,.92);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line-soft);padding:11px 0}
+  .sec-nav .inner{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;max-width:900px;margin:0 auto;padding:0 24px}
+  .sec-nav .inner::-webkit-scrollbar{display:none}
+  .sec-nav a{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);white-space:nowrap;
+    padding:5px 11px;border:1px solid var(--line);border-radius:20px;transition:.16s;flex:none}
+  .sec-nav a:hover,.sec-nav a:focus-visible{color:var(--signal);border-color:var(--signal-line)}
+  .sec-nav a.here{color:var(--signal);border-color:var(--signal-line);background:var(--signal-soft)}
+  .sec-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  main{padding:12px 0 40px}
+  main h2{font-family:var(--f-display);font-weight:600;font-size:clamp(23px,3.2vw,30px);letter-spacing:-.01em;
+    color:var(--fg);margin:56px 0 8px;padding-top:20px;border-top:1px solid var(--line-soft);scroll-margin-top:130px}
+  main h2:first-of-type{border-top:0;margin-top:20px}
+  main h3{font-family:var(--f-display);font-weight:500;font-size:19px;color:var(--fg);margin:30px 0 10px}
+  main h4{font-family:var(--f-mono);font-size:14px;color:var(--signal);margin:22px 0 8px;letter-spacing:.01em}
+  main p{color:var(--fg-dim);margin:0 0 16px;max-width:74ch}
+  main strong{color:var(--fg);font-weight:600}
+  main a{color:var(--signal)}
+  main a:hover{text-decoration:underline}
+  main ul,main ol{color:var(--fg-dim);margin:0 0 18px;padding-left:22px;max-width:74ch}
+  main li{margin-bottom:6px}
+  main ul li::marker{color:var(--signal)}
+  main hr{border:0;border-top:1px solid var(--line-soft);margin:8px 0}
+
+  .code-wrap{position:relative;margin:0 0 18px}
+  main pre{background:var(--ink-2);border:1px solid var(--line);border-radius:8px;overflow-x:auto;
+    margin:0;padding:15px 17px;font-family:var(--f-mono);font-size:13px;line-height:1.7;color:var(--fg-dim)}
+  main pre code{font-family:var(--f-mono);background:none;padding:0;color:inherit;white-space:pre}
+  main :not(pre) > code{font-family:var(--f-mono);font-size:.86em;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--signal)}
+  .copy{position:absolute;top:8px;right:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;transition:.15s;opacity:.85}
+  .copy:hover,.copy:focus-visible{color:var(--signal);border-color:var(--signal-line);opacity:1}
+  .copy:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .copy.done{color:var(--green);border-color:rgba(127,174,122,.4)}
+
+  .table-scroll{overflow-x:auto;margin:0 0 20px;border:1px solid var(--line-soft);border-radius:8px}
+  main table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  main th{font-family:var(--f-mono);font-size:12px;text-align:left;color:var(--signal);
+    background:var(--panel-2);padding:10px 14px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap}
+  main td{padding:10px 14px;border-bottom:1px solid var(--line-soft);color:var(--fg-dim);vertical-align:top}
+  main tr:last-child td{border-bottom:0}
+  main td code{white-space:nowrap}
+
+  footer.site{border-top:1px solid var(--line-soft);padding:44px 0 60px;margin-top:40px}
+  .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;align-items:center}
+  .foot .f-brand{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  .foot .f-brand b{color:var(--fg)}
+  .foot-links{display:flex;gap:22px;font-family:var(--f-mono);font-size:13px}
+  .foot-links a{color:var(--muted);transition:color .16s}
+  .foot-links a:hover,.foot-links a:focus-visible{color:var(--signal)}
+  .disclaimer{font-family:var(--f-mono);font-size:11.5px;color:var(--muted-2);margin:30px 0 0;max-width:74ch;line-height:1.7;
+    border-left:2px solid var(--line);padding-left:16px}
+</style>
+</head>
+<body>
+<div class="grid-fade" aria-hidden="true"></div>
+
+<header class="site" id="top">
+  <div class="bar">
+    <a class="brand" href="index.html" aria-label="Home">
+      <span class="dot" aria-hidden="true"></span><b>corey.clay</b><span>/ linux-privesc</span>
+    </a>
+    <nav class="top" aria-label="Primary">
+      <a class="home" href="index.html">home</a>
+      <a href="index.html#log">log</a>
+      <a class="here" href="methodology.html" aria-current="page">methodology</a>
+      <a class="" href="enumeration.html">enumeration</a>
+      <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
+    </nav>
+  </div>
+</header>
+
+<div class="cs-hero wrap">
+  <p class="kicker"><a href="methodology.html">&larr; methodology</a> &nbsp;/&nbsp; foothold to root</p>
+  <h1>Linux privesc methodology</h1>
+  <p>The exam-day flow for Linux boxes — web-first footholds, the write-to-RCE bridges, and privilege escalation ranked by frequency: password reuse, sudo/GTFOBins, SUID, cron, capabilities, and kernel last.</p>
+</div>
+
+<nav class="sec-nav" aria-label="Jump to section">
+  <div class="inner">
+      <a href="#prime-rules">Prime Rules</a>
+      <a href="#the-distilled-methodology">The Distilled Methodology</a>
+      <a href="#foothold-patterns-ranked-by-frequency">Foothold Patterns (Ranked by Frequency)</a>
+      <a href="#privilege-escalation-patterns-ranked-by-frequency">Privilege Escalation Patterns (Ranked by Frequency)</a>
+      <a href="#where-the-credentials-come-from">Where the Credentials Come From</a>
+      <a href="#decision-tree-i-see-x-try-y">Decision Tree — &quot;I See X, Try Y&quot;</a>
+      <a href="#top-8-habits-that-would-have-solved-most-of-these">Top 8 Habits That Would Have Solved Most of These</a>
+      <a href="#exam-day-flow-linux">EXAM-Day Flow (Linux)</a>
+      <a href="#checklist-paste-on-second-screen-during-the-exam">Checklist (Paste on Second Screen During the Exam)</a>
+  </div>
+</nav>
+<main class="wrap">
+<p>Exam-day flow. Synthesised from <strong>40+ solved Linux boxes</strong> (PG Practice, HTB CPTS labs, OSCP-style). ~80% of these boxes are web-first; drill web enumeration -&gt; known-service exploitation first.</p>
+<h2 id="prime-rules">Prime Rules</h2>
+<ol>
+<li><strong>Fingerprint the exact product + version, then <code>searchsploit</code> / Google <code>&lt;product&gt; &lt;version&gt; exploit</code>.</strong> The version string is the whole game on ~80% of PG Linux boxes.</li>
+<li><strong>Try default and product-name credentials before anything hard.</strong> <code>admin:admin</code>, <code>admin:password</code>, <code>&lt;appname&gt;:&lt;appname&gt;</code>, <code>root:root</code>, <code>guest:guest</code>, <code>postgres:postgres</code>.</li>
+<li><strong>Reuse every credential everywhere</strong> — <code>su</code> and <code>ssh</code>, every user in <code>/etc/passwd</code>. This alone is the privesc on ~1/3 of boxes.</li>
+<li><strong><code>sudo -l</code> -&gt; GTFOBins</strong> is the first privesc reflex.</li>
+<li><strong>Read source and config files for creds</strong> the moment you have any file read (LFI, disclosure, low-priv shell).</li>
+<li><strong>Enumerate cron/timers with <code>pspy</code></strong> and hunt for <em>writable</em> things root runs.</li>
+<li><strong><code>id</code> and <code>getcap</code> early</strong> — group membership (<code>disk</code>, <code>docker</code>, <code>lxd</code>, <code>adm</code>, <code>mlocate</code>) and capabilities are fast wins.</li>
+<li><strong>Kernel exploits last.</strong> Enumeration beats CVE-roulette and won't crash the box.</li>
+</ol>
+<hr />
+<h2 id="the-distilled-methodology">The Distilled Methodology</h2>
+<h3>Enumeration</h3>
+<ol>
+<li><strong>Full TCP scan <code>-p-</code> then <code>-sC -sV</code> on open ports.</strong> Note <strong>non-standard ports</strong> — Nibbles moved PG to 5437, Hunit SSH to 43022, Sorcerer to 7742. Non-defaults are almost always the intended path.</li>
+<li><strong>Every web port:</strong> <code>feroxbuster</code> / <code>gobuster</code> with extensions, <code>whatweb</code>, view source, check <code>/.git</code>, backups, and <strong>fingerprint product + exact version</strong>.</li>
+<li><strong><code>searchsploit</code> / Google the version string.</strong> Resolves ~80% of footholds.</li>
+<li><strong>Anonymous checks:</strong> SMB (<code>smbclient -L</code>, <code>enum4linux-ng</code>), FTP anon, Redis (<code>redis-cli</code>), NFS (<code>showmount</code>).</li>
+</ol>
+<h3>Foothold</h3>
+<ol>
+<li>Prefer the known-CVE / default-cred path over brute force. Try defaults <strong>before</strong> exploits.</li>
+<li>Chain LFI/SQLi/upload into RCE using the file-write bridges (see below).</li>
+<li>Get a stable shell: upgrade TTY; use <code>setsid</code> / <code>nohup</code> if web-RCE shells die on a timer (PHP <code>max_execution_time</code>).</li>
+</ol>
+<h3>Privesc — Run in This Order</h3>
+<p><strong>Step 1 — First 30 seconds.</strong> Run these before anything else:</p>
+<pre><code class="language-bash">id                                                                          # groups matter — see rank #6 below
+sudo -l
+find / -perm -4000 -type f 2&gt;/dev/null
+getcap -r / 2&gt;/dev/null | grep -E 'cap_setuid|cap_setgid|cap_dac_override|cap_dac_read_search|cap_sys_admin|cap_sys_ptrace'
+</code></pre>
+<p>Enumerate SUID <strong>before</strong> <code>pty.spawn</code> — Astronaut hides <code>/usr/bin/php7.4</code> from <code>find</code> after the upgrade.</p>
+<p><strong>Step 2 — Credential reuse.</strong> Try every credential for <code>su</code> / <code>ssh</code> against every user. This is the highest-ROI move.</p>
+<p><strong>Step 3 — Loot.</strong> Read service configs + home dirs for creds/keys; check <code>/etc/passwd</code> for real users.</p>
+<p><strong>Step 4 — Automated + cron.</strong> <code>LinEnum-ng</code> / <code>linpeas</code> plus <code>pspy</code> for at least 60 seconds for cron/timers and non-root-owned root services.</p>
+<p><strong>Step 5 — GTFOBins.</strong> For any sudo/SUID hit. Check writable scripts/units/PATH dirs root touches.</p>
+<p><strong>Step 6 — Kernel exploit</strong> only if all of the above fail.</p>
+<hr />
+<h2 id="foothold-patterns-ranked-by-frequency">Foothold Patterns (Ranked by Frequency)</h2>
+<p><strong>~80% of these boxes are web-first.</strong> If you only drill one thing, drill web enumeration -&gt; known-service exploitation.</p>
+<table>
+<thead>
+<tr>
+<th>Rank</th>
+<th>Pattern</th>
+<th>Boxes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Known web-service / CMS exploit (CVE or EDB)</strong></td>
+<td>Astronaut, Fanatastic, Fired, Flu, Levram, Mantis, Quackerjack, Scrutiny, Zab, nukem, zenphoto, Pebbles, clue, Bratarina, Wombo, Sybaris, HTB-Enigma, Workaholic, XposedAPI, BitForge, Roquefort, SPX, Marketing, Monster, Jacko, Medjed, Kevin, Internal</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>LFI / path traversal -&gt; RCE or source disclosure</strong></td>
+<td>Apex, Snookums, Zipper, XposedAPI, clue, Fanatastic, WallpaperHub, SPX, Mantis (rogue MySQL)</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>SQL injection</strong></td>
+<td>Hawat, blaze, Quackerjack, Workaholic, Pebbles, Mantis</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Default / weak / guessable credentials</strong></td>
+<td>Exfiltrated (Subrion), Levram (Gerapy), Nibbles (postgres), dora (eXtplorer), Marketing (LimeSurvey), SPX (Tiny File Manager), Roquefort (Gitea first-user-admin)</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Source / config disclosure -&gt; credentials</strong></td>
+<td>BitForge (<code>.git</code>), BullyBox, SPX, WallpaperHub, Scrutiny (git history via TeamCity VCS root)</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>File upload -&gt; shell</strong></td>
+<td>Exfiltrated, nukem, MakeSense, Zipper, BitForge, SpiderSociety, dora</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Exposed / anonymous network service</strong></td>
+<td>Bratarina (SMB/SMTP), Wombo &amp; Sybaris (Redis), Sorcerer (<code>/zipfiles/</code>), clue (SMB + FreeSWITCH), anon FTP boxes</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Credential brute force</strong></td>
+<td>Hunit (Hydra SSH) — rare, usually only when other paths dead + username known</td>
+</tr>
+</tbody>
+</table>
+<h3>Recurring "Write -&gt; RCE" Bridges</h3>
+<p>Memorise these — every one converts a write primitive into code execution:</p>
+<ul>
+<li><strong>FTP/other write into Apache/nginx webroot</strong> -&gt; drop a webshell (SpiderSociety)</li>
+<li><strong>SQL <code>INTO OUTFILE</code></strong> -&gt; webshell (Pebbles/ZoneMinder)</li>
+<li><strong>PostgreSQL <code>COPY ... FROM PROGRAM</code></strong> -&gt; direct RCE (Nibbles)</li>
+<li><strong>PHP wrappers</strong> — <code>data://</code>, <code>zip://</code>, <code>php://filter</code> via LFI (Snookums, Zipper)</li>
+<li><strong>Redis</strong> — <code>MODULE LOAD</code> <code>.so</code> / <code>SLAVEOF</code> replication / <code>CONFIG SET</code> SSH key drop / write cron (Wombo, Sybaris)</li>
+<li><strong>Rogue MySQL server</strong> &lt;- client with <code>LOAD DATA LOCAL INFILE</code> (Mantis)</li>
+<li><strong>CMS "config field that shells out"</strong> — MantisBT <code>dot_tool</code>, WordPress theme editor, Monstra theme template, Gitea Git Hooks, Zabbix Scripts</li>
+</ul>
+<hr />
+<h2 id="privilege-escalation-patterns-ranked-by-frequency">Privilege Escalation Patterns (Ranked by Frequency)</h2>
+<table>
+<thead>
+<tr>
+<th>Rank</th>
+<th>Pattern</th>
+<th>Boxes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Password reuse</strong> — highest-ROI move on the entire exam</td>
+<td>Apex, BitForge, BullyBox, Fired, Mantis, WallpaperHub, Workaholic, HTB-Enigma, MakeSense, SpiderSociety, Marketing, Scrutiny, SPX, dora</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong><code>sudo -l</code> abuse (GTFOBins first)</strong></td>
+<td>BitForge (flask <code>app.py</code>), RaspAP (python module), Marketing (diff symlink), blaze (<code>sudo tar</code>), SPX (<code>sudo make</code>), Zab (<code>sudo rsync</code>), clue (<code>sudo cassandra-web</code>), WallpaperHub (<code>sudo web-scraper</code> + <code>!env_reset</code> + <code>NODE_OPTIONS</code>), PostFish (<code>sudo mail --exec</code>), Mantis (<code>sudo ALL</code>), SpiderSociety, Hetemit (<code>sudo /sbin/reboot</code>), Scrutiny (<code>sudo systemctl status</code> pager)</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>SUID / GTFOBins binaries</strong></td>
+<td>Astronaut (<code>php7.4</code>), Quackerjack (<code>find</code>), Nibbles (<code>find</code>), nukem (<code>dosbox</code>), Workaholic (<code>dlopen</code>), Sorcerer (<code>start-stop-daemon</code>), XposedAPI (<code>wget</code>), plus SpiderSociety/BitForge/WallpaperHub landing on SUID bash</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Cron abuse</strong> — writable root-run script, PATH hijack (<code>run-parts</code>), wildcard injection, <code>LD_LIBRARY_PATH</code>, cron pulls from user-controlled repo/backup</td>
+<td>Exfiltrated, Flu, Roquefort, Zipper, Hunit, Sybaris, Mantis, BitForge, PostFish</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Library / interpreter hijack</strong> — root process loads library/module from writable path</td>
+<td>Sybaris (<code>LD_LIBRARY_PATH</code>), Workaholic (<code>dlopen</code>), RaspAP (Python module), WallpaperHub (<code>NODE_OPTIONS</code> via <code>!env_reset</code>)</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Dangerous group membership</strong> — <code>id</code> first, always</td>
+<td>Fanatastic &amp; dora (<code>disk</code> -&gt; debugfs), BullyBox (<code>sudo</code> group), PostFish (<code>mail</code> group), Marketing (<code>mlocate</code>), plus <code>docker</code>, <code>lxd</code>, <code>adm</code>, <code>shadow</code></td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Leaked / reused SSH keys</strong></td>
+<td>clue, Scrutiny (git history "Oops" commit), Hunit (world-readable), Sorcerer (in <code>/zipfiles/</code> HTTP share)</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Writable / misconfigured systemd unit</strong></td>
+<td>SpiderSociety, Hetemit (+ NOPASSWD <code>/sbin/reboot</code>)</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>Linux capabilities</strong></td>
+<td>Levram (<code>cap_setuid=ep</code> on python3)</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Kernel exploits — LAST resort</strong></td>
+<td>zenphoto (DirtyCow), Snookums (PwnKit), Pebbles (PwnKit). Ubuntu 23.04+ neutralises GameOver(lay) via <code>apparmor_restrict_unprivileged_userns=1</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="where-the-credentials-come-from">Where the Credentials Come From</h2>
+<p>Because password reuse and cred-driven pivots dominate, know the standard cred sources:</p>
+<ul>
+<li><strong>Service config files</strong> — <code>.env</code>, <code>wp-config.php</code>, <code>zabbix.conf.php</code>, Grafana embedded DBs (<code>grafana.db</code>), Openfire <code>openfire.script</code>, <code>.htusers.php</code> (eXtplorer), Confluence <code>confluence.cfg.xml</code> (SpiderSociety, Zab, Workaholic, dora, Fired, BitForge)</li>
+<li><strong>Crackable hashes</strong> — bcrypt (<code>-m 3200</code>), MD5 (<code>-m 0</code>), phpass (<code>-m 400</code>), Atlassian <code>{PKCS5S2}</code> (<code>-m 12001</code>) -&gt; hashcat + rockyou (Zab, Mantis, Quackerjack, Workaholic, dora, SPX, Pebbles)</li>
+<li><strong>Mailboxes / IMAP</strong> — colleagues share creds by email (Scrutiny, PostFish, HTB-Enigma)</li>
+<li><strong>Process args</strong> — <code>/proc/self/cmdline</code>, <code>ps aux</code> (clue, Mantis, BitForge — mysqldump <code>-pFOO</code>)</li>
+<li><strong>Git history &amp; exposed <code>.git</code></strong> — deleted files still recoverable (BitForge, Scrutiny)</li>
+<li><strong>Cron scripts &amp; backups</strong> — hardcoded creds in root-run scripts (Mantis, BitForge)</li>
+<li><strong>Hidden files with unusual names</strong> — <code>.~</code>, <code>.old</code>, <code>.bak</code>, <code>.git-credentials</code> (Scrutiny)</li>
+</ul>
+<hr />
+<h2 id="decision-tree-i-see-x-try-y">Decision Tree — "I See X, Try Y"</h2>
+<table>
+<thead>
+<tr>
+<th>Observation</th>
+<th>Response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>See <code>disk</code> / <code>docker</code> / <code>lxd</code> in <code>id</code> output</td>
+<td>Immediate root via debugfs / <code>docker run -v /:/mnt</code> / <code>lxd init</code> container escape</td>
+</tr>
+<tr>
+<td>See any <code>cap_setuid*</code> in <code>getcap -r /</code></td>
+<td>Immediate root: <code>python3 -c 'import os; os.setuid(0); os.system("/bin/bash")'</code></td>
+</tr>
+<tr>
+<td><code>sudo -l</code> returns a specific binary</td>
+<td>GTFOBins first (never assume kernel exploit)</td>
+</tr>
+<tr>
+<td><code>sudo -l</code> returns a script with <code>-C</code> into user-writable dir</td>
+<td>Hijack <code>Makefile</code> / config / template</td>
+</tr>
+<tr>
+<td><code>sudo -l</code> returns any sudo path glob (<code>/path/*.ext</code>)</td>
+<td>Try <code>../</code> traversal from allowed prefix</td>
+</tr>
+<tr>
+<td><code>sudoers</code> <code>Defaults</code> includes <code>!env_reset</code> or <code>env_keep+=LD_PRELOAD</code></td>
+<td>Env-var injection (<code>NODE_OPTIONS</code>, <code>PYTHONPATH</code>, <code>LD_PRELOAD</code>, <code>PERL5OPT</code>, <code>RUBYOPT</code>)</td>
+</tr>
+<tr>
+<td><code>sudo -l</code> returns <code>systemctl status</code>, <code>journalctl</code>, <code>less</code>, <code>more</code>, <code>man</code></td>
+<td>Pager escape <code>!/bin/bash</code></td>
+</tr>
+<tr>
+<td>Non-standard SUID binary in <code>/usr/bin/</code></td>
+<td><code>strings</code> it: watch for <code>dlopen</code>, <code>dlsym</code>, hardcoded <code>/home/...</code>, <code>LD_*</code> paths -&gt; dlopen hijack</td>
+</tr>
+<tr>
+<td><code>/etc/crontab</code> PATH earlier than defaults + world-writable dir + unqualified binary call</td>
+<td>PATH hijack</td>
+</tr>
+<tr>
+<td>Cron <code>LD_LIBRARY_PATH=</code> includes a world-writable dir</td>
+<td>Drop malicious <code>.so</code> with <code>__attribute__((constructor))</code></td>
+</tr>
+<tr>
+<td>Writable script in <code>/opt</code>, <code>/home</code>, or referenced by a systemd unit / cron / init.d</td>
+<td>Append SUID-bash payload</td>
+</tr>
+<tr>
+<td>Owned SUID root binary spawned by cron / systemd — <code>-rwxr-xr-x</code> but you own the file</td>
+<td>Rewrite content</td>
+</tr>
+<tr>
+<td><code>/var/mail/&lt;user&gt;</code> exists</td>
+<td>Read every one — colleagues share creds</td>
+</tr>
+<tr>
+<td>Two mail relay / SMTP creds</td>
+<td>Try as <code>su</code> password for the mail-relay user (often == root)</td>
+</tr>
+<tr>
+<td>Any exposed <code>.git/</code></td>
+<td><code>git-dumper</code> + <code>git log --all</code> + <code>git show &lt;commit&gt;:&lt;deleted_file&gt;</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="top-8-habits-that-would-have-solved-most-of-these">Top 8 Habits That Would Have Solved Most of These</h2>
+<ol>
+<li><strong>Fingerprint the exact product + version, then <code>searchsploit</code>.</strong> The foothold is usually a known exploit.</li>
+<li><strong>Try default and product-name credentials before anything hard.</strong></li>
+<li><strong>Reuse every credential everywhere</strong> — <code>su</code> and <code>ssh</code>, every user. This alone is privesc on ~1/3 of boxes.</li>
+<li><strong><code>sudo -l</code> -&gt; GTFOBins</strong> is the first privesc reflex.</li>
+<li><strong>Read source and config files for creds</strong> the moment you have any file read.</li>
+<li><strong>Enumerate cron/timers with <code>pspy</code></strong>, and hunt for <em>writable</em> things root runs (scripts, systemd units, PATH dirs, libraries).</li>
+<li><strong><code>id</code> and <code>getcap</code> early</strong> — group membership (<code>disk</code>, <code>docker</code>, <code>lxd</code>) and capabilities are fast wins.</li>
+<li><strong>Kernel exploits last.</strong> Enumeration beats CVE-roulette and won't crash the box.</li>
+</ol>
+<hr />
+<h2 id="exam-day-flow-linux">EXAM-Day Flow (Linux)</h2>
+<p><strong>EXAM-OK — everything here is exam-legal:</strong></p>
+<ul>
+<li>Nmap + NSE, feroxbuster/gobuster, hydra, netexec/crackmapexec, evil-winrm, impacket, chisel, ligolo-ng, linpeas/winpeas, GTFOBins reference, msfvenom, metasploit multi/handler, searchsploit</li>
+</ul>
+<p><strong>EXAM-RESTRICTED — one target only:</strong></p>
+<ul>
+<li>Metasploit auxiliary/exploit/post modules and Meterpreter -&gt; count as your ONE. Everything CVE-shaped here has a manual PoC — prefer that.</li>
+</ul>
+<p><strong>EXAM-BANNED — never during the exam:</strong></p>
+<ul>
+<li>SQLMap, SQLNinja, db_autopwn, browser_autopwn</li>
+<li>Nessus, OpenVAS, Nexpose, Canvas, Core Impact, SAINT</li>
+<li><strong>Responder poisoning and all spoofing</strong> (Responder analyse-only <code>-A</code> is fine)</li>
+<li>Commercial tools: Burp Pro, MSF Pro</li>
+<li><strong>Manual EXAM-OK alternatives</strong> for SQLMap: <code>extractvalue()</code> / <code>updatexml()</code> / <code>sqli-labs</code> payloads by hand</li>
+</ul>
+<hr />
+<h2 id="checklist-paste-on-second-screen-during-the-exam">Checklist (Paste on Second Screen During the Exam)</h2>
+<p><strong>Reconnaissance:</strong></p>
+<ul>
+<li>[ ] <code>sudo nmap -Pn -sC -sV -p- -v &lt;IP&gt; -oN scan.txt</code></li>
+<li>[ ] Note non-standard ports</li>
+<li>[ ] Fingerprint every web port: whatweb, view source, favicon MD5</li>
+<li>[ ] <code>curl -sI</code> every web port for headers (X-Version, X-Powered-By)</li>
+<li>[ ] <code>smbclient -N -L //&lt;IP&gt;</code>, <code>enum4linux-ng -A &lt;IP&gt;</code>, anon FTP, <code>redis-cli -h &lt;IP&gt;</code>, <code>showmount -e &lt;IP&gt;</code></li>
+</ul>
+<p><strong>Foothold:</strong></p>
+<ul>
+<li>[ ] Version + CVE search on every visible app</li>
+<li>[ ] Try default creds before exploits</li>
+<li>[ ] <code>.git/</code>, <code>.env</code>, <code>wp-config.php</code>, <code>web.config</code> exposure checks</li>
+<li>[ ] For LFI: <code>--path-as-is</code>, <code>data://</code>, <code>php://filter</code>, <code>/proc/self/cwd/*</code></li>
+<li>[ ] Egress port test — <code>for p in 80 443 4444 21 53 3000 8000; do timeout 3 bash -c "echo &gt; /dev/tcp/&lt;LHOST&gt;/$p" 2&gt;/dev/null &amp;&amp; echo "$p OPEN"; done</code></li>
+</ul>
+<p><strong>Post-foothold — 30 seconds:</strong></p>
+<ul>
+<li>[ ] <code>id</code> (groups first — disk/docker/lxd/adm)</li>
+<li>[ ] <code>sudo -l</code></li>
+<li>[ ] <code>find / -perm -4000 -type f 2&gt;/dev/null</code> (BEFORE pty upgrade)</li>
+<li>[ ] <code>getcap -r / 2&gt;/dev/null</code></li>
+<li>[ ] <code>cat /etc/crontab</code> + <code>ls /etc/cron.d/</code></li>
+<li>[ ] <code>ls -la /var/mail/</code> and read whatever you can</li>
+</ul>
+<p><strong>Post-foothold — enum sweep:</strong></p>
+<ul>
+<li>[ ] <code>linpeas.sh</code> or <code>LinEnum.sh</code></li>
+<li>[ ] <code>pspy64</code> for &gt;=60s</li>
+<li>[ ] Every service config: <code>.env</code>, <code>wp-config.php</code>, <code>.htusers.php</code>, embedded DBs</li>
+<li>[ ] <code>find / -writable -type f 2&gt;/dev/null | grep -E "\.(sh|py|conf|service)$"</code></li>
+</ul>
+<p><strong>Cred pivot:</strong></p>
+<ul>
+<li>[ ] Every found password -&gt; <code>su</code> and <code>ssh</code> for every user in <code>/etc/passwd</code></li>
+<li>[ ] Crack every hash you find (bcrypt 3200 / phpass 400 / MD5 0 / PKCS5S2 12001)</li>
+<li>[ ] Password reuse across FTP, SSH, WP admin, MySQL, SMB, RDP</li>
+</ul>
+<p><strong>Root:</strong></p>
+<ul>
+<li>[ ] Hit GTFOBins for every sudo/SUID/capability</li>
+<li>[ ] Kernel exploit only when everything else fails</li>
+</ul>
+  <p class="disclaimer">// For authorized engagements, lab environments, and exam prep only. Box names reference retired HTB / PG Practice targets used for study. Replace all placeholders with your own scoped values.</p>
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div class="f-brand"><b>corey.clay</b> — linux-privesc · <span id="year"></span></div>
+    <div class="foot-links">
+      <a href="index.html">home</a>
+      <a href="https://github.com/Ac3xRaid3r" target="_blank" rel="noopener">github</a>
+      <a href="#top">top</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
+
+  document.querySelectorAll('main table').forEach(function(t){
+    if(t.parentElement.classList.contains('table-scroll')) return;
+    var w=document.createElement('div'); w.className='table-scroll';
+    t.parentNode.insertBefore(w,t); w.appendChild(t);
+  });
+
+  document.querySelectorAll('main pre').forEach(function(pre){
+    var wrap=document.createElement('div'); wrap.className='code-wrap';
+    pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(pre);
+    var btn=document.createElement('button');
+    btn.className='copy'; btn.type='button'; btn.textContent='copy';
+    btn.setAttribute('aria-label','Copy to clipboard');
+    btn.addEventListener('click',function(){
+      var text=pre.innerText;
+      var done=function(){btn.textContent='copied';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='copy';btn.classList.remove('done');},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){fb(text,done);});
+      } else {fb(text,done);}
+    });
+    wrap.appendChild(btn);
+  });
+  function fb(text,cb){var ta=document.createElement('textarea');ta.value=text;
+    ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+
+  var navLinks=Array.prototype.slice.call(document.querySelectorAll('.sec-nav a'));
+  if(navLinks.length){
+    var map={}; navLinks.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    var heads=Array.prototype.slice.call(document.querySelectorAll('main h2[id]'));
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          navLinks.forEach(function(a){a.classList.remove('here');});
+          var a=map[e.target.id];
+          if(a){a.classList.add('here');a.scrollIntoView({block:'nearest',inline:'center'});}
+        }
+      });
+    },{rootMargin:'-130px 0px -70% 0px',threshold:0});
+    heads.forEach(function(h){obs.observe(h);});
+  }
+})();
+</script>
+</body>
+</html>

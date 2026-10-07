@@ -1,0 +1,1729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Web Enumeration — Corey Clay</title>
+<meta name="description" content="Discovering and mapping web attack surface — OSINT, subdomain and vhost enumeration, directory and parameter fuzzing, DNS recon, crawling, and per-app">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14161b;--ink-2:#181b21;--panel:#1c2027;--panel-2:#20242c;
+    --line:#2c313b;--line-soft:#242932;
+    --fg:#e6e2d8;--fg-dim:#b7b6ae;--muted:#868c98;--muted-2:#5f6672;
+    --signal:#e8a33d;--signal-soft:rgba(232,163,61,.14);--signal-line:rgba(232,163,61,.34);
+    --green:#7fae7a;--red:#d17a6e;--blue:#7fa6c9;
+    --f-display:"Space Grotesk",system-ui,sans-serif;
+    --f-body:"Newsreader",Georgia,serif;
+    --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(126px + env(safe-area-inset-top,0px))}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:17px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    background-image:
+      radial-gradient(1100px 520px at 82% -8%, rgba(232,163,61,.05), transparent 60%),
+      linear-gradient(var(--line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+    background-size:auto,64px 64px,64px 64px;background-position:0 0,-1px -1px,-1px -1px;}
+  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background:linear-gradient(180deg,transparent 0%,var(--ink) 42%)}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--signal-soft);color:var(--fg)}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  header.site{position:sticky;top:0;z-index:50;background:rgba(20,22,27,.86);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line-soft);padding-top:env(safe-area-inset-top,0px)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:900px;margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--f-mono);font-size:14px;letter-spacing:.02em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
+  .brand b{color:var(--fg);font-weight:700}
+  .brand span{color:var(--muted)}
+  nav.top{display:flex;gap:24px;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  nav.top a{transition:color .18s ease}
+  nav.top a:hover,nav.top a.here{color:var(--signal)}
+  nav.top a:focus-visible,.brand:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:2px}
+  @media (max-width:680px){nav.top a:not(.here):not(.home){display:none}}
+
+  .cs-hero{padding:56px 0 22px}
+  .cs-hero .kicker{font-family:var(--f-mono);font-size:12.5px;color:var(--signal);margin:0 0 10px}
+  .cs-hero .kicker a{color:var(--muted)}
+  .cs-hero .kicker a:hover{color:var(--signal)}
+  .cs-hero h1{font-family:var(--f-display);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;
+    line-height:1.05;margin:0 0 14px;color:var(--fg)}
+  .cs-hero p{max-width:64ch;color:var(--fg-dim);font-size:18px;margin:0}
+
+  .sec-nav{position:sticky;top:64px;z-index:40;background:rgba(20,22,27,.92);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line-soft);padding:11px 0}
+  .sec-nav .inner{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;max-width:900px;margin:0 auto;padding:0 24px}
+  .sec-nav .inner::-webkit-scrollbar{display:none}
+  .sec-nav a{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);white-space:nowrap;
+    padding:5px 11px;border:1px solid var(--line);border-radius:20px;transition:.16s;flex:none}
+  .sec-nav a:hover,.sec-nav a:focus-visible{color:var(--signal);border-color:var(--signal-line)}
+  .sec-nav a.here{color:var(--signal);border-color:var(--signal-line);background:var(--signal-soft)}
+  .sec-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  main{padding:12px 0 40px}
+  main h2{font-family:var(--f-display);font-weight:600;font-size:clamp(23px,3.2vw,30px);letter-spacing:-.01em;
+    color:var(--fg);margin:56px 0 8px;padding-top:20px;border-top:1px solid var(--line-soft);scroll-margin-top:130px}
+  main h2:first-of-type{border-top:0;margin-top:20px}
+  main h3{font-family:var(--f-display);font-weight:500;font-size:19px;color:var(--fg);margin:30px 0 10px}
+  main h4{font-family:var(--f-mono);font-size:14px;color:var(--signal);margin:22px 0 8px;letter-spacing:.01em}
+  main p{color:var(--fg-dim);margin:0 0 16px;max-width:74ch}
+  main strong{color:var(--fg);font-weight:600}
+  main a{color:var(--signal)}
+  main a:hover{text-decoration:underline}
+  main ul,main ol{color:var(--fg-dim);margin:0 0 18px;padding-left:22px;max-width:74ch}
+  main li{margin-bottom:6px}
+  main ul li::marker{color:var(--signal)}
+  main hr{border:0;border-top:1px solid var(--line-soft);margin:8px 0}
+
+  .code-wrap{position:relative;margin:0 0 18px}
+  main pre{background:var(--ink-2);border:1px solid var(--line);border-radius:8px;overflow-x:auto;
+    margin:0;padding:15px 17px;font-family:var(--f-mono);font-size:13px;line-height:1.7;color:var(--fg-dim)}
+  main pre code{font-family:var(--f-mono);background:none;padding:0;color:inherit;white-space:pre}
+  main :not(pre) > code{font-family:var(--f-mono);font-size:.86em;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--signal)}
+  .copy{position:absolute;top:8px;right:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;transition:.15s;opacity:.85}
+  .copy:hover,.copy:focus-visible{color:var(--signal);border-color:var(--signal-line);opacity:1}
+  .copy:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .copy.done{color:var(--green);border-color:rgba(127,174,122,.4)}
+
+  .table-scroll{overflow-x:auto;margin:0 0 20px;border:1px solid var(--line-soft);border-radius:8px}
+  main table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  main th{font-family:var(--f-mono);font-size:12px;text-align:left;color:var(--signal);
+    background:var(--panel-2);padding:10px 14px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap}
+  main td{padding:10px 14px;border-bottom:1px solid var(--line-soft);color:var(--fg-dim);vertical-align:top}
+  main tr:last-child td{border-bottom:0}
+  main td code{white-space:nowrap}
+
+  footer.site{border-top:1px solid var(--line-soft);padding:44px 0 60px;margin-top:40px}
+  .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;align-items:center}
+  .foot .f-brand{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  .foot .f-brand b{color:var(--fg)}
+  .foot-links{display:flex;gap:22px;font-family:var(--f-mono);font-size:13px}
+  .foot-links a{color:var(--muted);transition:color .16s}
+  .foot-links a:hover,.foot-links a:focus-visible{color:var(--signal)}
+  .disclaimer{font-family:var(--f-mono);font-size:11.5px;color:var(--muted-2);margin:30px 0 0;max-width:74ch;line-height:1.7;
+    border-left:2px solid var(--line);padding-left:16px}
+</style>
+</head>
+<body>
+<div class="grid-fade" aria-hidden="true"></div>
+
+<header class="site" id="top">
+  <div class="bar">
+    <a class="brand" href="index.html" aria-label="Home">
+      <span class="dot" aria-hidden="true"></span><b>corey.clay</b><span>/ web-enum</span>
+    </a>
+    <nav class="top" aria-label="Primary">
+      <a class="home" href="index.html">home</a>
+      <a href="index.html#log">log</a>
+      <a class="" href="methodology.html">methodology</a>
+      <a class="here" href="enumeration.html" aria-current="page">enumeration</a>
+      <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
+    </nav>
+  </div>
+</header>
+
+<div class="cs-hero wrap">
+  <p class="kicker"><a href="enumeration.html">&larr; enumeration</a> &nbsp;/&nbsp; recon to attack surface</p>
+  <h1>Web enumeration</h1>
+  <p>Discovering and mapping web attack surface — OSINT, subdomain and vhost enumeration, directory and parameter fuzzing, DNS recon, crawling, and per-application fingerprinting for the common CMS and app servers.</p>
+</div>
+
+<nav class="sec-nav" aria-label="Jump to section">
+  <div class="inner">
+      <a href="#external-reconnaissance-osint">External Reconnaissance (OSINT)</a>
+      <a href="#technology-detection">Technology Detection</a>
+      <a href="#web-fuzzing-with-ffuf">Web Fuzzing with ffuf</a>
+      <a href="#web-fuzzing-with-gobuster">Web Fuzzing with Gobuster</a>
+      <a href="#web-fuzzing-with-feroxbuster">Web Fuzzing with Feroxbuster</a>
+      <a href="#http-requests-with-curl">HTTP Requests with curl</a>
+      <a href="#virtual-host-vhost-enumeration">Virtual Host (vhost) Enumeration</a>
+      <a href="#subdomain-enumeration-deep-dive">Subdomain Enumeration Deep Dive</a>
+      <a href="#parameter-path-fuzzing-strategies">Parameter &amp; Path Fuzzing Strategies</a>
+      <a href="#application-discovery-screenshotting">Application Discovery &amp; Screenshotting</a>
+      <a href="#web-crawling-spidering">Web Crawling &amp; Spidering</a>
+      <a href="#robots-txt-deep-dive">robots.txt Deep Dive</a>
+      <a href="#automated-recon-pipeline">Automated Recon Pipeline</a>
+      <a href="#web-enumeration-workflow">Web Enumeration Workflow</a>
+      <a href="#tools-comparison">Tools Comparison</a>
+      <a href="#common-web-application-paths">Common Web Application Paths</a>
+      <a href="#api-endpoint-discovery">API Endpoint Discovery</a>
+      <a href="#virtual-host-enumeration-from-ssl-certificates">Virtual Host Enumeration — From SSL Certificates</a>
+      <a href="#https-virtual-host-fuzzing">HTTPS Virtual Host Fuzzing</a>
+      <a href="#nginx-sites-enabled-post-shell-vhost-discovery">Nginx sites-enabled — Post-Shell vhost Discovery</a>
+      <a href="#git-commit-history-credential-discovery">Git Commit History Credential Discovery</a>
+      <a href="#search-operators-reference">Search Operators Reference</a>
+      <a href="#subdomain-enumeration-sublist3r">Subdomain Enumeration — Sublist3r</a>
+      <a href="#osint-theharvester-extended-sources">OSINT — theHarvester (Extended Sources)</a>
+      <a href="#waf-detection-wafw00f">WAF Detection — wafw00f</a>
+      <a href="#website-footprinting">Website Footprinting</a>
+      <a href="#dns-reconnaissance">DNS Reconnaissance</a>
+      <a href="#well-known-uris-well-known">Well-Known URIs (/.well-known/)</a>
+      <a href="#web-fingerprinting-with-nikto">Web Fingerprinting with Nikto</a>
+      <a href="#iis-tilde-enumeration">IIS Tilde Enumeration</a>
+      <a href="#joomla-enumeration">Joomla Enumeration</a>
+      <a href="#drupal-enumeration">Drupal Enumeration</a>
+      <a href="#tomcat-enumeration">Tomcat Enumeration</a>
+      <a href="#splunk-enumeration">Splunk Enumeration</a>
+      <a href="#jenkins-enumeration">Jenkins Enumeration</a>
+      <a href="#coldfusion-enumeration">ColdFusion Enumeration</a>
+      <a href="#osticket-enumeration">osTicket Enumeration</a>
+      <a href="#prtg-network-monitor-enumeration">PRTG Network Monitor Enumeration</a>
+      <a href="#ffuf-advanced-techniques">ffuf Advanced Techniques</a>
+      <a href="#exposed-git-git-dumper-recover-deleted-secrets">Exposed /.git/ -&gt; git-dumper -&gt; Recover Deleted Secrets</a>
+      <a href="#waf-localhost-only-api-bypass-via-headers">WAF / &quot;Localhost-Only&quot; API Bypass via Headers</a>
+      <a href="#version-fingerprints-via-http-headers-api-endpoints">Version Fingerprints via HTTP Headers / API Endpoints</a>
+      <a href="#wordpress-vhost-catch-all-filter-nginx-wordpress">WordPress Vhost Catch-All Filter (nginx WordPress)</a>
+      <a href="#wordpress-enumeration-wpscan">WordPress Enumeration (WPScan)</a>
+  </div>
+</nav>
+<main class="wrap">
+<p>Comprehensive guide to discovering and analyzing web applications and their attack surfaces.</p>
+<hr />
+<h2 id="external-reconnaissance-osint">External Reconnaissance (OSINT)</h2>
+<h3>Whois &amp; Domain Registration</h3>
+<p>Identify domain ownership and administrative contacts.</p>
+<pre><code class="language-bash"># Whois lookup
+whois &lt;DOMAIN&gt;
+</code></pre>
+<h3>Online Fingerprinting Portals</h3>
+<p>Zero-touch fingerprinting via public services — no packets from your IP hit the target.</p>
+<ul>
+<li><strong>Netcraft</strong> — <code>https://sitereport.netcraft.com/?url=&lt;DOMAIN&gt;</code>. Returns hosting history, OS, netblock, SSL history.</li>
+<li><strong>Wappalyzer lookup</strong> — <code>https://www.wappalyzer.com/lookup/&lt;DOMAIN&gt;/</code> — CMS/framework/analytics/CDN detection without the browser extension.</li>
+<li><strong>Security Headers scanner</strong> — <code>https://securityheaders.com/?q=&lt;URL&gt;</code> — grades HSTS/CSP/X-Frame-Options/X-Content-Type-Options. Anything below <code>B</code> is worth citing in the report.</li>
+<li><strong>Qualys SSL Labs</strong> — <code>https://www.ssllabs.com/ssltest/?d=&lt;DOMAIN&gt;</code> — TLS grade, cipher list, cert chain issues. Grade <code>B</code> or worse = weak TLS.</li>
+<li><strong>BuiltWith</strong> — <code>https://builtwith.com/&lt;DOMAIN&gt;</code> — deeper tech-stack history.</li>
+<li><strong>crt.sh</strong> — <code>https://crt.sh/?q=%25.&lt;DOMAIN&gt;</code> — CT log lookup (also see the certificate section below).</li>
+</ul>
+<h3>Shodan</h3>
+<p>Shodan indexes banners from the whole IPv4 space. Fastest way to find exposed services owned by a target org.</p>
+<pre><code># Filters (paste into shodan.io search)
+hostname:&lt;DOMAIN&gt;                       # any host whose reverse DNS matches
+org:&quot;&lt;ORG&gt;&quot;                             # WHOIS-registered organisation
+net:&lt;CIDR&gt;                              # a specific netblock
+ssl.cert.subject.CN:&quot;*.&lt;DOMAIN&gt;&quot;        # hosts serving a wildcard cert for a domain
+port:22 country:US product:OpenSSH      # OpenSSH in US on port 22
+http.title:&quot;admin login&quot;                # admin panels
+product:Confluence version:7.13         # specific vuln targeting (CVE-2022-26134 era)
+&quot;Server: Apache/2.4.49&quot;                 # exact banner (path-traversal era)
+vuln:CVE-2021-44228                     # log4shell candidates
+</code></pre>
+<p>CLI (needs API key):</p>
+<pre><code class="language-bash">shodan init &lt;API_KEY&gt;
+shodan search --limit 25 --fields ip_str,port,org 'hostname:&lt;DOMAIN&gt;'
+shodan host &lt;IP&gt;                                        # single-host lookup
+shodan count 'product:MongoDB port:27017'               # cheap volume check
+</code></pre>
+<h3>GitHub OSINT — Leaked Secrets</h3>
+<p>Public GitHub repos routinely leak credentials, keys, and internal config. Search patterns:</p>
+<pre><code># GitHub UI advanced search
+&quot;&lt;company&gt;&quot;    in:file
+&quot;&lt;company&gt;.com&quot; language:python
+path:users    &quot;&lt;company&gt;&quot;
+filename:credentials   &quot;&lt;company&gt;&quot;
+filename:.env  &quot;AWS_SECRET&quot;
+&quot;aws_access_key_id&quot;    &quot;&lt;company&gt;&quot;
+&quot;BEGIN RSA PRIVATE KEY&quot;    &quot;&lt;company&gt;&quot;
+&quot;api_key&quot;     &quot;&lt;company&gt;&quot;
+&quot;password=&quot;   &quot;&lt;company&gt;&quot;
+</code></pre>
+<p>Automated scanners (need a GitHub PAT for high rate limits):</p>
+<pre><code class="language-bash"># Gitleaks — regex-based, offline
+gitleaks detect --source=./repo --report-format=json --report-path=gitleaks.json
+gitleaks detect --source=./repo -v
+
+# TruffleHog — high-signal, tries live-verifies
+trufflehog git https://github.com/&lt;org&gt;/&lt;repo&gt;
+trufflehog github --org=&lt;org&gt;                        # scan every public repo in an org
+trufflehog filesystem /path/to/checkout
+
+# Gitrob — enumerates org members and scans their public repos
+gitrob analyze &lt;org&gt;
+</code></pre>
+<h3>Subdomain Enumeration</h3>
+<p>Discover all subdomains of a target domain.</p>
+<pre><code class="language-bash"># Passive subdomain databases
+subfinder -d &lt;DOMAIN&gt;
+
+# AMASS (comprehensive enumeration)
+amass enum -d &lt;DOMAIN&gt;
+amass enum -active -brute -o /tmp/hosts.txt -d &lt;DOMAIN&gt;
+
+# theHarvester (Google, Bing, LinkedIn)
+theHarvester -d &lt;DOMAIN&gt; -b google,bing,linkedin
+
+# Findomain
+findomain -t &lt;DOMAIN&gt; -u /tmp/output.txt
+</code></pre>
+<h3>Subdomain Brute-Forcing</h3>
+<p>Actively test for subdomains using wordlists.</p>
+<pre><code class="language-bash"># dnsx (DNS resolver with wordlist)
+dnsx -silent -d facebook.com -w dns_worldlist.txt
+
+# altdns (permutation generation)
+altdns.py -i /tmp/inputdomains.txt -o /tmp/out.txt -w ./words.txt
+
+# massdns (high-speed DNS resolver)
+cat /tmp/results_subfinder.txt | massdns -r ./resolvers.txt -t A -o S -w /tmp/results_resolved.txt
+
+# gobuster DNS mode
+gobuster dns -d &lt;DOMAIN&gt; -w &lt;wordlist&gt; -r &lt;RESOLVER&gt;
+
+# DNS resolution from subdomain list
+subfinder -silent -d hackerone.com | dnsx -silent -a -resp
+subfinder -silent -d hackerone.com | dnsx -silent -cname -resp
+</code></pre>
+<h3>Certificate Transparency Logs</h3>
+<p>Find subdomains from SSL certificate history.</p>
+<pre><code class="language-bash"># Command-line lookup
+curl -s &quot;https://crt.sh/?q=%25.&lt;DOMAIN&gt;&amp;output=json&quot; | jq -r '.[].name_value' | sort -u
+
+# Extract root domain from results
+curl -s &quot;https://crt.sh/?q=%25.example.com&amp;output=json&quot; | jq -r '.[].name_value' | sed 's/^\*\.//' | sort -u
+</code></pre>
+<h3>robots.txt &amp; sitemap.xml</h3>
+<p>Identify crawlable and restricted content.</p>
+<pre><code class="language-bash">curl -s http://&lt;TARGET&gt;/robots.txt
+curl -s http://&lt;TARGET&gt;/sitemap.xml
+curl -s http://&lt;TARGET&gt;/.git/HEAD
+curl -s http://&lt;TARGET&gt;/.env
+curl -s http://&lt;TARGET&gt;/config.php
+</code></pre>
+<h3>Wayback Machine</h3>
+<p>Find historical content and endpoints.</p>
+<pre><code class="language-bash"># waybackurls (go tool)
+waybackurls &lt;DOMAIN&gt;
+
+# Manual query
+curl -s &quot;https://web.archive.org/cdx/search/cdx?url=*.&lt;DOMAIN&gt;&amp;output=json&quot; | jq
+</code></pre>
+<h3>Google Dorking</h3>
+<pre><code>site:&lt;DOMAIN&gt; filetype:pdf
+site:&lt;DOMAIN&gt; inurl:admin
+site:&lt;DOMAIN&gt; intitle:&quot;index of&quot;
+site:&lt;DOMAIN&gt; &quot;password&quot;
+site:&lt;DOMAIN&gt; inurl:api
+site:&lt;DOMAIN&gt; inurl:backup
+site:&lt;DOMAIN&gt; inurl:config
+site:&lt;DOMAIN&gt; filetype:xlsx OR filetype:docx
+site:&lt;DOMAIN&gt; inurl:login
+</code></pre>
+<h3>IP/ASN Research</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>URL</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BGP Toolkit</td>
+<td>https://bgp.he.net/</td>
+<td>ASN lookup, netblocks, routing</td>
+</tr>
+<tr>
+<td>ARIN</td>
+<td>https://www.arin.net/</td>
+<td>Americas IP registry</td>
+</tr>
+<tr>
+<td>RIPE</td>
+<td>https://www.ripe.net/</td>
+<td>Europe IP registry</td>
+</tr>
+</tbody>
+</table>
+<h3>DNS Enumeration Resources</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>URL</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ViewDNS.info</td>
+<td>https://viewdns.info/</td>
+<td>Reverse IP, DNS history</td>
+</tr>
+<tr>
+<td>DNSdumpster</td>
+<td>https://dnsdumpster.com/</td>
+<td>Subdomain discovery, DNS map</td>
+</tr>
+</tbody>
+</table>
+<h3>Credential / Breach Data</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>URL</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dehashed</td>
+<td>https://dehashed.com/</td>
+<td>Breach data search (paid)</td>
+</tr>
+<tr>
+<td>HaveIBeenPwned</td>
+<td>https://haveibeenpwned.com/</td>
+<td>Check breached emails</td>
+</tr>
+<tr>
+<td>Trufflehog</td>
+<td>GitHub</td>
+<td>Find secrets in Git repos</td>
+</tr>
+<tr>
+<td>Greyhat Warfare</td>
+<td>https://grayhatwarfare.com/</td>
+<td>Exposed cloud storage buckets</td>
+</tr>
+</tbody>
+</table>
+<h3>Username / Email Harvesting</h3>
+<pre><code class="language-bash"># theHarvester — multi-source email/subdomain enumeration
+theHarvester -d &lt;DOMAIN&gt; -b all
+
+# linkedin2username — scrape LinkedIn for org-specific usernames
+linkedin2username -c &lt;COMPANY_NAME&gt;
+</code></pre>
+<h3>Common Email Formats</h3>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>first.last</td>
+<td>john.smith@domain.com</td>
+</tr>
+<tr>
+<td>flast</td>
+<td>jsmith@domain.com</td>
+</tr>
+<tr>
+<td>firstl</td>
+<td>johns@domain.com</td>
+</tr>
+<tr>
+<td>first_last</td>
+<td>john_smith@domain.com</td>
+</tr>
+</tbody>
+</table>
+<h3>Job Posting OSINT</h3>
+<p>Analyze job postings on LinkedIn, Indeed, and Glassdoor for technology stack intelligence. Look for software versions (SharePoint 2013/2016, Exchange versions), security tools (SIEM, AV, EDR vendors), cloud platforms (AWS, Azure, GCP), and legacy systems.</p>
+<h3>Hosts File Setup</h3>
+<p>The hosts file maps hostnames to IP addresses, bypassing DNS. Essential for testing internal/lab domains.</p>
+<p><strong>File Locations:</strong> Windows: <code>C:\Windows\System32\drivers\etc\hosts</code> | Linux/MacOS: <code>/etc/hosts</code></p>
+<pre><code class="language-bash"># Add target domains to /etc/hosts for local resolution
+echo &quot;&lt;TARGET_IP&gt;  &lt;DOMAIN&gt; &lt;SUBDOMAIN&gt;.&lt;DOMAIN&gt;&quot; | sudo tee -a /etc/hosts
+
+# Block a domain (redirect to nowhere)
+echo &quot;0.0.0.0  unwanted-site.com&quot; | sudo tee -a /etc/hosts
+</code></pre>
+<p>Changes take effect immediately without a system restart. Edit with admin/root privileges.</p>
+<hr />
+<h2 id="technology-detection">Technology Detection</h2>
+<p>Identify web server, CMS, framework, and library versions.</p>
+<pre><code class="language-bash"># httpx (multi-purpose HTTP toolkit)
+httpx -u 'https://example.com' -title -tech-detect -status-code -follow-redirects
+
+# webanalyze (Wappalyzer in Go)
+webanalyze -host example.com -crawl 1
+
+# Aquatone (domain flyover with screenshots)
+cat hosts.txt | aquatone -ports 80,443,3000,3001
+</code></pre>
+<hr />
+<h2 id="web-fuzzing-with-ffuf">Web Fuzzing with ffuf</h2>
+<p>Fast web fuzzer for directory, subdomain, parameter, and value discovery.</p>
+<h3>Directory Fuzzing</h3>
+<pre><code class="language-bash"># Basic directory enumeration
+ffuf -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-small.txt -u http://&lt;IP&gt;/FUZZ
+
+# With extensions
+ffuf -w &lt;wordlist&gt; -u http://&lt;IP&gt;/FUZZ -e .php,.html,.txt -o results.txt
+
+# With recursion
+ffuf -w &lt;wordlist&gt; -u http://&lt;IP&gt;/FUZZ -recursion -recursion-depth 2
+
+# Case insensitive
+ffuf -w &lt;wordlist&gt; -u http://&lt;IP&gt;/FUZZ -ic
+
+# Follow redirects
+ffuf -w &lt;wordlist&gt; -u http://&lt;IP&gt;/FUZZ -L
+</code></pre>
+<h3>Subdomain Fuzzing</h3>
+<pre><code class="language-bash"># Subdomain brute-force
+ffuf -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt -u http://FUZZ.&lt;DOMAIN&gt; -fc 404
+
+# With filtering by size
+ffuf -w &lt;wordlist&gt; -u http://FUZZ.&lt;DOMAIN&gt; -fs &lt;size&gt;
+
+# Virtual host (vhost) fuzzing
+ffuf -w &lt;wordlist&gt; -u http://&lt;IP&gt; -H &quot;Host: FUZZ.&lt;DOMAIN&gt;&quot; -fs &lt;filter_size&gt;
+</code></pre>
+<h3>Parameter Fuzzing</h3>
+<pre><code class="language-bash"># GET parameter discovery
+ffuf -w /usr/share/seclists/Discovery/Web-Content/burp-parameter-names.txt:FUZZ -u http://&lt;IP&gt;/admin.php?FUZZ=key -fs SIZE
+
+# POST parameter discovery
+ffuf -w &lt;wordlist&gt; -u http://&lt;IP&gt;/admin.php -X POST -d 'FUZZ=key' -H 'Content-Type: application/x-www-form-urlencoded' -fs SIZE
+
+# Value fuzzing (ID enumeration)
+for i in $(seq 1 1000); do echo $i &gt;&gt; ids.txt; done
+ffuf -w ids.txt:FUZZ -u http://&lt;IP&gt;/admin.php -X POST -d 'id=FUZZ' -H 'Content-Type: application/x-www-form-urlencoded' -fs SIZE
+</code></pre>
+<h3>ffuf Filtering &amp; Matching</h3>
+<pre><code class="language-bash">-mc 200,301       # Match these codes
+-mc 200-299       # Match range
+-fc 404           # Filter these codes
+-fc 400-500       # Filter range
+-fs &lt;size&gt;        # Filter by response size (bytes)
+-fw &lt;words&gt;       # Filter by word count
+-fl &lt;lines&gt;       # Filter by line count
+-mr &quot;pattern&quot;     # Match by regex
+-fr &quot;pattern&quot;     # Filter by regex
+-mt &lt;ms&gt;          # Match response time
+</code></pre>
+<h3>Advanced ffuf Features</h3>
+<pre><code class="language-bash"># Multiple wordlists
+ffuf -w list1:W1 -w list2:W2 -u http://target/W1/W2
+
+# Custom rate limiting
+ffuf -w &lt;wordlist&gt; -u http://&lt;IP&gt;/FUZZ -rate 500
+
+# Threads
+ffuf -w &lt;wordlist&gt; -u http://&lt;IP&gt;/FUZZ -t 100
+
+# Output to file
+ffuf -w &lt;wordlist&gt; -u http://&lt;IP&gt;/FUZZ -o results.json -of json
+</code></pre>
+<hr />
+<h2 id="web-fuzzing-with-gobuster">Web Fuzzing with Gobuster</h2>
+<pre><code class="language-bash"># Directory brute-force
+gobuster dir -u http://&lt;IP&gt; -w &lt;wordlist&gt; -x php,html,txt
+
+# Subdomain enumeration
+gobuster dns -d &lt;DOMAIN&gt; -w &lt;wordlist&gt; -r &lt;DNS_IP&gt;
+
+# Virtual host fuzzing
+gobuster vhost -u http://&lt;IP&gt; -w &lt;wordlist&gt;
+
+# Flags: -t threads, -o output, -q quiet, --statuscode 200,204, --timeout 10s
+</code></pre>
+<p><strong>API version pattern mode (<code>-p</code>)</strong> — fuzz <code>/&lt;word&gt;/v1</code>, <code>/&lt;word&gt;/v2</code> instead of the plain wordlist. Great for REST APIs where every collection lives behind <code>/v1</code> or <code>/v2</code>.</p>
+<p>Create <code>pattern</code>:</p>
+<pre><code>{GOBUSTER}/v1
+{GOBUSTER}/v2
+</code></pre>
+<p>Run:</p>
+<pre><code class="language-bash">gobuster dir -u http://&lt;IP&gt;:5002 -w /usr/share/wordlists/dirb/big.txt -p pattern
+# each wordlist entry is substituted into {GOBUSTER}; both v1 and v2 tried per word
+# hits like /books/v1, /users/v1 pop out
+</code></pre>
+<hr />
+<h2 id="web-fuzzing-with-feroxbuster">Web Fuzzing with Feroxbuster</h2>
+<pre><code class="language-bash"># Basic directory enumeration
+feroxbuster -u http://&lt;TARGET&gt; -w &lt;wordlist&gt;
+
+# Recursive scanning
+feroxbuster -u http://&lt;TARGET&gt; -w &lt;wordlist&gt; --depth 3
+
+# Additional extensions
+feroxbuster -u http://&lt;TARGET&gt; -x php,html,js,json
+
+# Filter responses
+--filter-status 404      # Ignore 404s
+--filter-size 0          # Ignore empty responses
+--filter-regex &quot;error&quot;   # Ignore matching regex
+
+# Output
+-o output.txt           # Save results
+--json output.json      # JSON format
+</code></pre>
+<hr />
+<h2 id="http-requests-with-curl">HTTP Requests with curl</h2>
+<h3>GET Requests</h3>
+<pre><code class="language-bash">curl -s http://&lt;IP&gt;/api/endpoint
+curl -H &quot;Authorization: Bearer &lt;token&gt;&quot; http://&lt;IP&gt;/api/endpoint
+curl -L http://&lt;IP&gt;/page                 # follow redirects
+curl -I http://&lt;IP&gt;                       # headers only
+curl -v http://&lt;IP&gt;                       # verbose (request + response)
+</code></pre>
+<h3>POST Requests</h3>
+<pre><code class="language-bash"># JSON POST
+curl -X POST http://&lt;IP&gt;/api -H &quot;Content-Type: application/json&quot; -d '{&quot;key&quot;:&quot;value&quot;}'
+
+# Form data POST
+curl -X POST http://&lt;IP&gt;/login -d &quot;user=admin&amp;pass=admin&quot;
+
+# File upload
+curl -F &quot;file=@/path/to/file&quot; http://&lt;IP&gt;/upload
+
+# With HTTP basic auth
+curl -u username:password http://&lt;IP&gt;/api
+</code></pre>
+<h3>Cookies &amp; Sessions</h3>
+<pre><code class="language-bash">curl -b &quot;PHPSESSID=abc123&quot; http://&lt;IP&gt;/dashboard     # send cookies
+curl -c cookies.txt http://&lt;IP&gt;/login                # save cookies to file
+curl -b cookies.txt http://&lt;IP&gt;/dashboard            # use saved cookies
+</code></pre>
+<h3>Other Methods</h3>
+<pre><code class="language-bash">curl -X PUT http://&lt;IP&gt;/api/resource -d @file.json -H &quot;Content-Type: application/json&quot;
+curl -X DELETE http://&lt;IP&gt;/api/resource/1
+curl -I http://&lt;IP&gt;                                   # HEAD
+curl -H &quot;X-Custom-Header: value&quot; http://&lt;IP&gt;
+</code></pre>
+<hr />
+<h2 id="virtual-host-vhost-enumeration">Virtual Host (vhost) Enumeration</h2>
+<p>Discover applications hosted on same IP with different Host headers.</p>
+<h3>VHost Types</h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>How It Works</th>
+<th>When Used</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Name-Based</strong> (most common)</td>
+<td>Routes by <code>Host</code> header; many sites share one IP. TLS via SNI</td>
+<td>Normal web apps, modern clients, limited IPs</td>
+</tr>
+<tr>
+<td><strong>IP-Based</strong></td>
+<td>One site per IP; server selects by destination IP</td>
+<td>Strict isolation/compliance, legacy TLS</td>
+</tr>
+<tr>
+<td><strong>Port-Based</strong></td>
+<td>Same IP, different ports per site (<code>:80</code>, <code>:8080</code>)</td>
+<td>Internal tools/labs, quick demos</td>
+</tr>
+</tbody>
+</table>
+<p><strong>VHost vs Subdomain:</strong> A subdomain is a DNS label/name. A VHost is a web-server routing config that may or may not correspond to a DNS subdomain. VHost fuzzing finds hosts that have no public DNS records.</p>
+<h3>VHost Fuzzing Workflow</h3>
+<ol>
+<li>Run initial scan without filters — note the default response size</li>
+<li>Add <code>-fs &lt;default_size&gt;</code> to filter out the default page</li>
+<li>Results with different sizes = real virtual hosts</li>
+<li>Add discovered vhosts to <code>/etc/hosts</code></li>
+</ol>
+<pre><code class="language-bash"># ffuf vhost fuzzing
+ffuf -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt:FUZZ -u http://&lt;IP&gt;:PORT/ -H 'Host: FUZZ.&lt;DOMAIN&gt;' -fs &lt;DEFAULT_SIZE&gt;
+
+# Gobuster vhost mode (--append-domain appends base domain to each word)
+gobuster vhost -u http://&lt;TARGET_IP&gt; -w &lt;wordlist&gt; --append-domain
+gobuster vhost -u http://&lt;TARGET_IP&gt; -w &lt;wordlist&gt; --append-domain -t 50 -k
+
+# Add discovered vhosts to /etc/hosts
+echo &quot;&lt;TARGET_IP&gt; app.&lt;DOMAIN&gt; dev.&lt;DOMAIN&gt;&quot; | sudo tee -a /etc/hosts
+</code></pre>
+<hr />
+<h2 id="subdomain-enumeration-deep-dive">Subdomain Enumeration Deep Dive</h2>
+<h3>Subdomain Brute-Force Tools</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dnsenum</code></td>
+<td>Comprehensive DNS enum with dictionary attacks, brute-force, zone transfers, Google scrape</td>
+</tr>
+<tr>
+<td><code>fierce</code></td>
+<td>Recursive subdomain discovery with wildcard detection</td>
+</tr>
+<tr>
+<td><code>dnsrecon</code></td>
+<td>Multiple DNS recon techniques with customizable output formats</td>
+</tr>
+<tr>
+<td><code>amass</code></td>
+<td>Extensive data sources integration; most thorough subdomain discovery</td>
+</tr>
+<tr>
+<td><code>assetfinder</code></td>
+<td>Simple, effective subdomain finding using various techniques</td>
+</tr>
+<tr>
+<td><code>puredns</code></td>
+<td>Powerful DNS brute-forcing with effective filtering and de-wildcarding</td>
+</tr>
+</tbody>
+</table>
+<h3>Subdomain Brute-Force Workflow</h3>
+<ol>
+<li><strong>Pick wordlist</strong> — General (<code>subdomains-top1million-5000.txt</code>), targeted (industry/stack), or custom (intel-driven)</li>
+<li><strong>Generate candidates</strong> — Append words to root domain (tools: <code>dnsgen</code>, simple scripts)</li>
+<li><strong>Resolve DNS</strong> — Query A/AAAA for each candidate (tools: <code>puredns resolve</code>, <code>dnsx</code>, <code>massdns</code>)</li>
+<li><strong>Filter &amp; validate</strong> — De-wildcard; probe HTTP/HTTPS for live hosts (<code>httpx</code>/<code>curl</code>); dedupe &amp; save</li>
+</ol>
+<h3>Passive + Active</h3>
+<pre><code class="language-bash"># Subfinder + AMASS, combine and dedupe
+subfinder -d &lt;DOMAIN&gt; -o subfinder_results.txt
+amass enum -d &lt;DOMAIN&gt; -o amass_results.txt
+cat subfinder_results.txt amass_results.txt | sort -u &gt; combined_subdomains.txt
+
+# DNS resolution, filter live hosts
+subfinder -silent -d &lt;DOMAIN&gt; | dnsx -silent -a -resp &gt; resolved.txt
+cat resolved.txt | grep -v NXDOMAIN | cut -d' ' -f1 | sort -u &gt; live_subdomains.txt
+</code></pre>
+<h3>Certificate Transparency (CT) Logs</h3>
+<p>Public, append-only logs of all CA-issued SSL/TLS certificates. Enumerates real, issued hostnames without guessing and surfaces legacy/expired certs pointing to stale services.</p>
+<pre><code class="language-bash"># CLI lookup — find all subdomains via CT logs
+curl -s &quot;https://crt.sh/?q=%25.&lt;DOMAIN&gt;&amp;output=json&quot; | jq -r '.[].name_value' | sort -u
+
+# Filter for specific subdomain pattern (e.g., &quot;dev&quot;)
+curl -s &quot;https://crt.sh/?q=&lt;DOMAIN&gt;&amp;output=json&quot; | jq -r '.[] | select(.name_value | contains(&quot;dev&quot;)) | .name_value' | sort -u
+</code></pre>
+<hr />
+<h2 id="parameter-path-fuzzing-strategies">Parameter &amp; Path Fuzzing Strategies</h2>
+<pre><code class="language-bash"># API endpoint discovery
+ffuf -w /usr/share/seclists/Discovery/Web-Content/api/common-api-endpoints-openapi3.txt:FUZZ -u http://&lt;IP&gt;/api/FUZZ
+
+# Common admin paths
+ffuf -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-small.txt:FUZZ -u http://&lt;IP&gt;/FUZZ -e .php
+
+# ID / value enumeration
+ffuf -w &lt;(seq 1 1000) -u http://&lt;IP&gt;/user?id=FUZZ -fs SIZE
+ffuf -w &lt;(seq 1 100) -u http://&lt;IP&gt;/download?file=FUZZ -fs SIZE
+</code></pre>
+<hr />
+<h2 id="application-discovery-screenshotting">Application Discovery &amp; Screenshotting</h2>
+<pre><code class="language-bash"># Nmap web port scan
+nmap -p 80,443,8000,8080,8180,8888,10000 --open -oA web_discovery -iL scope_list
+
+# EyeWitness (screenshot web apps)
+eyewitness --web -x web_discovery.xml -d output_directory
+
+# Aquatone (domain flyover)
+cat web_discovery.xml | aquatone -nmap -out aquatone_report
+
+# httpx (probe and detect)
+httpx -u 'https://example.com' -title -tech-detect -status-code
+
+# Convert nmap output to HTML report
+xsltproc target.xml -o target.html
+</code></pre>
+<hr />
+<h2 id="web-crawling-spidering">Web Crawling &amp; Spidering</h2>
+<h3>Crawling Tools</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Best For</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Burp Suite Spider</td>
+<td>App pentests with login/state</td>
+<td>Tight with proxy; finds forms/params fast</td>
+</tr>
+<tr>
+<td>OWASP ZAP Spider</td>
+<td>Free automation (CLI/API)</td>
+<td>Good baseline crawl + passive checks</td>
+</tr>
+<tr>
+<td>Scrapy (Python)</td>
+<td>Custom spiders, data extraction</td>
+<td>Build tailored recon/data mining pipelines</td>
+</tr>
+<tr>
+<td>Apache Nutch (Java)</td>
+<td>Large-scale distributed crawling</td>
+<td>Heavy setup; domain-wide discovery</td>
+</tr>
+</tbody>
+</table>
+<h3>ZAP Headless Spider</h3>
+<pre><code class="language-bash">zap.sh -cmd -quickurl https://&lt;TARGET&gt; -quickprogress -quickout zap-report.html
+</code></pre>
+<h3>Scrapy — Custom Web Spider</h3>
+<pre><code class="language-bash">pip3 install scrapy
+scrapy startproject recon &amp;&amp; cd recon
+scrapy genspider site &lt;TARGET_DOMAIN&gt;
+scrapy crawl site -O urls.json
+</code></pre>
+<h3>ReconSpider — Automated Crawl Analysis</h3>
+<pre><code class="language-bash">python3 ReconSpider.py http://&lt;TARGET&gt;
+# Output: results.json — triage:
+jq -r '.emails[]' results.json | sort -u
+jq -r '.links[]' results.json | sort -u
+jq -r '.external_files[]' results.json | grep -Ei '\.(pdf|zip|xlsx?)$'
+jq -r '.js_files[]' results.json | sort -u
+</code></pre>
+<p>Extracts: emails, links, external files (PDFs), JS files, form fields, images, videos, audio, and HTML comments. HTML comments often leak internal hostnames, developer TODOs, and credentials.</p>
+<h3>Crawling Tips</h3>
+<ul>
+<li>Seed from <code>robots.txt</code>, sitemaps, CT/DNS findings</li>
+<li>Handle auth (cookies/headers); respect sessions and CSRF tokens</li>
+<li>De-duplicate by canonical URL; capture parameters; store response hashes</li>
+<li>Rate-limit and randomize delays; obey ToS; exclude logout/admin by default</li>
+</ul>
+<hr />
+<h2 id="robots-txt-deep-dive">robots.txt Deep Dive</h2>
+<h3>Directives Reference</h3>
+<table>
+<thead>
+<tr>
+<th>Directive</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Disallow</code></td>
+<td>Paths the bot should not crawl</td>
+<td><code>Disallow: /admin/</code></td>
+</tr>
+<tr>
+<td><code>Allow</code></td>
+<td>Explicitly permit paths under a broader Disallow</td>
+<td><code>Allow: /public/</code></td>
+</tr>
+<tr>
+<td><code>Crawl-delay</code></td>
+<td>Delay (seconds) between successive requests</td>
+<td><code>Crawl-delay: 10</code></td>
+</tr>
+<tr>
+<td><code>Sitemap</code></td>
+<td>URL to XML sitemap for efficient crawling</td>
+<td><code>Sitemap: https://&lt;DOMAIN&gt;/sitemap.xml</code></td>
+</tr>
+</tbody>
+</table>
+<h3>Quick Extraction</h3>
+<pre><code class="language-bash">curl -s https://&lt;TARGET&gt;/robots.txt | grep -Ei '^(Disallow|Allow|Sitemap|Crawl-delay):'
+</code></pre>
+<p><strong>Recon value:</strong> Disallowed paths often reveal admin areas, backup directories, staging environments, and API endpoints. Always treat disallowed paths as leads for further investigation (within scope). Watch for honeypots — some sites include trap paths like <code>/honeypot/</code> to detect unauthorized crawlers.</p>
+<hr />
+<h2 id="automated-recon-pipeline">Automated Recon Pipeline</h2>
+<h3>Core Pipeline Steps</h3>
+<ol>
+<li><strong>Seed</strong> — Normalize target domains/roots</li>
+<li><strong>DNS/Subdomains</strong> — <code>subfinder</code> -&gt; <code>puredns</code> resolve -&gt; <code>dnsx</code></li>
+<li><strong>Ports/Services</strong> — <code>naabu -host file</code> -&gt; <code>nmap -sV -p &lt;open&gt;</code></li>
+<li><strong>Web Probe</strong> — <code>httpx</code> -&gt; tech headers -&gt; screenshots</li>
+<li><strong>Crawl</strong> — <code>katana</code>/<code>hakrawler</code> -&gt; store URLs/params</li>
+<li><strong>Tech/WAF</strong> — <code>whatweb</code>/Wappalyzer -&gt; <code>wafw00f</code></li>
+<li><strong>CT/Wayback</strong> — <code>crt.sh</code> export -&gt; <code>waybackurls</code>/<code>gau</code></li>
+<li><strong>Store &amp; Diff</strong> — JSON/CSV in a repo; nightly diffs &amp; alerts</li>
+</ol>
+<h3>Recon Frameworks</h3>
+<table>
+<thead>
+<tr>
+<th>Framework</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FinalRecon</td>
+<td>Headers/SSL/WHOIS/crawl/DNS/subdomains/directories/Wayback/port scan in one tool</td>
+</tr>
+<tr>
+<td>Recon-ng</td>
+<td>Modular OSINT/DNS/subs/ports with database + reporting</td>
+</tr>
+<tr>
+<td>theHarvester</td>
+<td>Emails, subdomains, hosts from search engines/PGP/Shodan</td>
+</tr>
+<tr>
+<td>SpiderFoot</td>
+<td>Large OSINT automation with many data sources</td>
+</tr>
+<tr>
+<td>OSINT Framework</td>
+<td>Curated links to tools/data sources</td>
+</tr>
+</tbody>
+</table>
+<h3>FinalRecon</h3>
+<pre><code class="language-bash">git clone https://github.com/thewhiteh4t/FinalRecon.git
+cd FinalRecon &amp;&amp; pip3 install -r requirements.txt &amp;&amp; chmod +x finalrecon.py
+
+# Full reconnaissance
+./finalrecon.py --full --url https://&lt;TARGET&gt;
+
+# Individual modules
+./finalrecon.py --headers --url https://&lt;TARGET&gt;
+./finalrecon.py --sslinfo --url https://&lt;TARGET&gt;
+./finalrecon.py --whois --url https://&lt;TARGET&gt;
+./finalrecon.py --crawl --url https://&lt;TARGET&gt;
+./finalrecon.py --dns --url https://&lt;TARGET&gt;
+./finalrecon.py --sub --url https://&lt;TARGET&gt;
+./finalrecon.py --dir --url https://&lt;TARGET&gt;
+./finalrecon.py --wayback --url https://&lt;TARGET&gt;
+./finalrecon.py --ps --url https://&lt;TARGET&gt;   # Fast port scan
+</code></pre>
+<hr />
+<h2 id="web-enumeration-workflow">Web Enumeration Workflow</h2>
+<h3>Phase 1: External Reconnaissance</h3>
+<ul>
+<li>[ ] Domain registration info (Whois)</li>
+<li>[ ] Passive subdomain enumeration (Subfinder, AMASS)</li>
+<li>[ ] Certificate transparency logs (crt.sh)</li>
+<li>[ ] Historical content (Wayback Machine)</li>
+</ul>
+<h3>Phase 2: Active Discovery</h3>
+<ul>
+<li>[ ] DNS resolution of subdomains</li>
+<li>[ ] Active subdomain brute-forcing</li>
+<li>[ ] Technology detection (httpx, Wappalyzer)</li>
+<li>[ ] Initial Nmap web port scan</li>
+</ul>
+<h3>Phase 3: Web Enumeration</h3>
+<ul>
+<li>[ ] Directory fuzzing (ffuf, gobuster)</li>
+<li>[ ] Subdomain fuzzing (with filtering)</li>
+<li>[ ] Virtual host discovery</li>
+<li>[ ] Parameter enumeration</li>
+<li>[ ] robots.txt and sitemap.xml analysis</li>
+</ul>
+<h3>Phase 4: Application Analysis</h3>
+<ul>
+<li>[ ] Screenshot discovery (EyeWitness, Aquatone)</li>
+<li>[ ] Technology fingerprinting</li>
+<li>[ ] API endpoint enumeration</li>
+<li>[ ] File/ID enumeration</li>
+</ul>
+<h3>Phase 5: Content Discovery</h3>
+<ul>
+<li>[ ] Backup files (.bak, .old, ~)</li>
+<li>[ ] Hidden admin panels</li>
+<li>[ ] Configuration files (.env, config.php)</li>
+<li>[ ] Git repositories (.git/HEAD)</li>
+<li>[ ] API documentation</li>
+<li>[ ] User enumeration endpoints</li>
+</ul>
+<hr />
+<h2 id="tools-comparison">Tools Comparison</h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Purpose</th>
+<th>Speed</th>
+<th>Accuracy</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ffuf</td>
+<td>Web fuzzing</td>
+<td>Very Fast</td>
+<td>High</td>
+<td>Flexible, great filters</td>
+</tr>
+<tr>
+<td>gobuster</td>
+<td>Web fuzzing</td>
+<td>Fast</td>
+<td>Medium</td>
+<td>Simpler, good defaults</td>
+</tr>
+<tr>
+<td>feroxbuster</td>
+<td>Web fuzzing</td>
+<td>Fast</td>
+<td>High</td>
+<td>Recursive, modern</td>
+</tr>
+<tr>
+<td>subfinder</td>
+<td>Subdomain enum</td>
+<td>Medium</td>
+<td>High</td>
+<td>Passive, many sources</td>
+</tr>
+<tr>
+<td>amass</td>
+<td>Subdomain enum</td>
+<td>Slow</td>
+<td>Very High</td>
+<td>Most thorough</td>
+</tr>
+<tr>
+<td>httpx</td>
+<td>HTTP probing</td>
+<td>Medium</td>
+<td>High</td>
+<td>Multi-purpose</td>
+</tr>
+<tr>
+<td>curl</td>
+<td>HTTP testing</td>
+<td>N/A</td>
+<td>Perfect</td>
+<td>Manual requests</td>
+</tr>
+<tr>
+<td>Aquatone</td>
+<td>Screenshotting</td>
+<td>Slow</td>
+<td>High</td>
+<td>Visual discovery</td>
+</tr>
+<tr>
+<td>EyeWitness</td>
+<td>Screenshotting</td>
+<td>Medium</td>
+<td>High</td>
+<td>Web and RDP</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="common-web-application-paths">Common Web Application Paths</h2>
+<pre><code>/admin
+/administrator
+/login
+/signin
+/user
+/account
+/profile
+/config
+/settings
+/api
+/api/v1
+/api/v2
+/rest
+/graphql
+/search
+/backup
+/.git
+/.env
+/config.php
+/web.config
+/web.xml
+/sitemap.xml
+/robots.txt
+/.well-known/
+/wp-admin     (WordPress)
+/wp-login.php
+/wp-json
+/phpmyadmin
+</code></pre>
+<hr />
+<h2 id="api-endpoint-discovery">API Endpoint Discovery</h2>
+<pre><code class="language-bash"># Common API patterns
+/api/v1/users
+/api/v1/users/{id}
+/api/v1/products
+/api/v1/auth/login
+/rest/api/users
+/graphql
+
+# API fuzzing
+ffuf -w api-endpoints.txt -u http://&lt;IP&gt;/api/FUZZ
+
+# GraphQL discovery
+curl -X POST http://&lt;IP&gt;/graphql -H &quot;Content-Type: application/json&quot; -d '{&quot;query&quot;:&quot;{ __schema { types { name } } }&quot;}'
+</code></pre>
+<hr />
+<h2 id="virtual-host-enumeration-from-ssl-certificates">Virtual Host Enumeration — From SSL Certificates</h2>
+<p>SSL certificates on internal web services often reveal internal domain names and virtual hosts. Extract Subject Alternative Names (SANs) from HTTPS services.</p>
+<pre><code class="language-bash"># Extract all domain names from SSL certificate
+openssl s_client -connect &lt;IP&gt;:443 2&gt;/dev/null | openssl x509 -noout -text | grep -i &quot;dns:&quot;
+
+# Save certificate and extract vhosts
+openssl s_client -connect &lt;IP&gt;:443 -showcerts 2&gt;/dev/null | openssl x509 -noout -text | grep -oP 'DNS:\K[^,]+' | sort -u
+
+# Add discovered vhosts to /etc/hosts
+echo &quot;&lt;IP&gt; discovered.vhost.local&quot; &gt;&gt; /etc/hosts
+</code></pre>
+<h3>Active Virtual Host Fuzzing</h3>
+<pre><code class="language-bash">ffuf -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt:FUZZ \
+  -u http://&lt;IP&gt;:PORT/ \
+  -H 'Host: FUZZ.&lt;DOMAIN&gt;' \
+  -fs 900 -fc 400,404
+
+gobuster vhost -u http://&lt;IP&gt; -w &lt;wordlist&gt;
+nmap --script ssl-cert &lt;IP&gt; -p 443
+</code></pre>
+<p><strong>Key insight:</strong> Web applications often hosted on same IP with different Host headers. Certificate SANs reveal internal vhosts before fuzzing. Always check SSL certs first.</p>
+<hr />
+<h2 id="https-virtual-host-fuzzing">HTTPS Virtual Host Fuzzing</h2>
+<p>When all HTTP vhost responses return the same size (default page), switch to HTTPS and filter by response size:</p>
+<pre><code class="language-bash"># Baseline: check default HTTPS response size first
+curl -sk https://&lt;TARGET_IP&gt;/ | wc -c
+
+# HTTPS vhost fuzzing — filter out the baseline response size
+ffuf -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt:FUZZ \
+  -u https://&lt;TARGET_IP&gt;/ \
+  -H &quot;Host: FUZZ.&lt;DOMAIN&gt;&quot; \
+  -fs &lt;BASELINE_SIZE&gt; -k
+</code></pre>
+<p><strong>Tip:</strong> SSL certificate SANs often leak subdomains before fuzzing. Always check <code>openssl s_client -connect &lt;IP&gt;:443</code> and extract SANs first.</p>
+<hr />
+<h2 id="nginx-sites-enabled-post-shell-vhost-discovery">Nginx sites-enabled — Post-Shell vhost Discovery</h2>
+<p>After obtaining a shell, enumerate Nginx virtual host configs to find hidden subdomains and internal services:</p>
+<pre><code class="language-bash"># List all enabled site configs
+cat /etc/nginx/sites-enabled/*
+
+# Quick extraction of server_name and proxy_pass directives
+grep -r 'server_name\|proxy_pass' /etc/nginx/sites-enabled/
+
+# Full Nginx config dump
+nginx -T 2&gt;/dev/null
+</code></pre>
+<hr />
+<h2 id="git-commit-history-credential-discovery">Git Commit History Credential Discovery</h2>
+<p>Browse Gogs/Gitea/GitHub/GitLab commit history for credentials removed in "cleanup" commits:</p>
+<pre><code class="language-bash"># Search git log for sensitive keywords
+git log -p | grep -i 'password\|secret\|token\|key\|api_key' | head -50
+
+# Search specific commit diffs
+git log --all --oneline
+git diff &lt;COMMIT_HASH&gt;~1 &lt;COMMIT_HASH&gt;
+</code></pre>
+<hr />
+<h2 id="search-operators-reference">Search Operators Reference</h2>
+<table>
+<thead>
+<tr>
+<th>Operator</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>site:</code></td>
+<td>Limit results to a domain</td>
+<td><code>site:&lt;DOMAIN&gt;</code></td>
+</tr>
+<tr>
+<td><code>inurl:</code></td>
+<td>Term appears in URL</td>
+<td><code>inurl:login</code></td>
+</tr>
+<tr>
+<td><code>filetype:</code></td>
+<td>Specific file extension</td>
+<td><code>filetype:pdf</code></td>
+</tr>
+<tr>
+<td><code>intitle:</code></td>
+<td>Term in page title</td>
+<td><code>intitle:"index of"</code></td>
+</tr>
+<tr>
+<td><code>intext:</code></td>
+<td>Term in page body</td>
+<td><code>intext:"password reset"</code></td>
+</tr>
+<tr>
+<td><code>"phrase"</code></td>
+<td>Exact phrase match</td>
+<td><code>"information security policy"</code></td>
+</tr>
+<tr>
+<td><code>-term</code></td>
+<td>Exclude a term</td>
+<td><code>site:&lt;DOMAIN&gt; -inurl:sports</code></td>
+</tr>
+<tr>
+<td><code>OR</code> / <code>AND</code></td>
+<td>Boolean logic</td>
+<td><code>"linux" OR "ubuntu"</code></td>
+</tr>
+<tr>
+<td><code>allinurl:</code></td>
+<td>All words must appear in URL</td>
+<td><code>allinurl:admin panel</code></td>
+</tr>
+<tr>
+<td><code>allintitle:</code></td>
+<td>All words must appear in title</td>
+<td><code>allintitle:confidential report</code></td>
+</tr>
+<tr>
+<td><code>allintext:</code></td>
+<td>All words must appear in body</td>
+<td><code>allintext:admin password reset</code></td>
+</tr>
+<tr>
+<td><code>..</code></td>
+<td>Numeric range</td>
+<td><code>"price" 100..500</code></td>
+</tr>
+<tr>
+<td><code>*</code></td>
+<td>Wildcard word</td>
+<td><code>user* manual</code></td>
+</tr>
+<tr>
+<td><code>cache:</code></td>
+<td>View cached copy</td>
+<td><code>cache:&lt;DOMAIN&gt;</code></td>
+</tr>
+<tr>
+<td><code>related:</code></td>
+<td>Similar sites</td>
+<td><code>related:&lt;DOMAIN&gt;</code></td>
+</tr>
+<tr>
+<td><code>link:</code></td>
+<td>Pages linking to URL</td>
+<td><code>link:&lt;DOMAIN&gt;</code></td>
+</tr>
+</tbody>
+</table>
+<h3>Google Dorks (Extended)</h3>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Dork</th>
+<th>What It Finds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Login pages</td>
+<td><code>site:&lt;DOMAIN&gt; (inurl:login OR inurl:admin)</code></td>
+<td>Auth portals</td>
+</tr>
+<tr>
+<td>Exposed files</td>
+<td><code>site:&lt;DOMAIN&gt; (filetype:pdf OR filetype:xlsx OR filetype:docx)</code></td>
+<td>Docs, reports</td>
+</tr>
+<tr>
+<td>Config files</td>
+<td><code>site:&lt;DOMAIN&gt; (inurl:config.php OR ext:conf OR ext:cnf)</code></td>
+<td>App/server configs</td>
+</tr>
+<tr>
+<td>DB backups</td>
+<td><code>site:&lt;DOMAIN&gt; (inurl:backup OR filetype:sql)</code></td>
+<td>SQL dumps, backups</td>
+</tr>
+<tr>
+<td>Dir listings</td>
+<td><code>site:&lt;DOMAIN&gt; intitle:"Index of /"</code></td>
+<td>Browseable directories</td>
+</tr>
+<tr>
+<td>Error leaks</td>
+<td><code>site:&lt;DOMAIN&gt; ("Warning: mysql_" OR "Stack trace")</code></td>
+<td>Stack traces, versions</td>
+</tr>
+<tr>
+<td>Secrets in code</td>
+<td><code>site:&lt;DOMAIN&gt; (filetype:env OR "AWS_ACCESS_KEY_ID")</code></td>
+<td>Keys/tokens in files</td>
+</tr>
+<tr>
+<td>Param endpoints</td>
+<td><code>site:&lt;DOMAIN&gt; inurl:php?id=</code></td>
+<td>Params for IDOR/SQLi testing</td>
+</tr>
+<tr>
+<td>Pastes</td>
+<td><code>site:pastebin.com "&lt;DOMAIN&gt;"</code></td>
+<td>Credentials, tokens</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="subdomain-enumeration-sublist3r">Subdomain Enumeration — Sublist3r</h2>
+<pre><code class="language-bash">sudo apt-get install sublist3r
+sublist3r -d &lt;DOMAIN&gt;
+sublist3r -d &lt;DOMAIN&gt; -e google,yahoo,bing
+sublist3r -d &lt;DOMAIN&gt; -b                     # bruteforce
+sublist3r -d &lt;DOMAIN&gt; -o subdomains.txt
+</code></pre>
+<hr />
+<h2 id="osint-theharvester-extended-sources">OSINT — theHarvester (Extended Sources)</h2>
+<pre><code class="language-bash">theHarvester -d &lt;DOMAIN&gt; -b duckduckgo,baidu,bing,yahoo,hunter,urlscan
+</code></pre>
+<hr />
+<h2 id="waf-detection-wafw00f">WAF Detection — wafw00f</h2>
+<pre><code class="language-bash">wafw00f http://&lt;TARGET&gt;
+wafw00f http://&lt;TARGET1&gt; http://&lt;TARGET2&gt;
+</code></pre>
+<hr />
+<h2 id="website-footprinting">Website Footprinting</h2>
+<pre><code class="language-bash">host &lt;DOMAIN&gt;
+curl http://&lt;TARGET&gt;/robots.txt
+curl http://&lt;TARGET&gt;/sitemap.xml
+whatweb &lt;DOMAIN&gt;
+# Website mirroring
+sudo apt-get install webhttrack
+</code></pre>
+<hr />
+<h2 id="dns-reconnaissance">DNS Reconnaissance</h2>
+<h3><code>dig</code> Command Reference</h3>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dig &lt;DOMAIN&gt;</code></td>
+<td>Default A record lookup</td>
+</tr>
+<tr>
+<td><code>dig &lt;DOMAIN&gt; A</code></td>
+<td>IPv4 address (A record)</td>
+</tr>
+<tr>
+<td><code>dig &lt;DOMAIN&gt; AAAA</code></td>
+<td>IPv6 address (AAAA record)</td>
+</tr>
+<tr>
+<td><code>dig &lt;DOMAIN&gt; MX</code></td>
+<td>Mail servers (MX records)</td>
+</tr>
+<tr>
+<td><code>dig &lt;DOMAIN&gt; NS</code></td>
+<td>Authoritative name servers</td>
+</tr>
+<tr>
+<td><code>dig &lt;DOMAIN&gt; TXT</code></td>
+<td>TXT records (SPF/DKIM/DMARC)</td>
+</tr>
+<tr>
+<td><code>dig &lt;DOMAIN&gt; CNAME</code></td>
+<td>Canonical name record</td>
+</tr>
+<tr>
+<td><code>dig &lt;DOMAIN&gt; SOA</code></td>
+<td>Start of authority record</td>
+</tr>
+<tr>
+<td><code>dig &lt;DOMAIN&gt; ANY</code></td>
+<td>All available records (often blocked per RFC 8482)</td>
+</tr>
+<tr>
+<td><code>dig @&lt;DNS_SERVER&gt; &lt;DOMAIN&gt;</code></td>
+<td>Query a specific name server</td>
+</tr>
+<tr>
+<td><code>dig +trace &lt;DOMAIN&gt;</code></td>
+<td>Show full DNS resolution path</td>
+</tr>
+<tr>
+<td><code>dig -x &lt;IP&gt;</code></td>
+<td>Reverse lookup (IP -&gt; hostname)</td>
+</tr>
+<tr>
+<td><code>dig +short &lt;DOMAIN&gt;</code></td>
+<td>Concise answer only</td>
+</tr>
+<tr>
+<td><code>dig +noall +answer &lt;DOMAIN&gt;</code></td>
+<td>Display only the answer section</td>
+</tr>
+</tbody>
+</table>
+<h3>DNS Zone Transfers (AXFR)</h3>
+<p>A misconfigured DNS server may allow full zone transfers, leaking all subdomains, IPs, and name server records.</p>
+<pre><code class="language-bash"># Attempt zone transfer against a name server
+dig axfr @&lt;NS_SERVER&gt; &lt;DOMAIN&gt;
+
+# Find authoritative NS first, then try AXFR on each
+dig NS &lt;DOMAIN&gt; +short
+dig axfr @&lt;NS1&gt; &lt;DOMAIN&gt;
+</code></pre>
+<p>Most modern DNS servers restrict zone transfers to trusted secondaries. Always try — a successful AXFR is a goldmine for subdomain and infrastructure mapping.</p>
+<h3><code>dnsenum</code> — Comprehensive DNS Enumeration</h3>
+<pre><code class="language-bash"># Full enumeration with brute-force and recursive search
+dnsenum --enum &lt;DOMAIN&gt; -f /usr/share/seclists/Discovery/DNS/subdomains-top1million-20000.txt -r
+
+# Basic enumeration
+dnsenum &lt;DOMAIN&gt;
+</code></pre>
+<p>What <code>dnsenum</code> does in one run: pulls A/AAAA/NS/MX/TXT records, attempts AXFR on found name servers, brute-forces subdomains with a wordlist, scrapes Google for additional subdomains, performs reverse DNS on discovered IPs, and grabs WHOIS metadata.</p>
+<h3>DNS Recon Checklist</h3>
+<ul>
+<li>Confirm in-scope domains; use clean resolver; log queries</li>
+<li>Grab A/AAAA, CNAME, NS, MX, TXT (SPF/DMARC/DKIM), SRV, CAA records</li>
+<li>Passive subdomain discovery (CT logs, search engines) -&gt; Active brute-force (subfinder -&gt; puredns/dnsx) -&gt; Permutations (dnsgen)</li>
+<li>Identify authoritative NS; attempt AXFR; note DNSSEC</li>
+<li>Flag CNAMEs pointing to cloud services; test for dangling/takeover</li>
+<li>Parse SPF includes; find DKIM selectors; DMARC gaps indicate spoof risk</li>
+<li>Query SRV records (<code>_ldap._tcp</code>, <code>_sip._tcp</code>, <code>_kerberos._tcp</code>) for hidden services</li>
+<li>Resolve all findings -&gt; IP/ASN/CDN/WAF mapping; spot legacy hosts</li>
+<li>Diff new/removed records over time; alert on <code>vpn/dev/stg/backup/old</code> subdomains</li>
+</ul>
+<hr />
+<h2 id="well-known-uris-well-known">Well-Known URIs (/.well-known/)</h2>
+<p>Standard path (RFC 8615) for site metadata and configuration. Valuable for discovering auth endpoints, contact routes, and app bindings.</p>
+<pre><code class="language-bash"># Security contact / vuln disclosure (RFC 9116)
+curl -s https://&lt;TARGET&gt;/.well-known/security.txt
+
+# OpenID Connect discovery — reveals auth, token, userinfo, JWKS endpoints
+curl -s https://&lt;TARGET&gt;/.well-known/openid-configuration | jq .
+
+# Android Digital Asset Links (app-domain binding)
+curl -s https://&lt;TARGET&gt;/.well-known/assetlinks.json | jq .
+
+# SMTP MTA-STS policy (RFC 8461)
+curl -s https://mta-sts.&lt;DOMAIN&gt;/.well-known/mta-sts.txt
+
+# Standard password-change URL
+curl -s https://&lt;TARGET&gt;/.well-known/change-password
+</code></pre>
+<p><strong>Key OIDC fields to note:</strong> <code>issuer</code>, <code>authorization_endpoint</code>, <code>token_endpoint</code>, <code>userinfo_endpoint</code>, <code>jwks_uri</code>, <code>scopes_supported</code></p>
+<hr />
+<h2 id="web-fingerprinting-with-nikto">Web Fingerprinting with Nikto</h2>
+<pre><code class="language-bash">sudo apt update &amp;&amp; sudo apt install -y perl
+git clone https://github.com/sullo/nikto
+cd nikto/program &amp;&amp; chmod +x ./nikto.pl
+
+# Software identification scan (faster, fingerprint only)
+nikto -h http://&lt;TARGET&gt; -Tuning b
+
+# Full scan
+nikto -h http://&lt;TARGET&gt;
+</code></pre>
+<hr />
+<h2 id="iis-tilde-enumeration">IIS Tilde Enumeration</h2>
+<p>Discover hidden files/directories via 8.3 short file names on vulnerable IIS servers. Affects IIS 5.x, 6.x, 7.x (all), 8.x/10.x (config-dependent).</p>
+<pre><code class="language-bash"># IIS ShortName Scanner (Java)
+java -jar iis_shortname_scanner.jar 0 5 http://&lt;TARGET&gt;/
+
+# Manual tilde test
+curl -I &quot;http://&lt;TARGET&gt;/~a&quot;
+curl -I &quot;http://&lt;TARGET&gt;/~s&quot;
+
+# Brute-force full filename from short name prefix (e.g., TRANSF~1.ASP -&gt; &quot;transf...&quot;)
+egrep -r ^transf /usr/share/wordlists/* | sed 's/^[^:]*://' &gt; /tmp/list.txt
+gobuster dir -u http://&lt;TARGET&gt;/ -w /tmp/list.txt -x .aspx,.asp
+</code></pre>
+<p><strong>Common IIS/ASP.NET extensions:</strong> <code>.asp</code>, <code>.aspx</code>, <code>.ashx</code>, <code>.asmx</code>, <code>.config</code>, <code>.cs</code>, <code>.vb</code></p>
+<hr />
+<h2 id="joomla-enumeration">Joomla Enumeration</h2>
+<pre><code class="language-bash"># Identify + version fingerprint
+curl -s http://&lt;TARGET&gt;/ | grep Joomla
+curl -s http://&lt;TARGET&gt;/administrator/manifests/files/joomla.xml | xmllint --format -
+curl -s http://&lt;TARGET&gt;/README.txt | head -n 5
+
+# droopescan / JoomlaScan
+droopescan scan joomla --url http://&lt;TARGET&gt;/
+python2.7 joomlascan.py -u http://&lt;TARGET&gt;
+
+# Brute-force admin login
+python3 joomla-brute.py -u http://&lt;TARGET&gt; -w &lt;WORDLIST&gt; -usr admin
+</code></pre>
+<p><strong>Key directories:</strong> <code>/administrator/</code>, <code>/bin/</code>, <code>/cache/</code>, <code>/cli/</code>, <code>/components/</code>, <code>/includes/</code>, <code>/installation/</code>, <code>/language/</code>, <code>/layouts/</code>, <code>/libraries/</code>, <code>/logs/</code>, <code>/modules/</code>, <code>/plugins/</code>, <code>/templates/</code>, <code>/tmp/</code></p>
+<p><strong>Component enumeration:</strong> <code>index.php?option=com_&lt;NAME&gt;</code>. Note: Joomla does NOT allow username enumeration through error messages (unlike WordPress).</p>
+<hr />
+<h2 id="drupal-enumeration">Drupal Enumeration</h2>
+<pre><code class="language-bash">curl -s http://&lt;TARGET&gt;/ | grep Drupal
+curl -s http://&lt;TARGET&gt;/node/1                         # node-based content URLs
+curl -s http://&lt;TARGET&gt;/CHANGELOG.txt | grep -m2 &quot;&quot;    # version fingerprint
+droopescan scan drupal -u http://&lt;TARGET&gt;
+</code></pre>
+<p><strong>Core version files:</strong> <code>/core/modules/system/system.info.yml</code> (Drupal 8+), <code>/includes/bootstrap.inc</code> (Drupal 7), <code>/core/lib/Drupal.php</code> (Drupal 8+)</p>
+<p><strong>Admin login:</strong> <code>/user/login</code>. <strong>Critical file:</strong> <code>sites/default/settings.php</code> (DB creds). <strong>Vulnerable modules:</strong> PHP filter (code execution), RESTful Web Services (auth bypass), Services (RCE).</p>
+<hr />
+<h2 id="tomcat-enumeration">Tomcat Enumeration</h2>
+<p><strong>Common ports:</strong> 8080 (HTTP), 8443 (HTTPS), 8005 (shutdown), 8009 (AJP), 8180 (alt HTTP)</p>
+<pre><code class="language-bash">curl -s http://&lt;TARGET&gt;:8080/invalid       # trigger error page (version)
+curl -I http://&lt;TARGET&gt;:8080/              # Server header
+curl -s http://&lt;TARGET&gt;:8080/docs/ | grep Tomcat
+</code></pre>
+<p><strong>Key endpoints:</strong> <code>/manager/html</code> (WAR upload -&gt; RCE), <code>/host-manager/html</code>, <code>/docs</code> (version disclosure), <code>/examples</code>.</p>
+<p><strong>Default credentials:</strong> admin:admin, tomcat:tomcat, admin:s3cr3t, tomcat:s3cr3t, admin:tomcat, both:tomcat, manager:manager, role1:role1.</p>
+<p><strong>Critical config:</strong> <code>tomcat-users.xml</code>. Manager roles: <code>manager-gui</code>, <code>manager-script</code>, <code>manager-jmx</code>, <code>manager-status</code>, <code>admin-gui</code>, <code>admin-script</code>.</p>
+<hr />
+<h2 id="splunk-enumeration">Splunk Enumeration</h2>
+<p><strong>Ports:</strong> 8000 (web UI), 8089 (REST API/management), 8191 (KV Store), 9997 (indexer). Often runs as root/SYSTEM.</p>
+<pre><code class="language-bash">sudo nmap -sV -p 8000,8089 &lt;TARGET&gt;
+curl -k https://&lt;TARGET&gt;:8089/services/
+curl -k https://&lt;TARGET&gt;:8089/services/apps/local
+</code></pre>
+<p><strong>Default credentials (older):</strong> admin:changeme. <strong>Attack vectors:</strong> Scripted inputs (Bash/PowerShell/Python), custom app deployment. <strong>Known CVEs:</strong> CVE-2018-11409 (info disclosure), CVE-2011-4642 (authenticated RCE).</p>
+<hr />
+<h2 id="jenkins-enumeration">Jenkins Enumeration</h2>
+<p><strong>Ports:</strong> 8080 (HTTP), 8443 (HTTPS), 5000 (master-slave), 50000 (JNLP agent)</p>
+<pre><code class="language-bash">curl -I http://&lt;TARGET&gt;:8080/                          # X-Jenkins header
+curl -s http://&lt;TARGET&gt;:8080/api/json | python3 -m json.tool
+</code></pre>
+<p><strong>Key endpoints:</strong> <code>/script</code> (Groovy console -&gt; RCE), <code>/manage</code>, <code>/asynchPeople/</code> (user enum), <code>/credentials/</code>, <code>/systemInfo</code>, <code>/configureSecurity/</code>.</p>
+<p><strong>Default credentials:</strong> admin:admin, admin:password, jenkins:jenkins. <strong>Common misconfigs:</strong> No auth, Script Console exposed, anonymous read, allow signup enabled.</p>
+<hr />
+<h2 id="coldfusion-enumeration">ColdFusion Enumeration</h2>
+<p><strong>Ports:</strong> 80, 443, 1935 (RPC), 8500 (SSL/server), 5500 (Server Monitor)</p>
+<pre><code class="language-bash">nmap -p 80,443,8500,5500,1935 -sV &lt;TARGET&gt;
+curl -I http://&lt;TARGET&gt;:8500/CFIDE/
+curl -I http://&lt;TARGET&gt;:8500/CFIDE/administrator/
+gobuster dir -u http://&lt;TARGET&gt;:8500/ -w /usr/share/wordlists/dirb/common.txt -x cfm,cfc
+</code></pre>
+<p><strong>File extensions:</strong> <code>.cfm</code>, <code>.cfc</code>. <strong>Key paths:</strong> <code>/CFIDE/administrator/</code>, <code>/CFIDE/adminapi/</code>, <code>/CFIDE/Application.cfm</code>, <code>/CFIDE/install.cfm</code>, <code>/CFIDE/scripts/</code>, <code>/cfdocs/</code>.</p>
+<hr />
+<h2 id="osticket-enumeration">osTicket Enumeration</h2>
+<pre><code class="language-bash">curl -v http://&lt;TARGET&gt;/ 2&gt;&amp;1 | grep -i &quot;OSTSESSID&quot;    # session cookie
+curl -I http://&lt;TARGET&gt;/scp/login.php                  # staff panel
+</code></pre>
+<p><strong>Key URLs:</strong> <code>/open.php</code> (new ticket), <code>/tickets.php</code>, <code>/scp/</code> (Staff Control Panel), <code>/scp/login.php</code>, <code>/setup/</code>. <strong>Primary attack:</strong> Social engineering via support tickets — create tickets to harvest email addresses, usernames, naming conventions.</p>
+<hr />
+<h2 id="prtg-network-monitor-enumeration">PRTG Network Monitor Enumeration</h2>
+<pre><code class="language-bash">sudo nmap -sV -p- --open -T4 &lt;TARGET&gt;       # look for &quot;Paessler PRTG&quot;
+</code></pre>
+<p><strong>Default credentials:</strong> prtgadmin:prtgadmin. <strong>Key CVE:</strong> CVE-2018-9276 — authenticated command injection in notification parameter (before 18.2.39 -&gt; RCE).</p>
+<hr />
+<h2 id="ffuf-advanced-techniques">ffuf Advanced Techniques</h2>
+<pre><code class="language-bash"># Extension fuzzing (web-extensions.txt already includes the dot)
+ffuf -w /usr/share/seclists/Discovery/Web-Content/web-extensions.txt:FUZZ \
+  -u http://&lt;TARGET&gt;/blog/indexFUZZ
+
+# Recursive fuzzing with extension
+ffuf -w &lt;WORDLIST&gt;:FUZZ -u http://&lt;TARGET&gt;/FUZZ -recursion -recursion-depth 1 -e .php -v
+
+# Match all status codes then filter by size
+ffuf -w &lt;WORDLIST&gt;:FUZZ -u http://&lt;TARGET&gt;/FUZZ -mc all -fs &lt;SIZE&gt;
+
+# Multi-keyword fuzzing (parameter + value)
+ffuf -w params.txt:PARAM -w values.txt:VAL -u http://&lt;TARGET&gt;/page.php?PARAM=VAL
+</code></pre>
+<p><strong>Custom wordlist generation:</strong></p>
+<pre><code class="language-bash">seq -w 001 999 &gt; ids.txt                                      # leading zeros
+for i in $(seq 1 255); do printf '%02x\n' $i &gt;&gt; hex_ids.txt; done   # hex
+for i in $(seq 1 100); do echo $i | base64 &gt;&gt; b64_ids.txt; done     # base64
+</code></pre>
+<hr />
+<h2 id="exposed-git-git-dumper-recover-deleted-secrets">Exposed /.git/ -&gt; git-dumper -&gt; Recover Deleted Secrets</h2>
+<p><strong>When to use:</strong> nmap <code>http-git</code> NSE, feroxbuster with <code>-x git</code>, or a manual <code>curl http://&lt;IP&gt;/.git/HEAD</code> flags exposure. Rebuild the tree + full history offline.</p>
+<pre><code class="language-bash">pipx install git-dumper 2&gt;/dev/null || pip3 install git-dumper --break-system-packages
+git-dumper http://&lt;IP&gt;/.git ./src
+cd src
+
+# Deleted files are STILL in the object DB — commit messages named &quot;remove creds&quot; or &quot;Oops&quot; are the tell
+git log --all --oneline
+git show &lt;commit&gt;:&lt;deleted_file&gt;
+git log --all -p | grep -iE '(password|secret|token|api[_-]?key|db_password)'
+
+# Grab author identity for username derivations
+git log --all --format='%an %ae' | sort -u
+</code></pre>
+<p><strong><code>git rm</code> does not delete history</strong> — the file survives content-addressably in <code>.git/objects/</code>. A commit titled "Oops", "cleanup", or "remove creds" is a neon sign.</p>
+<hr />
+<h2 id="waf-localhost-only-api-bypass-via-headers">WAF / "Localhost-Only" API Bypass via Headers</h2>
+<p><strong>When to use:</strong> Endpoint returns <code>403 WAF: Access Denied for this Host</code> or similar. Iterate client-controlled headers before assuming the endpoint is truly restricted. Half the "protected" internal APIs on OSCP-style boxes are gated by one client-controlled header.</p>
+<p><strong>Header rotation cheat sheet:</strong></p>
+<pre><code>X-Forwarded-For: 127.0.0.1        &lt;- wins most often
+X-Real-IP: 127.0.0.1
+X-Client-IP: 127.0.0.1
+X-Originating-IP: 127.0.0.1
+Forwarded: for=127.0.0.1
+X-Forwarded-Host: localhost
+Host: localhost
+Host: 127.0.0.1
+</code></pre>
+<p><strong>Automated with curl:</strong></p>
+<pre><code class="language-bash">for h in &quot;X-Forwarded-For: 127.0.0.1&quot; &quot;X-Real-IP: 127.0.0.1&quot; &quot;X-Client-IP: 127.0.0.1&quot; &quot;Forwarded: for=127.0.0.1&quot; &quot;Host: localhost&quot;; do
+  echo &quot;=== $h ===&quot;
+  curl -s -H &quot;$h&quot; http://&lt;IP&gt;/api/internal | head -c 200
+  echo
+done
+</code></pre>
+<hr />
+<h2 id="version-fingerprints-via-http-headers-api-endpoints">Version Fingerprints via HTTP Headers / API Endpoints</h2>
+<p><strong>When to use:</strong> Fastest source-of-truth for a CVE search — before dirbustering, get the exact version.</p>
+<pre><code class="language-bash">curl -sI http://&lt;IP&gt;:3000/                                                # generic (Server, X-Powered-By, X-Version)
+curl -s  http://&lt;IP&gt;:3000/api/v1/version                                  # Gitea / Gitea-derived
+curl -s  http://&lt;IP&gt;/bugtracker/api/rest/ -H &quot;Authorization: Bearer x&quot; -i # MantisBT -&gt; X-Mantis-Version
+curl -sk http://&lt;IP&gt;:9998/interface/root | grep -i version                # SmarterMail
+curl -s  http://&lt;IP&gt;:3000/status                                          # Grafana
+</code></pre>
+<p><strong>Application-specific tells to memorise:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Tell</th>
+<th>Application</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Favicon MD5 <code>E4888EE8491B4EB75501996E41AF6460</code></td>
+<td><strong>Openfire</strong> (nmap tags it as Hadoop — false positive)</td>
+</tr>
+<tr>
+<td>Favicon MD5 <code>14B7DB3EB16DEF7F593F14D8621E9BBB</code> + Tornado httpd</td>
+<td><strong>Mage AI</strong></td>
+</tr>
+<tr>
+<td>Werkzeug httpd banner</td>
+<td>Flask dev server</td>
+</tr>
+<tr>
+<td>Thin httpd banner</td>
+<td>Ruby Rack / Sinatra</td>
+</tr>
+<tr>
+<td>Gunicorn banner</td>
+<td>Python WSGI</td>
+</tr>
+<tr>
+<td>Rails dev-mode error page</td>
+<td>Leaks <code>Rails.root</code>, app name, versions, session dumps</td>
+</tr>
+<tr>
+<td><code>Server: Apache-Coyote/1.1</code></td>
+<td>Apache Tomcat</td>
+</tr>
+<tr>
+<td><code>X-Jenkins:</code> header</td>
+<td>Jenkins</td>
+</tr>
+<tr>
+<td><code>Splunkd httpd</code> in nmap <code>-sV</code></td>
+<td>Splunk web (8000)</td>
+</tr>
+<tr>
+<td><code>Indy httpd ... (Paessler PRTG bandwidth monitor)</code></td>
+<td>PRTG</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Favicon MD5 lookup one-liner:</strong></p>
+<pre><code class="language-bash">curl -sk http://&lt;IP&gt;/favicon.ico | md5sum
+# Compare against known favicon databases or shodan favicon lookups
+</code></pre>
+<hr />
+<h2 id="wordpress-vhost-catch-all-filter-nginx-wordpress">WordPress Vhost Catch-All Filter (nginx WordPress)</h2>
+<p><strong>When to use:</strong> nginx-hosted WordPress returns 301 -&gt; <code>http://&lt;vhost&gt;/...</code> on any unknown path. Standard gobuster returns nothing but 301s of a fixed size. This is a <strong>WordPress catch-all</strong> — filter it out.</p>
+<pre><code class="language-bash"># 1. Add vhost to /etc/hosts first
+echo &quot;&lt;IP&gt; &lt;vhost&gt;&quot; | sudo tee -a /etc/hosts
+
+# 2. Inspect one 200 or 301 response to get the exact catch-all body size
+curl -s http://&lt;vhost&gt;/definitely-does-not-exist | wc -c
+# -&gt; e.g. 51576 bytes
+
+# 3. Filter that size with gobuster
+gobuster dir -u http://&lt;vhost&gt;/ \
+  -w /usr/share/wordlists/seclists/Discovery/Web-Content/common.txt \
+  -x php,txt,html -b 301,404 --exclude-length 51576 -t 30
+#   --exclude-length SIZE    hide responses of this exact size (WP catch-all)
+</code></pre>
+<p><strong>Recognizing the trap:</strong> <code>/.git/logs/</code> and <code>/cgi-bin/</code> returning 200 with identical sizes = WP catch-all, not real files. If every "found" path returns the same size, you're being trolled by WordPress rewrite rules.</p>
+<hr />
+<h2 id="wordpress-enumeration-wpscan">WordPress Enumeration (WPScan)</h2>
+<pre><code class="language-bash"># Full enumeration — users and all plugins (aggressive detection)
+wpscan --url http://&lt;TARGET&gt; -e u,ap --plugins-detection aggressive
+
+# Users only / vulnerable plugins only
+wpscan --url http://&lt;TARGET&gt; -e u
+wpscan --url http://&lt;TARGET&gt; -e vp
+
+# With API token (vulnerability data from WPScan database)
+wpscan --url http://&lt;TARGET&gt; -e u,ap --plugins-detection aggressive --api-token &lt;TOKEN&gt;
+
+# Password spray against discovered users
+wpscan --url http://&lt;TARGET&gt; -U users.txt -P /usr/share/wordlists/rockyou.txt
+
+# HTTPS target
+wpscan --url https://&lt;TARGET&gt; -e u,ap --plugins-detection aggressive --disable-tls-checks
+</code></pre>
+  <p class="disclaimer">// For authorized engagements, lab environments, and exam prep only. Box names reference retired HTB / PG Practice targets used for study. OSINT and scanning must stay within scope. Replace all placeholders with your own scoped values.</p>
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div class="f-brand"><b>corey.clay</b> — web-enum · <span id="year"></span></div>
+    <div class="foot-links">
+      <a href="index.html">home</a>
+      <a href="https://github.com/Ac3xRaid3r" target="_blank" rel="noopener">github</a>
+      <a href="#top">top</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
+
+  document.querySelectorAll('main table').forEach(function(t){
+    if(t.parentElement.classList.contains('table-scroll')) return;
+    var w=document.createElement('div'); w.className='table-scroll';
+    t.parentNode.insertBefore(w,t); w.appendChild(t);
+  });
+
+  document.querySelectorAll('main pre').forEach(function(pre){
+    var wrap=document.createElement('div'); wrap.className='code-wrap';
+    pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(pre);
+    var btn=document.createElement('button');
+    btn.className='copy'; btn.type='button'; btn.textContent='copy';
+    btn.setAttribute('aria-label','Copy to clipboard');
+    btn.addEventListener('click',function(){
+      var text=pre.innerText;
+      var done=function(){btn.textContent='copied';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='copy';btn.classList.remove('done');},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){fb(text,done);});
+      } else {fb(text,done);}
+    });
+    wrap.appendChild(btn);
+  });
+  function fb(text,cb){var ta=document.createElement('textarea');ta.value=text;
+    ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+
+  var navLinks=Array.prototype.slice.call(document.querySelectorAll('.sec-nav a'));
+  if(navLinks.length){
+    var map={}; navLinks.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    var heads=Array.prototype.slice.call(document.querySelectorAll('main h2[id]'));
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          navLinks.forEach(function(a){a.classList.remove('here');});
+          var a=map[e.target.id];
+          if(a){a.classList.add('here');a.scrollIntoView({block:'nearest',inline:'center'});}
+        }
+      });
+    },{rootMargin:'-130px 0px -70% 0px',threshold:0});
+    heads.forEach(function(h){obs.observe(h);});
+  }
+})();
+</script>
+</body>
+</html>

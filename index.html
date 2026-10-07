@@ -203,14 +203,40 @@
   .job:first-child{border-top:0;padding-top:6px}
   @media (max-width:640px){.job{grid-template-columns:1fr;gap:10px}}
   .job-when{font-family:var(--f-mono);font-size:13px;color:var(--signal);padding-top:5px}
+  .job-when .dur{display:block;color:var(--muted-2);font-size:11.5px;margin-top:3px}
   .job-body h3{font-family:var(--f-display);font-weight:500;font-size:21px;margin:0 0 3px;color:var(--fg)}
   .job-body h3 .at{color:var(--muted);font-weight:400;font-size:17px}
-  .job-role{font-family:var(--f-mono);font-size:13px;color:var(--muted);margin:0 0 14px}
+  .job-role{font-family:var(--f-mono);font-size:13px;color:var(--muted);margin:0 0 6px}
+  .job-loc{font-family:var(--f-mono);font-size:12.5px;color:var(--muted-2);margin:0 0 12px}
+  .job-body .tags{margin-top:12px}
   .job-points{margin:0;padding:0;list-style:none}
   .job-points li{position:relative;padding-left:20px;margin-bottom:9px;color:var(--fg-dim);font-size:16.5px;max-width:64ch}
   .job-points li::before{content:"›";position:absolute;left:2px;top:-1px;color:var(--signal);font-family:var(--f-mono)}
   .cert{font-family:var(--f-mono);font-size:11px;color:var(--signal);background:var(--signal-soft);
     border:1px solid var(--signal-line);padding:2px 8px;border-radius:20px;margin-right:8px}
+
+  /* certifications grid */
+  .certs-block{margin-top:52px}
+  .certs-block .sub{font-family:var(--f-display);font-weight:500;font-size:20px;color:var(--fg);
+    margin:0 0 22px;padding-bottom:13px;border-bottom:1px solid var(--line-soft)}
+  .certs{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  @media (max-width:640px){.certs{grid-template-columns:1fr}}
+  .cert-card{border:1px solid var(--line);border-radius:9px;padding:17px 19px;background:var(--panel);
+    display:flex;flex-direction:column;gap:5px;transition:border-color .16s ease,transform .16s ease}
+  .cert-card:hover{border-color:var(--signal-line);transform:translateY(-2px)}
+  .cert-card.feat{border-color:var(--signal-line);background:var(--signal-soft)}
+  .cert-card .cname{font-family:var(--f-display);font-weight:500;font-size:16px;color:var(--fg);line-height:1.28}
+  .cert-card .cissuer{font-family:var(--f-mono);font-size:12px;color:var(--fg-dim)}
+  .cert-card .cmeta{font-family:var(--f-mono);font-size:11.5px;color:var(--muted-2);
+    display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:2px}
+  .cert-card .cexp{color:var(--red)}
+  .cert-card .cverify{font-family:var(--f-mono);font-size:12px;color:var(--signal);margin-top:7px;width:max-content}
+  .cert-card .cverify:hover,.cert-card .cverify:focus-visible{text-decoration:underline}
+  .cert-card .cverify:focus-visible{outline:2px solid var(--signal);outline-offset:3px;border-radius:2px}
+  .cert-badge{font-family:var(--f-mono);font-size:10px;letter-spacing:.03em;padding:2px 8px;border-radius:20px;
+    width:max-content;margin-bottom:3px}
+  .cb-earned{color:var(--signal);background:rgba(232,163,61,.12);border:1px solid var(--signal-line)}
+  .cb-prog{color:var(--signal);background:rgba(232,163,61,.12);border:1px solid var(--signal-line)}
 
   /* ---------- about ---------- */
   .about-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:44px;align-items:start}
@@ -252,6 +278,8 @@
     <nav class="top" aria-label="Primary">
       <a href="#path">the path</a>
       <a href="#log">log</a>
+      <a href="methodology.html">methodology</a>
+      <a href="enumeration.html">enumeration</a>
       <a href="#experience">experience</a>
       <a href="#about">about</a>
       <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
@@ -470,42 +498,113 @@
 
       <ol class="xp">
         <li class="job">
-          <div class="job-when">20XX — Present</div>
+          <div class="job-when">Jun 2026 — Present<span class="dur">4 mos</span></div>
           <div class="job-body">
-            <h3>Security Engineer <span class="at">· Company Name</span></h3>
-            <p class="job-role">Vulnerability Management &amp; Security Engineering</p>
-            <ul class="job-points">
-              <li>Add a bullet describing a key responsibility or win — e.g. owning the vuln management lifecycle across X assets.</li>
-              <li>Add a measurable result — reduced mean-time-to-remediate, built a process, cut noise by N%.</li>
-              <li>Add a tool or program you drove — scanner tuning, detection engineering, risk reporting to leadership.</li>
-            </ul>
+            <h3>Senior Associate Security Engineer <span class="at">· Qualys</span></h3>
+            <p class="job-role">Vulnerability Management · Full-time</p>
           </div>
         </li>
 
         <li class="job">
-          <div class="job-when">20XX — 20XX</div>
+          <div class="job-when">Oct 2024 — Jul 2026<span class="dur">1 yr 10 mos</span></div>
           <div class="job-body">
-            <h3>Previous Role <span class="at">· Company Name</span></h3>
-            <p class="job-role">Team / function</p>
-            <ul class="job-points">
-              <li>Replace with your earlier role and 2–3 bullets of what you did.</li>
-              <li>Keep bullets action-first: "Built…", "Led…", "Automated…".</li>
-            </ul>
+            <h3>Cybersecurity Senior Analyst <span class="at">· Qualys</span></h3>
+            <p class="job-role">Vulnerability Management · Full-time</p>
+            <p class="job-loc">Raleigh, North Carolina · On-site</p>
           </div>
         </li>
 
         <li class="job">
-          <div class="job-when">20XX</div>
+          <div class="job-when">Sep 2022 — May 2025<span class="dur">2 yrs 9 mos</span></div>
           <div class="job-body">
-            <h3>Certifications &amp; education</h3>
-            <p class="job-role">Credentials</p>
-            <ul class="job-points">
-              <li><span class="cert">In progress</span> HackTheBox Certified Penetration Testing Specialist (CPTS)</li>
-              <li>Add any completed certs — Security+, eJPT, OSCP goals, degree, etc.</li>
-            </ul>
+            <h3>Associate Infrastructure Engineer <span class="at">· Financial Institution</span></h3>
+            <p class="job-role">Network Infrastructure Security Services · Security Operations · Full-time</p>
+            <p class="job-loc">Raleigh, North Carolina</p>
+            <div class="tags">
+              <span class="tag">Check Point</span><span class="tag">Cisco ASA</span><span class="tag">Akamai WAF</span>
+              <span class="tag">TLS</span><span class="tag">Certificates</span><span class="tag">DNS</span>
+            </div>
           </div>
         </li>
+
+        <li class="job">
+          <div class="job-when">Dec 2018 — Sep 2022<span class="dur">3 yrs 10 mos</span></div>
+          <div class="job-body">
+            <h3>Infrastructure Analyst <span class="at">· Financial Institution</span></h3>
+            <p class="job-role">Full-time</p>
+            <p class="job-loc">Raleigh, North Carolina</p>
+          </div>
+        </li>
+
+        <li class="job">
+          <div class="job-when">Dec 2018 — Aug 2022<span class="dur">3 yrs 9 mos</span></div>
+          <div class="job-body">
+            <h3>Network System Analyst <span class="at">· Financial Institution</span></h3>
+            <p class="job-role">Network Infrastructure Security Services · Security Operations</p>
+            <p class="job-loc">Raleigh–Durham–Chapel Hill Area</p>
+            <div class="tags">
+              <span class="tag">Check Point</span><span class="tag">Cisco ASA</span><span class="tag">Akamai</span>
+            </div>
+          </div>
+        </li>
+
       </ol>
+
+      <div class="certs-block">
+        <h3 class="sub">Certifications</h3>
+        <div class="certs">
+
+          <div class="cert-card feat">
+            <span class="cert-badge cb-earned">offensive</span>
+            <div class="cname">Practical Junior Penetration Tester (PJPT)</div>
+            <div class="cissuer">TCM Security</div>
+            <div class="cmeta"><span>Issued Oct 2025</span><span>ID 163480400</span></div>
+            <a class="cverify" href="https://certified.tcm-sec.com/ce0fa6eb-d7bb-4ec3-b319-d8d994f4595a" target="_blank" rel="noopener">Verify &rsaquo;</a>
+          </div>
+
+          <div class="cert-card feat">
+            <span class="cert-badge cb-prog">in progress</span>
+            <div class="cname">Certified Penetration Testing Specialist (CPTS)</div>
+            <div class="cissuer">HackTheBox</div>
+            <div class="cmeta"><span>Expected 2026</span></div>
+          </div>
+
+          <div class="cert-card">
+            <div class="cname">(ISC)² Candidate</div>
+            <div class="cissuer">ISC2</div>
+            <div class="cmeta"><span>Issued May 2023</span><span class="cexp">Expired May 2024</span></div>
+            <a class="cverify" href="https://www.credly.com/badges/10357712-41a6-4650-bccf-c70c5bbbe151/linked_in_profile" target="_blank" rel="noopener">Verify &rsaquo;</a>
+          </div>
+
+          <div class="cert-card">
+            <div class="cname">Akamai Bot Manager Foundations</div>
+            <div class="cissuer">Akamai Technologies</div>
+            <div class="cmeta"><span>Issued May 2019</span></div>
+            <a class="cverify" href="https://www.credly.com/badges/1eb82ea5-30d3-4462-a634-beb620eabf8a?source=linked_in_profile" target="_blank" rel="noopener">Verify &rsaquo;</a>
+          </div>
+
+          <div class="cert-card">
+            <div class="cname">Akamai Kona Site Defender — Configuration &amp; Maintenance</div>
+            <div class="cissuer">Akamai Technologies</div>
+            <div class="cmeta"><span>Issued Jun 2019</span></div>
+            <a class="cverify" href="https://www.credly.com/badges/69fa241a-d62d-494e-976e-79fe5aee9f18?source=linked_in_profile" target="_blank" rel="noopener">Verify &rsaquo;</a>
+          </div>
+
+          <div class="cert-card">
+            <div class="cname">Akamai Web Performance Foundations</div>
+            <div class="cissuer">Akamai Technologies</div>
+            <div class="cmeta"><span>Issued Jun 2019</span></div>
+            <a class="cverify" href="https://www.credly.com/badges/b3e21998-9e18-45bf-a9a3-e51f8a65cf55?source=linked_in_profile" target="_blank" rel="noopener">Verify &rsaquo;</a>
+          </div>
+
+          <div class="cert-card">
+            <div class="cname">Akamai Web Performance &amp; Offload</div>
+            <div class="cissuer">Akamai Technologies</div>
+            <div class="cmeta"><span>Issued Jul 2019</span></div>
+          </div>
+
+        </div>
+      </div>
     </div>
   </section>
 
@@ -528,9 +627,10 @@
             <div class="row"><dt>current</dt><dd>security engineer</dd></div>
             <div class="row"><dt>heading</dt><dd class="hl">pentest / red team</dd></div>
             <div class="row"><dt>studying</dt><dd>HTB CPTS</dd></div>
+            <div class="row"><dt>certs</dt><dd class="hl">PJPT</dd></div>
             <div class="row"><dt>focus</dt><dd>AD &amp; pivoting</dd></div>
             <div class="row"><dt>rig</dt><dd>Kali on VMware</dd></div>
-            <div class="row"><dt>github</dt><dd class="hl">CoreyDotClay</dd></div>
+            <div class="row"><dt>github</dt><dd class="hl">Ac3xRaid3r</dd></div>
             <div class="row"><dt>linkedin</dt><dd class="hl"><a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener" style="color:var(--signal)">corey-clay</a></dd></div>
           </dl>
         </div>
@@ -544,7 +644,7 @@
     <div class="f-brand"><b>corey.clay</b> — offensive security log · <span id="year"></span></div>
     <div class="foot-links">
       <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
-      <a href="https://github.com/CoreyDotClay" target="_blank" rel="noopener">github</a>
+      <a href="https://github.com/Ac3xRaid3r" target="_blank" rel="noopener">github</a>
       <a href="#top">top</a>
     </div>
   </div>

