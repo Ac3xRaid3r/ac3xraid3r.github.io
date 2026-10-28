@@ -237,6 +237,7 @@
     width:max-content;margin-bottom:3px}
   .cb-earned{color:var(--signal);background:rgba(232,163,61,.12);border:1px solid var(--signal-line)}
   .cb-prog{color:var(--signal);background:rgba(232,163,61,.12);border:1px solid var(--signal-line)}
+  .cb-done{color:var(--green);background:rgba(127,174,122,.12);border:1px solid rgba(127,174,122,.4)}
 
   /* ---------- about ---------- */
   .about-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:44px;align-items:start}
@@ -302,7 +303,7 @@
         <noscript>
           <div class="out">role   : security engineer, vulnerability management</div>
           <div class="out">target : penetration tester / red teamer</div>
-          <div class="out">status : in progress — CPTS track</div>
+          <div class="out">status : CPTS certified (Oct 2026) — red team next</div>
         </noscript>
       </div>
     </div>
@@ -348,17 +349,17 @@
             <p>Grinding HackTheBox machines and pro labs. Ligolo-ng pivots, BloodHound graphs, Impacket, Certipy, NTLM coercion — turning reading into muscle memory.</p>
           </div>
         </div>
-        <div class="stage now">
+        <div class="stage done">
           <div class="rail"><span class="num">04</span></div>
           <div class="body">
-            <h3>CPTS <span class="flag f-now">in progress</span></h3>
-            <p>Deep in Certified Penetration Testing Specialist prep — multi-domain AD attack chains, cross-forest attacks, and reporting that a client could actually act on.</p>
+            <h3>CPTS <span class="flag f-done">passed</span></h3>
+            <p>Passed the Certified Penetration Testing Specialist exam on the first attempt (Oct 2026) — multi-domain AD attack chains, cross-forest attacks, and reporting a client could actually act on.</p>
           </div>
         </div>
-        <div class="stage">
+        <div class="stage now">
           <div class="rail"><span class="num">05</span></div>
           <div class="body">
-            <h3>Red team <span class="flag f-next">next</span></h3>
+            <h3>Red team <span class="flag f-now">in focus</span></h3>
             <p>The destination: full-scope offensive work — adversary emulation, evasion, and thinking end-to-end about how a real intrusion unfolds.</p>
           </div>
         </div>
@@ -564,10 +565,10 @@
           </div>
 
           <div class="cert-card feat">
-            <span class="cert-badge cb-prog">in progress</span>
+            <span class="cert-badge cb-done">passed · first attempt</span>
             <div class="cname">Certified Penetration Testing Specialist (CPTS)</div>
             <div class="cissuer">HackTheBox</div>
-            <div class="cmeta"><span>Expected 2026</span></div>
+            <div class="cmeta"><span>Passed Oct 23, 2026</span></div>
           </div>
 
           <div class="cert-card">
@@ -619,7 +620,7 @@
       <div class="about-grid">
         <div>
           <p>I'm Corey — a security engineer by day, working in vulnerability management, and an aspiring penetration tester and red teamer by every other waking hour.</p>
-          <p>Most of my learning happens in HackTheBox labs and CPTS prep: Active Directory attack chains, pivoting, and the unglamorous discipline of writing findings up clearly. I keep this log to document the crossover honestly — wins, dead ends, and the stuff I wish someone had explained to me sooner.</p>
+          <p>Most of my learning happens in HackTheBox labs and the CPTS grind that got me certified: Active Directory attack chains, pivoting, and the unglamorous discipline of writing findings up clearly. I keep this log to document the crossover honestly — wins, dead ends, and the stuff I wish someone had explained to me sooner.</p>
           <p>If you're making the same jump from defense to offense, I hope some of it saves you an evening of confusion.</p>
         </div>
         <div class="profile">
@@ -627,8 +628,8 @@
           <dl>
             <div class="row"><dt>current</dt><dd>security engineer</dd></div>
             <div class="row"><dt>heading</dt><dd class="hl">pentest / red team</dd></div>
-            <div class="row"><dt>studying</dt><dd>HTB CPTS</dd></div>
-            <div class="row"><dt>certs</dt><dd class="hl">PJPT</dd></div>
+            <div class="row"><dt>studying</dt><dd>red team path</dd></div>
+            <div class="row"><dt>certs</dt><dd class="hl">PJPT · CPTS</dd></div>
             <div class="row"><dt>focus</dt><dd>AD &amp; pivoting</dd></div>
             <div class="row"><dt>rig</dt><dd>Kali on VMware</dd></div>
             <div class="row"><dt>github</dt><dd class="hl">Ac3xRaid3r</dd></div>
@@ -662,7 +663,7 @@
   var lines = [
     {t:"role   : ", v:"security engineer, vulnerability management", c:"out"},
     {t:"target : ", v:"penetration tester / red teamer", c:"key"},
-    {t:"status : ", v:"in progress — CPTS track", c:"out"},
+    {t:"status : ", v:"CPTS certified (Oct 2026) — red team next", c:"out"},
     {t:"motto  : ", v:"break it to understand it", c:"out"}
   ];
   var el = document.getElementById('typed');
