@@ -7,27 +7,27 @@
 <meta name="description" content="Field notes from a security engineer's transition into offensive security and penetration testing.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#14161b;
-    --ink-2:#181b21;
-    --panel:#1c2027;
-    --panel-2:#20242c;
-    --line:#2c313b;
-    --line-soft:#242932;
-    --fg:#e6e2d8;
-    --fg-dim:#b7b6ae;
+    --ink:#000000;
+    --ink-2:#121318;
+    --panel:#15171c;
+    --panel-2:#191c22;
+    --line:#262a33;
+    --line-soft:#1b1e24;
+    --fg:#e8eaed;
+    --fg-dim:#b2b6bd;
     --muted:#868c98;
     --muted-2:#5f6672;
-    --signal:#e8a33d;
-    --signal-soft:rgba(232,163,61,.14);
-    --signal-line:rgba(232,163,61,.34);
+    --signal:#9fef00;
+    --signal-soft:rgba(159,239,0,.14);
+    --signal-line:rgba(159,239,0,.34);
     --green:#7fae7a;
     --red:#d17a6e;
 
-    --f-display:"Space Grotesk",system-ui,sans-serif;
-    --f-body:"Newsreader",Georgia,serif;
+    --f-display:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-body:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
     --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
 
     --maxw:thematic;
@@ -45,12 +45,12 @@
     background:var(--ink);
     color:var(--fg);
     font-family:var(--f-body);
-    font-size:18px;
-    line-height:1.62;
+    font-size:15.5px;
+    line-height:1.72;
     -webkit-font-smoothing:antialiased;
     text-rendering:optimizeLegibility;
   }
-  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background-color:var(--ink);background-image:linear-gradient(180deg,transparent 0%,var(--ink) 46%),linear-gradient(var(--line-soft) 1px,transparent 1px),linear-gradient(90deg,var(--line-soft) 1px,transparent 1px),radial-gradient(1100px 520px at 82% -8%,rgba(232,163,61,.05),transparent 60%);background-size:auto,64px 64px,64px 64px,auto;background-position:0 0,-1px -1px,-1px -1px,0 0}
+  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background-color:var(--ink);background-image:linear-gradient(180deg,transparent 0%,var(--ink) 46%),linear-gradient(var(--line-soft) 1px,transparent 1px),linear-gradient(90deg,var(--line-soft) 1px,transparent 1px),radial-gradient(1100px 520px at 82% -8%,rgba(159,239,0,.05),transparent 60%);background-size:auto,64px 64px,64px 64px,auto;background-position:0 0,-1px -1px,-1px -1px,0 0}
 
   a{color:inherit;text-decoration:none}
   ::selection{background:var(--signal-soft);color:var(--fg)}
@@ -114,8 +114,8 @@
   .btn{font-family:var(--f-mono);font-size:13.5px;padding:12px 20px;border-radius:7px;
     border:1px solid var(--line);color:var(--fg);transition:.18s ease;cursor:pointer;background:transparent}
   .btn:hover,.btn:focus-visible{border-color:var(--signal-line);color:var(--signal)}
-  .btn.solid{background:var(--signal);color:#181206;border-color:var(--signal);font-weight:500}
-  .btn.solid:hover,.btn.solid:focus-visible{background:#f0b558;color:#181206}
+  .btn.solid{background:var(--signal);color:#0e1500;border-color:var(--signal);font-weight:500}
+  .btn.solid:hover,.btn.solid:focus-visible{background:#b4ff3a;color:#0e1500}
   .btn:focus-visible{outline:2px solid var(--signal);outline-offset:3px}
 
   /* ---------- section scaffolding ---------- */
@@ -136,14 +136,14 @@
   .stage .num{font-family:var(--f-mono);font-size:12px;color:var(--muted);
     width:32px;height:32px;border:1px solid var(--line);border-radius:50%;
     display:flex;align-items:center;justify-content:center;background:var(--ink);z-index:1}
-  .stage.now .num{color:#181206;background:var(--signal);border-color:var(--signal);font-weight:700}
+  .stage.now .num{color:#0e1500;background:var(--signal);border-color:var(--signal);font-weight:700}
   .stage.done .num{color:var(--green);border-color:rgba(127,174,122,.4)}
   .stage .body h3{font-family:var(--f-display);font-weight:500;font-size:19px;margin:4px 0 6px;color:var(--fg)}
   .stage .body h3 .flag{font-family:var(--f-mono);font-size:11px;margin-left:10px;padding:2px 8px;border-radius:20px;
     vertical-align:middle;letter-spacing:.02em}
   .flag.f-done{color:var(--green);background:rgba(127,174,122,.1)}
   .flag.f-now{color:var(--signal);background:var(--signal-soft)}
-  .flag.f-next{color:var(--muted);background:#20242c}
+  .flag.f-next{color:var(--muted);background:#191c22}
   .stage .body p{margin:0;color:var(--muted);font-size:16px;max-width:58ch}
 
   /* ---------- engagement log ---------- */
@@ -168,12 +168,12 @@
   .entry:hover h3{color:var(--signal)}
   .entry .excerpt{color:var(--muted);font-size:16px;margin:0 0 14px;max-width:66ch}
   .tags{display:flex;flex-wrap:wrap;gap:7px}
-  .tag{font-family:var(--f-mono);font-size:11px;color:var(--fg-dim);background:#20242c;
+  .tag{font-family:var(--f-mono);font-size:11px;color:var(--fg-dim);background:#191c22;
     border:1px solid var(--line-soft);padding:3px 9px;border-radius:5px}
   .toggle{font-family:var(--f-mono);font-size:22px;color:var(--muted);line-height:1;
     width:34px;height:34px;border:1px solid var(--line);border-radius:7px;display:flex;align-items:center;justify-content:center;
     flex:none;transition:.18s;margin-top:2px}
-  .entry[aria-expanded="true"] .toggle{background:var(--signal);color:#181206;border-color:var(--signal);transform:rotate(45deg)}
+  .entry[aria-expanded="true"] .toggle{background:var(--signal);color:#0e1500;border-color:var(--signal);transform:rotate(45deg)}
   .detail{max-height:0;overflow:hidden;transition:max-height .4s cubic-bezier(.4,0,.2,1)}
   @media (prefers-reduced-motion:reduce){.detail{transition:none}}
   .detail-inner{padding:2px 4px 34px}
@@ -227,8 +227,8 @@
   .cert-card .cverify:focus-visible{outline:2px solid var(--signal);outline-offset:3px;border-radius:2px}
   .cert-badge{font-family:var(--f-mono);font-size:10px;letter-spacing:.03em;padding:2px 8px;border-radius:20px;
     width:max-content;margin-bottom:3px}
-  .cb-earned{color:var(--signal);background:rgba(232,163,61,.12);border:1px solid var(--signal-line)}
-  .cb-prog{color:var(--signal);background:rgba(232,163,61,.12);border:1px solid var(--signal-line)}
+  .cb-earned{color:var(--signal);background:rgba(159,239,0,.12);border:1px solid var(--signal-line)}
+  .cb-prog{color:var(--signal);background:rgba(159,239,0,.12);border:1px solid var(--signal-line)}
   .cb-done{color:var(--green);background:rgba(127,174,122,.12);border:1px solid rgba(127,174,122,.4)}
 
   /* ---------- about ---------- */
