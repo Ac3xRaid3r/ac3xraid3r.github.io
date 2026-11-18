@@ -71,9 +71,10 @@
       "</svg>";
     btn.addEventListener("click", openModal);
 
-    // Insert as the middle flex child so it sits between brand and nav.
+    // Append as the last child of the primary nav so it sits to the right
+    // of the last link (linkedin) with the nav's own gap spacing.
     var nav = bar.querySelector("nav.top");
-    if (nav) bar.insertBefore(btn, nav);
+    if (nav) nav.appendChild(btn);
     else bar.appendChild(btn);
   }
 
