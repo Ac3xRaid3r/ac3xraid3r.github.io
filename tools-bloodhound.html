@@ -186,16 +186,16 @@
 <li>Instead of guessing or firing off random exploits, attackers can find legitimate misconfigurations to elevate privileges.</li>
 <li>It instantly highlights high-value targets like Kerberoastable accounts... unconstrained delegations... and misconfigured GPOs.</li>
 </ul>
-<pre><code class="language-c">echo &quot;10.0.20.130 dc01.hacksmarter.hsm hacksmarter.hsm&quot; | sudo tee -a /etc/hosts
+<pre><code class="language-bash">echo &quot;10.0.20.130 dc01.hacksmarter.hsm hacksmarter.hsm&quot; | sudo tee -a /etc/hosts
 
 [sudo] password for kali: 
 10.0.20.130 dc01.hacksmarter.hsm hacksmarter.hsm
 </code></pre>
 <h2 id="collecting-the-loot"><strong>Collecting the Loot</strong></h2>
 <h2 id="method-1-netexec-nxc"><strong>Method #1: Netexec (<code>nxc</code>)</strong></h2>
-<pre><code class="language-c">nxc ldap 10.0.20.130 -u 'pentest' -p 'HackSmarter123!' --bloodhound --collection All --dns-server 10.0.20.130
+<pre><code class="language-bash">nxc ldap 10.0.20.130 -u 'pentest' -p 'HackSmarter123!' --bloodhound --collection All --dns-server 10.0.20.130
 </code></pre>
-<pre><code class="language-c">nxc ldap 10.0.20.130 -u 'pentest' -p 'HackSmarter123!' --bloodhound --collection All --dns-server 10.0.20.130
+<pre><code class="language-bash">nxc ldap 10.0.20.130 -u 'pentest' -p 'HackSmarter123!' --bloodhound --collection All --dns-server 10.0.20.130
 LDAP        10.0.20.130     389    DC01             [*] Windows Server 2022 Build 20348 (name:DC01) (domain:hacksmarter.hsm) (signing:None) (channel binding:No TLS cert) 
 LDAP        10.0.20.130     389    DC01             [+] hacksmarter.hsm\pentest:HackSmarter123! 
 LDAP        10.0.20.130     389    DC01             Resolved collection methods: trusts, psremote, acl, rdp, session, group, localadmin, container, objectprops, dcom
@@ -206,11 +206,11 @@ LDAP        10.0.20.130     389    DC01             Compressing output into /hom
 <h2 id="method-2-sharphound">Method #2: SharpHound</h2>
 <p>SharpHound is the official C# data collector designed to run directly on a Windows target. It is incredibly thorough and can be run as a standalone executable (SharpHound.exe) or loaded into memory via PowerShell (SharpHound.ps1).</p>
 <p>You can transfer the .exe to the target with evil-winrm.</p>
-<pre><code class="language-c">evil-winrm -i dc01.hacksmarter.hsm -u 'pentest' -p 'HackSmarter123!'  
+<pre><code class="language-powershell">evil-winrm -i dc01.hacksmarter.hsm -u 'pentest' -p 'HackSmarter123!'  
 </code></pre>
-<pre><code class="language-c">upload /home/kali/HackSmarter/Bloodhound/SharpHound.exe
+<pre><code class="language-powershell">upload /home/kali/HackSmarter/Bloodhound/SharpHound.exe
 </code></pre>
-<pre><code class="language-c">upload /home/kali/HackSmarter/Bloodhound/SharpHound.exe
+<pre><code class="language-powershell">upload /home/kali/HackSmarter/Bloodhound/SharpHound.exe
 
 Info: Uploading /home/kali/HackSmarter/Bloodhound/SharpHound.exe to C:\Users\pentest\Documents\SharpHound.exe
 
@@ -219,9 +219,9 @@ Data: 1751040 bytes of 1751040 bytes copied
 Info: Upload successful!
 
 </code></pre>
-<pre><code class="language-c">.\SharpHound.exe -c All
+<pre><code class="language-powershell">.\SharpHound.exe -c All
 </code></pre>
-<pre><code class="language-c">*Evil-WinRM* PS C:\Users\pentest\Documents&gt; dir
+<pre><code class="language-powershell">*Evil-WinRM* PS C:\Users\pentest\Documents&gt; dir
 
     Directory: C:\Users\pentest\Documents
 
@@ -232,13 +232,13 @@ Mode                 LastWriteTime         Length Name
 -a----          7/7/2026  11:48 PM           1335 ZDZkMDFlYmMtY2Q5Mi00ZWUxLWE4MWMtNTdjOWIyMjFkNjcy.bin
 
 </code></pre>
-<pre><code class="language-c">download 20260707234755_BloodHound.zip
+<pre><code class="language-bash">download 20260707234755_BloodHound.zip
 </code></pre>
 <h2 id="method-3-rusthound">Method #3: RustHound</h2>
 <p>RustHound is a cross-platform BloodHound ingestor written entirely in Rust. It is highly optimized, fast, and generates compiled binaries for both Linux and Windows. It is excellent for scenarios where you want a lightweight binary that does not rely on the .NET framework.</p>
-<pre><code class="language-c">rusthound-ce -d hacksmarter.hsm -u 'pentest' -p 'HackSmarter123!' -n 10.0.20.130 -o ./rusthound_output 
+<pre><code class="language-bash">rusthound-ce -d hacksmarter.hsm -u 'pentest' -p 'HackSmarter123!' -n 10.0.20.130 -o ./rusthound_output 
 </code></pre>
-<pre><code class="language-c">rusthound-ce -d hacksmarter.hsm -u 'pentest' -p 'HackSmarter123!' -n 10.0.20.130 -o ./rusthound_output 
+<pre><code class="language-bash">rusthound-ce -d hacksmarter.hsm -u 'pentest' -p 'HackSmarter123!' -n 10.0.20.130 -o ./rusthound_output 
 ---------------------------------------------------
 Initializing RustHound-CE at 20:12:40 on 07/07/26
 Powered by @g0h4n_0
@@ -283,9 +283,9 @@ RustHound-CE Enumeration Completed at 20:12:41 on 07/07/26! Happy Graphing!
 </code></pre>
 <h2 id="method-4-bloodhound-python">Method #4: bloodhound-python</h2>
 <p>If you are operating entirely from a Linux machine and want a pure Python approach without using NetExec, bloodhound-python is the go-to tool. It is a Python-based ingestor that queries the target Domain Controller via LDAP.</p>
-<pre><code class="language-c">bloodhound-python -u 'pentest' -p 'HackSmarter123!' -d hacksmarter.hsm -dc dc01.hacksmarter.hsm -c All -ns 10.0.20.130
+<pre><code class="language-bash">bloodhound-python -u 'pentest' -p 'HackSmarter123!' -d hacksmarter.hsm -dc dc01.hacksmarter.hsm -c All -ns 10.0.20.130
 </code></pre>
-<pre><code class="language-c">bloodhound-python -u 'pentest' -p 'HackSmarter123!' -d hacksmarter.hsm -dc dc01.hacksmarter.hsm -c All -ns 10.0.20.130
+<pre><code class="language-bash">bloodhound-python -u 'pentest' -p 'HackSmarter123!' -d hacksmarter.hsm -dc dc01.hacksmarter.hsm -c All -ns 10.0.20.130
 INFO: BloodHound.py for BloodHound LEGACY (BloodHound 4.2 and 4.3)
 INFO: Found AD domain: hacksmarter.hsm
 INFO: Getting TGT for user
@@ -306,12 +306,12 @@ INFO: Done in 00M 04S
 
 </code></pre>
 <h2 id="method-5-bloodyad">Method #5: bloodyad</h2>
-<pre><code class="language-c">bloodyAD --dc-ip 10.0.20.130 -d hacksmarter.hsm -u 'pentest' -p 'HackSmarter123!' get Bloodhound
+<pre><code class="language-bash">bloodyAD --dc-ip 10.0.20.130 -d hacksmarter.hsm -u 'pentest' -p 'HackSmarter123!' get Bloodhound
 </code></pre>
 <h2 id="launching-bloodhound">Launching BloodHound</h2>
-<pre><code class="language-c">sudo ./bloodhound-cli containers start
+<pre><code class="language-bash">sudo ./bloodhound-cli containers start
 </code></pre>
-<pre><code class="language-c">┌──(kali㉿kali)-[/opt/Bloodhound]
+<pre><code class="language-bash">┌──(kali㉿kali)-[/opt/Bloodhound]
 └─$ sudo ./bloodhound-cli containers start
 [+] Checking the status of Docker and the Compose plugin...
 [+] Docker and the Compose plugin checks have passed

