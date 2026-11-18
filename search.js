@@ -7,30 +7,15 @@
   "use strict";
 
   var STYLES = (
-    /* Compact by default: icon-only. The full "Search... Ctrl K" bar only */
-    /* appears on wide viewports (>=1280px) where the primary nav has room. */
-    ".search-trigger{display:inline-flex;align-items:center;gap:8px;flex:none;" +
-    "font-family:var(--f-mono);font-size:12.5px;color:var(--muted);" +
-    "background:var(--panel-2);border:1px solid var(--line);border-radius:999px;" +
-    "padding:7px 8px;cursor:pointer;transition:border-color .16s ease,color .16s ease;" +
-    "justify-content:center;}" +
+    /* Compact icon pill at every viewport width. The Ctrl+K hint lives */
+    /* in the button tooltip so the nav keeps all the horizontal room. */
+    ".search-trigger{display:inline-flex;align-items:center;justify-content:center;" +
+    "flex:none;color:var(--muted);background:var(--panel-2);" +
+    "border:1px solid var(--line);border-radius:999px;padding:7px 8px;" +
+    "cursor:pointer;transition:border-color .16s ease,color .16s ease;}" +
     ".search-trigger:hover,.search-trigger:focus-visible{color:var(--signal);" +
     "border-color:var(--signal-line);outline:none}" +
-    ".search-trigger .st-left{display:inline-flex;align-items:center;gap:8px;min-width:0;white-space:nowrap}" +
     ".search-trigger .st-ico{width:14px;height:14px;flex:none}" +
-    ".search-trigger .st-text,.search-trigger .st-kbd{display:none}" +
-    ".search-trigger .st-text{color:var(--muted-2)}" +
-    ".search-trigger:hover .st-text,.search-trigger:focus-visible .st-text{color:var(--fg-dim)}" +
-    ".search-trigger .st-kbd{align-items:center;gap:3px;font-family:var(--f-mono);" +
-    "font-size:10.5px;color:var(--muted-2);flex:none}" +
-    ".search-trigger .st-kbd kbd{font-family:inherit;background:var(--ink-2);" +
-    "border:1px solid var(--line-soft);border-radius:4px;padding:1px 5px;color:var(--fg-dim)}" +
-    /* Wide screens: expand into the full labeled bar. */
-    "@media (min-width:1280px){.search-trigger{min-width:200px;max-width:260px;" +
-    "padding:6px 10px 6px 12px;justify-content:space-between;}" +
-    ".search-trigger .st-left{flex:1;overflow:hidden}" +
-    ".search-trigger .st-text{display:inline}" +
-    ".search-trigger .st-kbd{display:inline-flex}}" +
     ".sm-root{position:fixed;inset:0;z-index:100;display:none;align-items:flex-start;" +
     "justify-content:center;padding:max(60px,10vh) 16px 16px;background:rgba(0,0,0,.72);" +
     "backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:sm-fade .14s ease-out}" +
@@ -79,14 +64,11 @@
     btn.type = "button";
     btn.className = "search-trigger";
     btn.setAttribute("aria-label", "Search the site (Ctrl K)");
+    btn.setAttribute("title", "Search (Ctrl K)");
     btn.innerHTML =
-      '<span class="st-left">' +
       '<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
       '<circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>' +
-      "</svg>" +
-      '<span class="st-text">Search...</span>' +
-      "</span>" +
-      '<span class="st-kbd"><kbd>Ctrl</kbd><kbd>K</kbd></span>';
+      "</svg>";
     btn.addEventListener("click", openModal);
 
     // Insert as the middle flex child so it sits between brand and nav.
