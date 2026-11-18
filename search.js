@@ -7,11 +7,6 @@
   "use strict";
 
   var STYLES = (
-    /* Keep every primary-nav link on a single line (no internal text */
-    /* wrapping). Allow the whole nav row to wrap to a second line if the */
-    /* viewport is too narrow, with a small row-gap so wrapped rows breathe. */
-    "header.site nav.top{flex-wrap:wrap;row-gap:6px}" +
-    "header.site nav.top > a,header.site nav.top > button{white-space:nowrap}" +
     /* Compact icon pill at every viewport width. The Ctrl+K hint lives */
     /* in the button tooltip so the nav keeps all the horizontal room. */
     ".search-trigger{display:inline-flex;align-items:center;justify-content:center;" +
