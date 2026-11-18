@@ -158,11 +158,91 @@
 
 <main class="wrap">
 
-  <div class="hub-empty">
-    <p class="ico">// coming-soon</p>
-    <h3>Playbooks landing here as I write them up</h3>
-    <p>Payload cheat sheets, encoding and decoding helpers, wordlist crafting, and the utility pages that cut across recon, exploitation and post-ex.</p>
+  <div class="hub">
+
+    <a class="hub-card" href="tools-reference.html">
+      <span class="go" aria-hidden="true">&rsaquo;</span>
+      <span class="idx">01</span>
+      <h3>Tools Reference &amp; Links</h3>
+      <p>Master index of every offensive-security tool from the HTB X CPTS bookmarks — recon, scanning, AD, credential hunting, web, shells/C2, privesc, pivoting, reporting, and cheat sheets.</p>
+      <div class="tags"><span class="t">osint</span><span class="t">enum</span><span class="t">ad</span><span class="t">web</span><span class="t">privesc</span></div>
+    </a>
+
+    <a class="hub-card" href="tools-bloodhound.html">
+      <span class="go" aria-hidden="true">&rsaquo;</span>
+      <span class="idx">02</span>
+      <h3>BloodHound</h3>
+      <p>Neo4j graph attack-path mapping for AD — collection with SharpHound, bloodhound-python, RustHound, NetExec, bloodyAD; ingestion and analysis via built-in Cypher queries.</p>
+      <div class="tags"><span class="t">sharphound</span><span class="t">neo4j</span><span class="t">cypher</span><span class="t">ad</span><span class="t">graph</span></div>
+    </a>
+
+    <a class="hub-card" href="tools-bloodyad.html">
+      <span class="go" aria-hidden="true">&rsaquo;</span>
+      <span class="idx">03</span>
+      <h3>bloodyAD</h3>
+      <p>LDAP-driven AD privesc — ACL/DACL enumeration, object attacks, RODC Golden Ticket, Shadow Credentials, RBCD, LAPS/gMSA reads, DNS spoofing, tombstone restore.</p>
+      <div class="tags"><span class="t">ldap</span><span class="t">ad</span><span class="t">acls</span><span class="t">dcsync</span><span class="t">rodc</span></div>
+    </a>
+
+    <a class="hub-card" href="tools-netexec.html">
+      <span class="go" aria-hidden="true">&rsaquo;</span>
+      <span class="idx">04</span>
+      <h3>NetExec / CrackMapExec</h3>
+      <p>Swiss-army tool for post-foothold AD — SMB/LDAP/WinRM/MSSQL/SSH/FTP/RDP/WMI/NFS/VNC auth, spraying, dumping, Kerberos attacks, BloodHound integration, modules.</p>
+      <div class="tags"><span class="t">nxc</span><span class="t">cme</span><span class="t">smb</span><span class="t">ldap</span><span class="t">winrm</span></div>
+    </a>
+
+    <a class="hub-card" href="tools-mimikatz.html">
+      <span class="go" aria-hidden="true">&rsaquo;</span>
+      <span class="idx">05</span>
+      <h3>Mimikatz</h3>
+      <p>sekurlsa::logonpasswords, lsadump::sam/cache/secrets, LSA Protection and Credential Guard bypass, Pass-the-Hash, Golden/Silver Ticket, Skeleton Key, DPAPI, DCSync.</p>
+      <div class="tags"><span class="t">lsass</span><span class="t">golden-ticket</span><span class="t">silver-ticket</span><span class="t">dcsync</span><span class="t">credguard</span></div>
+    </a>
+
+    <a class="hub-card" href="tools-lsass-attacks.html">
+      <span class="go" aria-hidden="true">&rsaquo;</span>
+      <span class="idx">06</span>
+      <h3>Attacking LSASS</h3>
+      <p>Why LSASS matters, three ways to dump it (Task Manager, ProcDump, rundll32 + comsvcs.dll), and offline extraction with pypykatz and KvcForensic (Server 2025).</p>
+      <div class="tags"><span class="t">lsass</span><span class="t">procdump</span><span class="t">rundll32</span><span class="t">pypykatz</span><span class="t">kvcforensic</span></div>
+    </a>
+
+    <a class="hub-card" href="tools-metasploit.html">
+      <span class="go" aria-hidden="true">&rsaquo;</span>
+      <span class="idx">07</span>
+      <h3>Metasploit</h3>
+      <p>Full Metasploit flow — DB and workspaces, modules, sessions, handlers, MSFVenom matrix, Meterpreter + Kiwi, pivoting with autoroute, bind_tcp gotcha, resource scripts.</p>
+      <div class="tags"><span class="t">msf</span><span class="t">meterpreter</span><span class="t">msfvenom</span><span class="t">handler</span><span class="t">payloads</span></div>
+    </a>
+
+    <a class="hub-card" href="tools-powershell.html">
+      <span class="go" aria-hidden="true">&rsaquo;</span>
+      <span class="idx">08</span>
+      <h3>PowerShell</h3>
+      <p>Execution policy and CLM bypass, encoded commands, download cradles, reflective assembly loading, Win32 API via reflection, AMSI bypass, and SecureString decryption.</p>
+      <div class="tags"><span class="t">amsi</span><span class="t">iex</span><span class="t">encoded-cmd</span><span class="t">reflection</span><span class="t">cradle</span></div>
+    </a>
+
+    <a class="hub-card" href="tools-web-proxies.html">
+      <span class="go" aria-hidden="true">&rsaquo;</span>
+      <span class="idx">09</span>
+      <h3>Web Proxies (Burp / ZAP)</h3>
+      <p>BurpSuite and ZAP — setup, shortcuts, Match &amp; Replace, Decoder, Inspector, Replacer, cookie manipulation, encoding reference, and evasion headers.</p>
+      <div class="tags"><span class="t">burp</span><span class="t">zap</span><span class="t">match-replace</span><span class="t">decoder</span><span class="t">cookies</span></div>
+    </a>
+
+    <a class="hub-card" href="tools-deployment-tools.html">
+      <span class="go" aria-hidden="true">&rsaquo;</span>
+      <span class="idx">10</span>
+      <h3>Deployment Tools (SCCM / MDT / WSUS)</h3>
+      <p>Attacking MDT, SCCM, SCOM, and WSUS — Bootstrap.ini creds, SharpSCCM/MalSCCM app deployment, NAA/PXE/WMI credential paths, SCOM RunAs decryption, SharpWSUS fake updates.</p>
+      <div class="tags"><span class="t">sccm</span><span class="t">mdt</span><span class="t">wsus</span><span class="t">sharpsccm</span><span class="t">sharpwsus</span></div>
+    </a>
+
   </div>
+
+  <p class="hub-note">More tools and quick-reference utilities land here as I write them up.</p>
 
 </main>
 

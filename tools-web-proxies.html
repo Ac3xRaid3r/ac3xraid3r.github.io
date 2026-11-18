@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Web Proxies (Burp / ZAP) — Corey Clay</title>
+<meta name="description" content="Web proxy reference — BurpSuite setup, shortcuts, Match &amp; Replace, Decoder, Inspector; ZAP setup and Replacer; encoding and cookie manipulation workflow, hash identification, evasion headers.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#000000;--ink-2:#121318;--panel:#15171c;--panel-2:#191c22;
+    --line:#262a33;--line-soft:#1b1e24;
+    --fg:#e8eaed;--fg-dim:#b2b6bd;--muted:#868c98;--muted-2:#5f6672;
+    --signal:#9fef00;--signal-soft:rgba(159,239,0,.14);--signal-line:rgba(159,239,0,.34);
+    --green:#7fae7a;--red:#d17a6e;--blue:#7fa6c9;
+    --f-display:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-body:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(126px + env(safe-area-inset-top,0px))}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.7;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background-color:var(--ink);background-image:linear-gradient(180deg,transparent 0%,var(--ink) 46%),linear-gradient(var(--line-soft) 1px,transparent 1px),linear-gradient(90deg,var(--line-soft) 1px,transparent 1px),radial-gradient(1100px 520px at 82% -8%,rgba(159,239,0,.05),transparent 60%);background-size:auto,64px 64px,64px 64px,auto;background-position:0 0,-1px -1px,-1px -1px,0 0}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--signal-soft);color:var(--fg)}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  header.site{position:sticky;top:0;z-index:50;background:rgba(23,25,31,.97);
+    border-bottom:1px solid var(--line-soft);padding-top:env(safe-area-inset-top,0px)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:900px;margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--f-mono);font-size:14px;letter-spacing:.02em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
+  .brand b{color:var(--fg);font-weight:700}
+  .brand span{color:var(--muted)}
+  nav.top{display:flex;gap:24px;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  nav.top a{transition:color .18s ease}
+  nav.top a:hover,nav.top a.here{color:var(--signal)}
+  nav.top a:focus-visible,.brand:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:2px}
+  @media (max-width:680px){nav.top a:not(.here):not(.home){display:none}}
+
+  .cs-hero{padding:56px 0 22px}
+  .cs-hero .kicker{font-family:var(--f-mono);font-size:12.5px;color:var(--signal);margin:0 0 10px}
+  .cs-hero .kicker a{color:var(--muted)}
+  .cs-hero .kicker a:hover{color:var(--signal)}
+  .cs-hero h1{font-family:var(--f-display);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;
+    line-height:1.05;margin:0 0 14px;color:var(--fg)}
+  .cs-hero p{max-width:64ch;color:var(--fg-dim);font-size:18px;margin:0}
+
+  .sec-nav{position:sticky;top:64px;z-index:40;background:rgba(23,25,31,.98);
+    border-bottom:1px solid var(--line-soft);padding:11px 0}
+  .sec-nav .inner{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;max-width:900px;margin:0 auto;padding:0 24px}
+  .sec-nav .inner::-webkit-scrollbar{display:none}
+  .sec-nav a{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);white-space:nowrap;
+    padding:5px 11px;border:1px solid var(--line);border-radius:20px;transition:.16s;flex:none}
+  .sec-nav a:hover,.sec-nav a:focus-visible{color:var(--signal);border-color:var(--signal-line)}
+  .sec-nav a.here{color:var(--signal);border-color:var(--signal-line);background:var(--signal-soft)}
+  .sec-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  main{padding:12px 0 40px}
+  main h2{font-family:var(--f-display);font-weight:600;font-size:clamp(23px,3.2vw,30px);letter-spacing:-.01em;
+    color:var(--fg);margin:56px 0 8px;padding-top:20px;border-top:1px solid var(--line-soft);scroll-margin-top:130px}
+  main h2:first-of-type{border-top:0;margin-top:20px}
+  main h3{font-family:var(--f-display);font-weight:500;font-size:19px;color:var(--fg);margin:30px 0 10px}
+  main h4{font-family:var(--f-mono);font-size:14px;color:var(--signal);margin:22px 0 8px;letter-spacing:.01em}
+  main p{color:var(--fg-dim);margin:0 0 16px;max-width:74ch}
+  main strong{color:var(--fg);font-weight:600}
+  main a{color:var(--signal)}
+  main a:hover{text-decoration:underline}
+  main ul,main ol{color:var(--fg-dim);margin:0 0 18px;padding-left:22px;max-width:74ch}
+  main li{margin-bottom:6px}
+  main ul li::marker{color:var(--signal)}
+  main hr{border:0;border-top:1px solid var(--line-soft);margin:8px 0}
+
+  .code-wrap{position:relative;margin:0 0 18px}
+  main pre{background:var(--ink-2);border:1px solid var(--line);border-radius:8px;overflow-x:auto;
+    margin:0;padding:15px 17px;font-family:var(--f-mono);font-size:13px;line-height:1.7;color:var(--fg-dim)}
+  main pre code{font-family:var(--f-mono);background:none;padding:0;color:inherit;white-space:pre}
+  main :not(pre) > code{font-family:var(--f-mono);font-size:.86em;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--signal)}
+  .copy{position:absolute;top:8px;right:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;transition:.15s;opacity:.85}
+  .copy:hover,.copy:focus-visible{color:var(--signal);border-color:var(--signal-line);opacity:1}
+  .copy:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .copy.done{color:var(--green);border-color:rgba(127,174,122,.4)}
+
+  .table-scroll{overflow-x:auto;margin:0 0 20px;border:1px solid var(--line-soft);border-radius:8px}
+  main table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  main th{font-family:var(--f-mono);font-size:12px;text-align:left;color:var(--signal);
+    background:var(--panel-2);padding:10px 14px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap}
+  main td{padding:10px 14px;border-bottom:1px solid var(--line-soft);color:var(--fg-dim);vertical-align:top}
+  main tr:last-child td{border-bottom:0}
+  main td code{white-space:nowrap}
+
+  footer.site{border-top:1px solid var(--line-soft);padding:44px 0 60px;margin-top:40px}
+  .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;align-items:center}
+  .foot .f-brand{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  .foot .f-brand b{color:var(--fg)}
+  .foot-links{display:flex;gap:22px;font-family:var(--f-mono);font-size:13px}
+  .foot-links a{color:var(--muted);transition:color .16s}
+  .foot-links a:hover,.foot-links a:focus-visible{color:var(--signal)}
+  .disclaimer{font-family:var(--f-mono);font-size:11.5px;color:var(--muted-2);margin:30px 0 0;max-width:74ch;line-height:1.7;
+    border-left:2px solid var(--line);padding-left:16px}
+
+  .hub{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin:14px 0 10px}
+  @media (max-width:640px){.hub{grid-template-columns:1fr}}
+  .hub-card{display:block;border:1px solid var(--line);border-radius:11px;padding:24px 24px 22px;background:var(--panel);
+    transition:border-color .16s ease,transform .16s ease;position:relative}
+  .hub-card:hover{border-color:var(--signal-line);transform:translateY(-3px)}
+  .hub-card .idx{font-family:var(--f-mono);font-size:12px;color:var(--signal)}
+  .hub-card h3{font-family:var(--f-display);font-weight:600;font-size:21px;color:var(--fg);margin:8px 0 8px;letter-spacing:-.01em}
+  .hub-card p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 0 16px;line-height:1.5}
+  .hub-card .tags{display:flex;flex-wrap:wrap;gap:6px}
+  .hub-card .t{font-family:var(--f-mono);font-size:10.5px;color:var(--fg-dim);background:var(--panel-2);
+    border:1px solid var(--line-soft);padding:3px 8px;border-radius:5px}
+  .hub-card .go{position:absolute;top:22px;right:22px;font-family:var(--f-mono);font-size:16px;color:var(--muted);transition:.16s}
+  .hub-card:hover .go{color:var(--signal);transform:translateX(2px)}
+  .hub-card.soon{opacity:.6;pointer-events:none}
+  .hub-card.soon .go{content:''}
+  .hub-note{font-family:var(--f-mono);font-size:12.5px;color:var(--muted-2);margin-top:26px;border-left:2px solid var(--line);padding-left:16px}
+  .hub-empty{border:1px dashed var(--line);border-radius:12px;padding:52px 30px;text-align:center;margin:14px 0 10px}
+  .hub-empty .ico{font-family:var(--f-mono);font-size:13px;color:var(--signal);margin:0 0 12px}
+  .hub-empty h3{font-family:var(--f-display);font-weight:500;font-size:20px;color:var(--fg);margin:0 0 8px}
+  .hub-empty p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 auto;max-width:46ch;line-height:1.55}
+</style>
+</head>
+<body>
+<div class="grid-fade" aria-hidden="true"></div>
+
+<header class="site" id="top">
+  <div class="bar">
+    <a class="brand" href="index.html" aria-label="Home">
+      <span class="dot" aria-hidden="true"></span><b>corey.clay</b><span>/ tools & utilities / web proxies</span>
+    </a>
+    <nav class="top" aria-label="Primary">
+      <a class="home" href="index.html">home</a>
+      <a href="index.html#log">log</a>
+      <a href="methodology.html">methodology</a>
+      <a href="enumeration.html">enumeration</a>
+      <a href="pre-exploitation.html">pre-exploitation</a>
+      <a href="exploitation.html">exploitation</a>
+      <a href="post-exploitation.html">post-exploitation</a>
+      <a class="here" href="tools-utilities.html" aria-current="page">tools &amp; utilities</a>
+      <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
+    </nav>
+  </div>
+</header>
+
+<div class="cs-hero wrap">
+  <p class="kicker"><a href="tools-utilities.html">&lsaquo; tools &amp; utilities</a> &nbsp;/&nbsp; // intercept-and-modify</p>
+  <h1>Web Proxies (Burp / ZAP)</h1>
+  <p>BurpSuite and ZAP as pentest tools — setup and CA cert import, keyboard shortcuts, Match &amp; Replace rules (User-Agent, maxlength, hidden fields, number → text), Decoder and Inspector, ZAP Replacer, an encoding reference (URL, Base64, HTML, Hex, Unicode), a cookie-manipulation workflow, hash-type identification, and evasion headers.</p>
+</div>
+
+<nav class="sec-nav" aria-label="Jump to section">
+  <div class="inner">
+      <a href="#burpsuite-setup">BurpSuite Setup</a>
+      <a href="#match-replace">Match &amp; Replace</a>
+      <a href="#decoder">Decoder</a>
+      <a href="#inspector">Inspector</a>
+      <a href="#zap-setup">ZAP Setup</a>
+      <a href="#zap-replacer">ZAP Replacer</a>
+      <a href="#encoding-decoding-reference">Encoding/Decoding Reference</a>
+      <a href="#cookie-manipulation-workflow">Cookie Manipulation Workflow</a>
+      <a href="#hash-algorithms">Hash Algorithms</a>
+      <a href="#proxy-interception-tricks">Proxy Interception Tricks</a>
+      <a href="#evasion-techniques">Evasion Techniques</a>
+      <a href="#references">References</a>
+  </div>
+</nav>
+
+<main class="wrap">
+<h2 id="burpsuite-setup">BurpSuite Setup</h2>
+<h3>Proxy Configuration</h3>
+<p>Browser → Proxy (127.0.0.1:8080) → Target</p>
+<p>Install Burp CA certificate:</p>
+<ol>
+<li>Navigate to <a href="http://burp">http://burp</a></li>
+<li>Download certificate</li>
+<li>Import to browser (or system certificate store)</li>
+</ol>
+<h3>Burp Shortcuts</h3>
+<table>
+<thead>
+<tr>
+<th>Shortcut</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CTRL+U</code></td>
+<td>URL-encode selected text</td>
+</tr>
+<tr>
+<td><code>CTRL+SHIFT+U</code></td>
+<td>URL-decode selected text</td>
+</tr>
+<tr>
+<td><code>CTRL+R</code></td>
+<td>Send to Repeater</td>
+</tr>
+<tr>
+<td><code>CTRL+I</code></td>
+<td>Send to Intruder</td>
+</tr>
+<tr>
+<td><code>CTRL+SHIFT+R</code></td>
+<td>Force refresh (in browser)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="match-replace">Match &amp; Replace</h2>
+<p>Auto-modify requests and responses based on rules.</p>
+<p><strong>Location</strong>: Proxy &gt; Proxy Settings &gt; HTTP match and replace rules</p>
+<h3>Replace User-Agent</h3>
+<pre><code>Type:    Request header
+Match:   ^User-Agent.*$
+Replace: User-Agent: HackTheBox Agent 1.0
+Regex:   ☑
+</code></pre>
+<h3>Enable Text Input (Bypass Validation)</h3>
+<pre><code>Type:    Response body
+Match:   type=&quot;number&quot;
+Replace: type=&quot;text&quot;
+</code></pre>
+<h3>Increase maxlength Attribute</h3>
+<pre><code>Type:    Response body
+Match:   maxlength=&quot;3&quot;
+Replace: maxlength=&quot;100&quot;
+</code></pre>
+<h3>Common Match &amp; Replace Patterns</h3>
+<table>
+<thead>
+<tr>
+<th>Use Case</th>
+<th>Match</th>
+<th>Replace</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Custom User-Agent</td>
+<td><code>^User-Agent.*$</code></td>
+<td><code>User-Agent: CustomAgent</code></td>
+</tr>
+<tr>
+<td>Add Header</td>
+<td>(empty)</td>
+<td><code>X-Custom-Header: value</code></td>
+</tr>
+<tr>
+<td>Change Referer</td>
+<td><code>^Referer.*$</code></td>
+<td><code>Referer: https://trusted.com</code></td>
+</tr>
+<tr>
+<td>Enable text input</td>
+<td><code>type="number"</code></td>
+<td><code>type="text"</code></td>
+</tr>
+<tr>
+<td>Remove maxlength</td>
+<td><code>maxlength="3"</code></td>
+<td><code>maxlength="1000"</code></td>
+</tr>
+<tr>
+<td>Enable button</td>
+<td><code>disabled</code></td>
+<td>(empty)</td>
+</tr>
+<tr>
+<td>Show hidden field</td>
+<td><code>type="hidden"</code></td>
+<td><code>type="text"</code></td>
+</tr>
+<tr>
+<td>Remove readonly</td>
+<td><code>readonly</code></td>
+<td>(empty)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="decoder">Decoder</h2>
+<p>Decode, encode, or hash data within Burp.</p>
+<p><strong>Location</strong>: Decoder tab</p>
+<p><strong>Actions</strong>:</p>
+<ul>
+<li>Decode as (URL, HTML, Base64, ASCII Hex, Unicode)</li>
+<li>Encode as (various formats)</li>
+<li>Hash (MD5, SHA-1, SHA-256, etc.)</li>
+<li>Smart decode (auto-detect format)</li>
+</ul>
+<p><strong>Supported Formats</strong>:</p>
+<ul>
+<li>URL encoding</li>
+<li>HTML entities</li>
+<li>Base64</li>
+<li>ASCII Hex</li>
+<li>Unicode</li>
+</ul>
+<h2 id="inspector">Inspector</h2>
+<p>Auto-decode and chain decoding within request/response context.</p>
+<p><strong>Location</strong>: Proxy/Repeater → right side panel</p>
+<p><strong>Features</strong>:</p>
+<ul>
+<li>Auto-decode selected text</li>
+<li>Chain multiple decodings</li>
+<li>Apply changes in-context</li>
+</ul>
+<h2 id="zap-setup">ZAP Setup</h2>
+<p>OWASP ZAP alternative to Burp Suite.</p>
+<h3>Basic Configuration</h3>
+<pre><code class="language-bash">## Start ZAP with proxy
+java -jar zaproxy.jar
+## Proxy: 127.0.0.1:8080
+</code></pre>
+<h3>Key Shortcuts</h3>
+<table>
+<thead>
+<tr>
+<th>Shortcut</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CTRL+E</code></td>
+<td>Encoder/Decoder/Hash</td>
+</tr>
+<tr>
+<td><code>CTRL+R</code></td>
+<td>Replacer (auto-modification)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="zap-replacer">ZAP Replacer</h2>
+<p>Auto-modification rules in ZAP.</p>
+<p><strong>Location</strong>: CTRL+R or Tools &gt; Options &gt; Replacer</p>
+<h3>Example Rule</h3>
+<pre><code>Description:      HTB User-Agent
+Match Type:       Request Header (will add if not present)
+Match String:     User-Agent
+Replacement:      HackTheBox Agent 1.0
+Enable:           ☑
+</code></pre>
+<h3>Common Rules</h3>
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>Match Type</th>
+<th>Match String</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Custom UA</td>
+<td>Request Header</td>
+<td>User-Agent</td>
+<td>CustomAgent 1.0</td>
+</tr>
+<tr>
+<td>Add Auth</td>
+<td>Request Header</td>
+<td>(empty)</td>
+<td>Authorization: Bearer token</td>
+</tr>
+<tr>
+<td>Change Referer</td>
+<td>Request Header</td>
+<td>Referer</td>
+<td>Referer: <a href="https://trusted.com">https://trusted.com</a></td>
+</tr>
+<tr>
+<td>Enable field</td>
+<td>Response Body</td>
+<td>type="number"</td>
+<td>type="text"</td>
+</tr>
+<tr>
+<td>Remove readonly</td>
+<td>Response Body</td>
+<td>readonly</td>
+<td>(empty)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="encoding-decoding-reference">Encoding/Decoding Reference</h2>
+<h3>URL Encoding Key Characters</h3>
+<table>
+<thead>
+<tr>
+<th>Character</th>
+<th>Encoded</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Space</td>
+<td><code>%20</code> or <code>+</code></td>
+<td>End of request data</td>
+</tr>
+<tr>
+<td><code>&amp;</code></td>
+<td><code>%26</code></td>
+<td>Parameter delimiter</td>
+</tr>
+<tr>
+<td><code>#</code></td>
+<td><code>%23</code></td>
+<td>Fragment identifier</td>
+</tr>
+<tr>
+<td><code>=</code></td>
+<td><code>%3D</code></td>
+<td>Parameter assignment</td>
+</tr>
+<tr>
+<td><code>?</code></td>
+<td><code>%3F</code></td>
+<td>Query string start</td>
+</tr>
+<tr>
+<td><code>/</code></td>
+<td><code>%2F</code></td>
+<td>Path separator</td>
+</tr>
+<tr>
+<td><code>+</code></td>
+<td><code>%2B</code></td>
+<td>Space in form data</td>
+</tr>
+<tr>
+<td><code>:</code></td>
+<td><code>%3A</code></td>
+<td>Scheme/host separator</td>
+</tr>
+<tr>
+<td><code>;</code></td>
+<td><code>%3B</code></td>
+<td>Parameter separator</td>
+</tr>
+<tr>
+<td><code>!</code></td>
+<td><code>%21</code></td>
+<td>Unreserved</td>
+</tr>
+</tbody>
+</table>
+<h3>Common Encodings</h3>
+<table>
+<thead>
+<tr>
+<th>Encoding</th>
+<th>Example</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>URL</td>
+<td><code>hello%20world</code></td>
+<td>Query strings, form data</td>
+</tr>
+<tr>
+<td>Base64</td>
+<td><code>aGVsbG8gd29ybGQ=</code></td>
+<td>Binary data, credentials</td>
+</tr>
+<tr>
+<td>HTML</td>
+<td><code>&amp;lt;script&amp;gt;</code></td>
+<td>HTML entities</td>
+</tr>
+<tr>
+<td>Hex</td>
+<td><code>48656c6c6f</code></td>
+<td>Binary representation</td>
+</tr>
+<tr>
+<td>Unicode</td>
+<td><code>He</code></td>
+<td>JavaScript strings</td>
+</tr>
+</tbody>
+</table>
+<h2 id="cookie-manipulation-workflow">Cookie Manipulation Workflow</h2>
+<h3>1. Identify Encoded Cookie</h3>
+<pre><code>Cookie: session=eyJ1c2VybmFtZSI6Imd1ZXN0IiwgImlzX2FkbWluIjpmYWxzZX0=
+</code></pre>
+<h3>2. Decode (Base64)</h3>
+<pre><code>{&quot;username&quot;:&quot;guest&quot;, &quot;is_admin&quot;:false}
+</code></pre>
+<h3>3. Modify Values</h3>
+<pre><code>{&quot;username&quot;:&quot;admin&quot;, &quot;is_admin&quot;:true}
+</code></pre>
+<h3>4. Re-encode (Base64)</h3>
+<pre><code>eyJ1c2VybmFtZSI6ImFkbWluIiwgImlzX2FkbWluIjp0cnVlfQ==
+</code></pre>
+<h3>5. Replace Cookie and Test</h3>
+<pre><code>Cookie: session=eyJ1c2VybmFtZSI6ImFkbWluIiwgImlzX2FkbWluIjp0cnVlfQ==
+</code></pre>
+<h2 id="hash-algorithms">Hash Algorithms</h2>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Length</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MD5</td>
+<td>32 hex</td>
+<td>Legacy, checksums (deprecated)</td>
+</tr>
+<tr>
+<td>SHA-1</td>
+<td>40 hex</td>
+<td>Legacy signatures (deprecated)</td>
+</tr>
+<tr>
+<td>SHA-256</td>
+<td>64 hex</td>
+<td>Modern security, JWT</td>
+</tr>
+<tr>
+<td>SHA-512</td>
+<td>128 hex</td>
+<td>High security, passwords</td>
+</tr>
+<tr>
+<td>BLAKE2</td>
+<td>64 hex</td>
+<td>Modern hashing</td>
+</tr>
+</tbody>
+</table>
+<h3>Identify Hash Type</h3>
+<pre><code>32 chars   → MD5
+40 chars   → SHA-1
+64 chars   → SHA-256
+128 chars  → SHA-512
+$2a$      → Bcrypt
+$6$       → SHA-512 crypt
+</code></pre>
+<h2 id="proxy-interception-tricks">Proxy Interception Tricks</h2>
+<h3>Intercept Specific Requests</h3>
+<p><strong>Burp</strong>: Proxy &gt; Intercept &gt; Intercept is off/on</p>
+<p><strong>ZAP</strong>: Break on request/response</p>
+<p>Filter by:</p>
+<ul>
+<li>URL pattern</li>
+<li>HTTP method</li>
+<li>Headers</li>
+<li>Response code</li>
+</ul>
+<h3>Modify Requests on the Fly</h3>
+<ol>
+<li>Intercept request</li>
+<li>Modify payload/headers</li>
+<li>Forward to target</li>
+</ol>
+<h3>Session Handling</h3>
+<p><strong>Burp</strong>: Project options &gt; Sessions &gt; Session handling rules</p>
+<p><strong>ZAP</strong>: Tools &gt; Options &gt; Session Management</p>
+<h2 id="evasion-techniques">Evasion Techniques</h2>
+<h3>User-Agent Spoofing</h3>
+<pre><code>User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)
+</code></pre>
+<h3>Bypass IP Restrictions</h3>
+<pre><code>X-Forwarded-For: &lt;legitimate-IP&gt;
+X-Real-IP: &lt;legitimate-IP&gt;
+</code></pre>
+<h3>Add Referer Header</h3>
+<pre><code>Referer: https://google.com
+</code></pre>
+<h3>Custom Headers</h3>
+<pre><code>X-Custom-Header: legitimate-value
+X-Forwarded-Proto: https
+</code></pre>
+<h2 id="references">References</h2>
+<ul>
+<li><a href="https://portswigger.net/burp/documentation">BurpSuite Documentation</a></li>
+<li><a href="https://www.zaproxy.org/docs/">OWASP ZAP Documentation</a></li>
+<li><a href="https://www.w3schools.com/tags/ref_urlencode.asp">URL Encoding Reference</a></li>
+<li><a href="https://www.base64encode.org/">Base64 Encoding/Decoding</a></li>
+</ul>
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div class="f-brand"><b>corey.clay</b> — tools & utilities / web proxies · <span id="year"></span></div>
+    <div class="foot-links">
+      <a href="tools-utilities.html">tools &amp; utilities</a>
+      <a href="index.html">home</a>
+      <a href="https://github.com/Ac3xRaid3r" target="_blank" rel="noopener">github</a>
+      <a href="#top">top</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
+
+  document.querySelectorAll('main table').forEach(function(t){
+    if(t.parentElement.classList.contains('table-scroll')) return;
+    var w=document.createElement('div'); w.className='table-scroll';
+    t.parentNode.insertBefore(w,t); w.appendChild(t);
+  });
+
+  document.querySelectorAll('main pre').forEach(function(pre){
+    var wrap=document.createElement('div'); wrap.className='code-wrap';
+    pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(pre);
+    var btn=document.createElement('button');
+    btn.className='copy'; btn.type='button'; btn.textContent='copy';
+    btn.setAttribute('aria-label','Copy to clipboard');
+    btn.addEventListener('click',function(){
+      var text=pre.innerText;
+      var done=function(){btn.textContent='copied';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='copy';btn.classList.remove('done');},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){fb(text,done);});
+      } else {fb(text,done);}
+    });
+    wrap.appendChild(btn);
+  });
+  function fb(text,cb){var ta=document.createElement('textarea');ta.value=text;
+    ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+
+  var navLinks=Array.prototype.slice.call(document.querySelectorAll('.sec-nav a'));
+  if(navLinks.length){
+    var map={}; navLinks.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    var heads=Array.prototype.slice.call(document.querySelectorAll('main h2[id]'));
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          navLinks.forEach(function(a){a.classList.remove('here');});
+          var a=map[e.target.id];
+          if(a){a.classList.add('here');var ic=a.parentElement;if(ic&&ic.scrollWidth>ic.clientWidth){ic.scrollTo({left:a.offsetLeft-ic.clientWidth/2+a.offsetWidth/2,behavior:'smooth'});}}
+        }
+      });
+    },{rootMargin:'-130px 0px -70% 0px',threshold:0});
+    heads.forEach(function(h){obs.observe(h);});
+  }
+})();
+</script>
+</body>
+</html>

