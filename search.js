@@ -7,24 +7,30 @@
   "use strict";
 
   var STYLES = (
-    ".search-trigger{display:inline-flex;align-items:center;gap:8px;" +
+    /* Compact by default: icon-only. The full "Search... Ctrl K" bar only */
+    /* appears on wide viewports (>=1280px) where the primary nav has room. */
+    ".search-trigger{display:inline-flex;align-items:center;gap:8px;flex:none;" +
     "font-family:var(--f-mono);font-size:12.5px;color:var(--muted);" +
     "background:var(--panel-2);border:1px solid var(--line);border-radius:999px;" +
-    "padding:6px 10px 6px 12px;cursor:pointer;transition:border-color .16s ease,color .16s ease;" +
-    "min-width:200px;max-width:260px;justify-content:space-between;}" +
+    "padding:7px 8px;cursor:pointer;transition:border-color .16s ease,color .16s ease;" +
+    "justify-content:center;}" +
     ".search-trigger:hover,.search-trigger:focus-visible{color:var(--signal);" +
     "border-color:var(--signal-line);outline:none}" +
-    ".search-trigger .st-left{display:inline-flex;align-items:center;gap:8px;flex:1;min-width:0;overflow:hidden;white-space:nowrap}" +
+    ".search-trigger .st-left{display:inline-flex;align-items:center;gap:8px;min-width:0;white-space:nowrap}" +
     ".search-trigger .st-ico{width:14px;height:14px;flex:none}" +
+    ".search-trigger .st-text,.search-trigger .st-kbd{display:none}" +
     ".search-trigger .st-text{color:var(--muted-2)}" +
     ".search-trigger:hover .st-text,.search-trigger:focus-visible .st-text{color:var(--fg-dim)}" +
-    ".search-trigger .st-kbd{display:inline-flex;align-items:center;gap:3px;font-family:var(--f-mono);" +
+    ".search-trigger .st-kbd{align-items:center;gap:3px;font-family:var(--f-mono);" +
     "font-size:10.5px;color:var(--muted-2);flex:none}" +
     ".search-trigger .st-kbd kbd{font-family:inherit;background:var(--ink-2);" +
-    "border:1px solid var(--line-soft);border-radius:4px;padding:1px 5px 1px 5px;color:var(--fg-dim)}" +
-    "@media (max-width:680px){.search-trigger{min-width:36px;max-width:36px;padding:7px 8px;}" +
-    ".search-trigger .st-text,.search-trigger .st-kbd{display:none}" +
-    ".search-trigger .st-left{justify-content:center}}" +
+    "border:1px solid var(--line-soft);border-radius:4px;padding:1px 5px;color:var(--fg-dim)}" +
+    /* Wide screens: expand into the full labeled bar. */
+    "@media (min-width:1280px){.search-trigger{min-width:200px;max-width:260px;" +
+    "padding:6px 10px 6px 12px;justify-content:space-between;}" +
+    ".search-trigger .st-left{flex:1;overflow:hidden}" +
+    ".search-trigger .st-text{display:inline}" +
+    ".search-trigger .st-kbd{display:inline-flex}}" +
     ".sm-root{position:fixed;inset:0;z-index:100;display:none;align-items:flex-start;" +
     "justify-content:center;padding:max(60px,10vh) 16px 16px;background:rgba(0,0,0,.72);" +
     "backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:sm-fade .14s ease-out}" +
